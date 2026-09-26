@@ -29,6 +29,7 @@ import statistics
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 IDEAS = os.path.dirname(HERE)
@@ -69,7 +70,7 @@ def wait_ready(port, deadline_s=60):
         try:
             if req(port, "GET", "/ping", timeout=1)[0] == 200:
                 return time.perf_counter() - t0
-        except OSError:
+        except (OSError, http.client.HTTPException):   # half-restored server can answer garbage
             time.sleep(0.002)
     raise TimeoutError(f"port {port} not ready")
 
@@ -212,11 +213,16 @@ def x2_parallel(a):
             procs = [subprocess.Popen(["podman", "container", "restore", f"--import={img}", f"--name={nm}",
                                        "-p", f"{19100 + i}:8080"], stdout=subprocess.DEVNULL,
                                       stderr=subprocess.DEVNULL) for i, nm in enumerate(names)]
+
+            def ready_ms(i):   # each copy's own launch -> first /ping answered
+                wait_ready(19100 + i)
+                return (time.perf_counter() - t0) * 1000
+            with ThreadPoolExecutor(N) as ex:
+                r = list(ex.map(ready_ms, range(N)))
             for pr in procs:
                 pr.wait()
-            done = [wait_ready(19100 + i) for i in range(N)]
-            r = [(time.perf_counter() - t0) * 1000] * N
-            rows.append(dict(N=N, rep=rep, restore_ms_max=max(r), restore_ms_mean=statistics.mean(r)))
+            rows.append(dict(N=N, rep=rep, restore_ms_max=max(r), restore_ms_mean=statistics.mean(r),
+                             restore_ms=r))
             for nm in names:
                 sh(f"podman rm -f {nm}", check=False)
         print(N, statistics.median(x["restore_ms_max"] for x in rows if x["N"] == N), flush=True)
