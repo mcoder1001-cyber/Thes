@@ -1,8 +1,12 @@
 # A formal model for snapshot placement and depth in FaaS workflows
 
-> **See also `DAG_SNAPSHOT_THEORY.md` (2026-09-26):** this file decides *how deep* each
-> function's snapshot is; that one decides *when to restore* it along the workflow DAG and
-> *what to prime it with*, with proofs checked by `verify_dag.py`.
+> **See also `DAG_SNAPSHOT_THEORY.md` (2026-09-26):** that file decides *when to restore*
+> each snapshot along the workflow DAG and *what to prime it with*, with proofs checked by
+> `verify_dag.py`. **Its Theorem 7 supersedes this file's depth optimisation under
+> look-ahead:** the objective below (`c_v = r_v + R_v`, summed along paths) is the
+> restore-on-demand special case. Under look-ahead each sub-workflow needs two numbers
+> `(W, P)`; the two coincide, with `R_v + C_v` in place of `c_v`, when restore times are equal
+> (Theorem 7(c)).
 
 Written 2026-09-24. Companion to `experiments/RESULTS.md` (the measurements that
 supply this model's inputs and validate its assumptions) and `verify.py` (the

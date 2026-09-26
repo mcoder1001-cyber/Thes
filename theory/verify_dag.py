@@ -16,11 +16,15 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
   T6   keep-alive vs look-ahead memory for rare workflows (renewal Monte Carlo)
   P7   predicate-preserving scrubbing preserves control-flow paths (src/Sig.java; needs java)
   P8   depth is work, not requests: JIT compile counts / residuals from exp-a (committed CSV)
+  T7   UNIFIED: joint snapshot depth + look-ahead timing on series-parallel DAGs -- composition
+       rules, exact (storage, W, P) Pareto DP vs brute force, hidden-restore reduction to
+       MODEL.md's DP, cold-start-hidden stages, and what the unification buys
 
 usage: ./verify_dag.py [--quick]
 """
 import argparse
 import csv
+import itertools
 import math
 import os
 import random
@@ -555,6 +559,324 @@ def p8():
         print("      HotSpot thresholds on this JDK: " + "; ".join(keep))
 
 
+# ============================================================ T7 (unified)
+# Series-parallel workflows. tree = ("leaf", i) | ("ser", A, B) | ("par", A, B).
+# Every leaf i has options opts[i] = [(p, w, s), ...]: provisioning time p (restore r_v(K) for a
+# snapshot of depth K, or cold-boot time A_v for "no snapshot"), warm work w after it
+# (R_v(K) + C_v, or B_v + C_v), and storage s (0 for "no snapshot").
+def gen_sp(rnd, n):
+    if n == 1:
+        gen_sp.k += 1
+        return ("leaf", gen_sp.k - 1)
+    a = rnd.randint(1, n - 1)
+    return (rnd.choice(["ser", "par"]), gen_sp(rnd, a), gen_sp(rnd, n - a))
+
+
+def fresh_sp(rnd, n):
+    gen_sp.k = 0
+    return gen_sp(rnd, n)
+
+
+def expand(tree, pw, delta):
+    """SP tree + chosen (p, w) per leaf -> DAG for the independent exact evaluator.
+    Series joins every exit of A to every entry of B with an edge of weight delta."""
+    preds, r, w = [], [], []
+
+    def go(t):
+        if t[0] == "leaf":
+            preds.append([])
+            r.append(pw[t[1]][0])
+            w.append(pw[t[1]][1])
+            v = len(preds) - 1
+            return [v], [v]
+        ea, xa = go(t[1])
+        eb, xb = go(t[2])
+        if t[0] == "par":
+            return ea + eb, xa + xb
+        for v in eb:
+            preds[v] = sorted(set(preds[v]) | set(xa))
+        return ea, xb
+    go(tree)
+    return DAG(len(preds), preds, r, w, [1.0] * len(preds), delta)
+
+
+def rules(tree, pw, delta):
+    """Theorem 7(a): (W, P) of a sub-workflow; its finish time for input at x is max(x+W, P)."""
+    if tree[0] == "leaf":
+        p, w = pw[tree[1]]
+        return w, p + w
+    W1, P1 = rules(tree[1], pw, delta)
+    W2, P2 = rules(tree[2], pw, delta)
+    if tree[0] == "ser":
+        return W1 + delta + W2, max(P1 + delta + W2, P2)
+    return max(W1, W2), max(P1, P2)
+
+
+def rules_od(tree, pw, delta):
+    """Restore-on-demand: one number per sub-workflow (MODEL.md's c = r + R + C)."""
+    if tree[0] == "leaf":
+        p, w = pw[tree[1]]
+        return p + w
+    a, b = rules_od(tree[1], pw, delta), rules_od(tree[2], pw, delta)
+    return a + delta + b if tree[0] == "ser" else max(a, b)
+
+
+def _prune(items, key):
+    """Drop items dominated in every coordinate of key(item) (smaller is better)."""
+    items = sorted(items, key=key)
+    kept = []
+    for it in items:
+        k = key(it)
+        if not any(all(a <= b for a, b in zip(key(o), k)) for o in kept):
+            kept.append(it)
+    return kept
+
+
+def dp_joint(tree, opts, delta, S, prune_key=None):
+    """Theorem 7(b): exact DP over the SP tree, state = Pareto set of (s, W, P).
+    prune_key lets a CONTROL replace the 3-D dominance with a coarser (wrong) one."""
+    key = prune_key or (lambda it: (it[0], it[1], it[2]))
+
+    def go(t):
+        if t[0] == "leaf":
+            i = t[1]
+            return _prune([(s, w, p + w, ((i, k),)) for k, (p, w, s) in enumerate(opts[i]) if s <= S], key)
+        A, B = go(t[1]), go(t[2])
+        out = []
+        for s1, W1, P1, c1 in A:
+            for s2, W2, P2, c2 in B:
+                if s1 + s2 > S:
+                    continue
+                if t[0] == "ser":
+                    out.append((s1 + s2, W1 + delta + W2, max(P1 + delta + W2, P2), c1 + c2))
+                else:
+                    out.append((s1 + s2, max(W1, W2), max(P1, P2), c1 + c2))
+        return _prune(out, key)
+    best = min(go(tree), key=lambda it: max(it[1], it[2]))
+    return max(best[1], best[2]), dict(best[3])
+
+
+def dp_od(tree, opts, delta, S):
+    """MODEL.md's objective (restore on demand): Pareto set of (s, c)."""
+    def go(t):
+        if t[0] == "leaf":
+            i = t[1]
+            return _prune([(s, p + w, ((i, k),)) for k, (p, w, s) in enumerate(opts[i]) if s <= S],
+                          lambda it: (it[0], it[1]))
+        A, B = go(t[1]), go(t[2])
+        out = []
+        for s1, c1, a1 in A:
+            for s2, c2, a2 in B:
+                if s1 + s2 <= S:
+                    out.append((s1 + s2, c1 + delta + c2 if t[0] == "ser" else max(c1, c2), a1 + a2))
+        return _prune(out, lambda it: (it[0], it[1]))
+    best = min(go(tree), key=lambda it: it[1])
+    return best[1], dict(best[2])
+
+
+def brute_joint(tree, opts, delta, S, n):
+    best = None
+    for combo in itertools.product(*[range(len(opts[i])) for i in range(n)]):
+        if sum(opts[i][k][2] for i, k in enumerate(combo)) > S:
+            continue
+        pw = [(opts[i][k][0], opts[i][k][1]) for i, k in enumerate(combo)]
+        L = eager(expand(tree, pw, delta))[0]          # independent evaluator, not rules()
+        best = L if best is None else min(best, L)
+    return best
+
+
+def random_opts(rnd, n, equal_p=None, cold=True):
+    opts = []
+    for _ in range(n):
+        o = []
+        if cold:
+            o.append((rnd.uniform(300, 3000), rnd.uniform(20, 500), 0))
+        R = rnd.uniform(100, 500)
+        C = rnd.uniform(1, 50)
+        r = equal_p if equal_p is not None else rnd.uniform(50, 1500)
+        for j in range(rnd.randint(1, 3)):
+            R *= rnd.uniform(0.2, 0.8)
+            o.append((r, R + C, rnd.randint(1, 4) * (j + 1)))
+        opts.append(o)
+    return opts
+
+
+def t7(quick):
+    hdr("THEOREM 7 -- joint snapshot depth AND look-ahead timing on series-parallel DAGs")
+    rnd = random.Random(7)
+    # (a) composition rules == exact schedule of the expanded DAG
+    N = 500 if quick else 2000
+    ok_a = ok_od = 0
+    for _ in range(N):
+        n = rnd.randint(1, 9)
+        tree = fresh_sp(rnd, n)
+        delta = rnd.choice([0.0, 2.0, 10.0])
+        pw = [(rnd.uniform(50, 3000), rnd.uniform(1, 500)) for _ in range(n)]
+        W, P = rules(tree, pw, delta)
+        g = expand(tree, pw, delta)
+        ok_a += abs(max(W, P) - eager(g)[0]) < 1e-7 and abs(max(W, P) - L_star(g)) < 1e-7
+        ok_od += abs(rules_od(tree, pw, delta) - on_demand(g)[0]) < 1e-7
+    check(f"T7(a) look-ahead latency of an SP workflow = max(W, P) by the composition rules  [{N}]",
+          ok_a == N, f"{ok_a}/{N} exact vs the expanded-DAG evaluator")
+    check("T7(a) on-demand latency = MODEL.md's recursion (series: sum, parallel: max)", ok_od == N,
+          f"{ok_od}/{N}")
+
+    # (b) the (s, W, P) Pareto DP is exact
+    M = 150 if quick else 600
+    ok_b = 0
+    naive_wrong = 0
+    for _ in range(M):
+        n = rnd.randint(2, 6)
+        tree = fresh_sp(rnd, n)
+        delta = rnd.choice([0.0, 2.0])
+        opts = random_opts(rnd, n)
+        S = rnd.randint(0, sum(max(o[2] for o in op) for op in opts))
+        bf = brute_joint(tree, opts, delta, S, n)
+        L, _ = dp_joint(tree, opts, delta, S)
+        ok_b += abs(L - bf) < 1e-7
+        # CONTROL: prune on (s, max(W, P)) only -- a one-number state, like the on-demand DP
+        Ln, _ = dp_joint(tree, opts, delta, S, prune_key=lambda it: (it[0], max(it[1], it[2])))
+        naive_wrong += Ln > bf + 1e-7
+    check(f"T7(b) the (storage, W, P) Pareto DP is exact vs brute force  [{M} instances]", ok_b == M,
+          f"{ok_b}/{M}")
+    check("CONTROL: a one-number state (storage, latency) is NOT enough -- the DP needs (W, P)",
+          naive_wrong > 0, f"wrong on {naive_wrong}/{M} instances")
+    # the explicit counterexample in the proof of T7(b): stage 1 has c = (p 990, w 10) and
+    # d = (p 100, w 500), equal storage, after a stage with P1 = 900 (delta = 0)
+    ex_tree = ("ser", ("leaf", 0), ("leaf", 1))
+    ex_opts = [[(880.0, 20.0, 0)], [(990.0, 10.0, 1), (100.0, 500.0, 1)]]
+    L_ok, K_ok = dp_joint(ex_tree, ex_opts, 0.0, 1)
+    L_bad, K_bad = dp_joint(ex_tree, ex_opts, 0.0, 1, prune_key=lambda it: (it[0], max(it[1], it[2])))
+    check("T7(b) proof's counterexample: joint DP picks c (1000 ms); own-latency pruning picks d (1400 ms)",
+          L_ok == 1000.0 and K_ok[1] == 0 and L_bad == 1400.0 and K_bad[1] == 1,
+          f"joint {L_ok:.0f} ms (option {K_ok[1]}), one-number {L_bad:.0f} ms (option {K_bad[1]})")
+
+    # (c) hidden-restore condition: equal p for every snapshot option -> joint = p + warm-path DP
+    ok_c = tot_c = viol = 0
+    for _ in range(M):
+        n = rnd.randint(2, 6)
+        tree = fresh_sp(rnd, n)
+        delta = rnd.choice([0.0, 2.0])
+        rr = rnd.uniform(50, 1500)
+        opts = random_opts(rnd, n, equal_p=rr, cold=False)
+        S = rnd.randint(sum(min(o[2] for o in op) for op in opts),    # every stage must afford one
+                        sum(max(o[2] for o in op) for op in opts))
+        L, _ = dp_joint(tree, opts, delta, S)
+        warm = [[(0.0, w, s) for (_, w, s) in op] for op in opts]
+        Lw, _ = dp_od(tree, warm, delta, S)                 # MODEL.md's DP on warm weights only
+        tot_c += 1
+        ok_c += abs(L - (rr + Lw)) < 1e-7
+        # CONTROL: violate the condition -- one stage restores much more slowly than the rest
+        bad = [list(op) for op in opts]
+        j = rnd.randrange(n)
+        bad[j] = [(rr + rnd.uniform(2000, 6000), w, s) for (_, w, s) in bad[j]]
+        Lb, _ = dp_joint(tree, bad, delta, S)
+        Lbw, _ = dp_od(tree, [[(0.0, w, s) for (_, w, s) in op] for op in bad], delta, S)
+        viol += abs(Lb - (rr + Lbw)) > 1e-7
+    check("T7(c) hidden restores (equal r): joint optimum = r + MODEL.md's DP on warm weights w",
+          ok_c == tot_c, f"{ok_c}/{tot_c}")
+    check("CONTROL: with one slow-restoring stage the reduction breaks (condition is needed)",
+          viol > 0, f"differs on {viol}/{tot_c}")
+
+    # Corollary 7.1: switching stage v to a cold start (provisioning A, same warm work) gives
+    # latency max(A + l(v), L_rest); it is free iff A + l(v) <= L_rest (the DAG hides it)
+    ok_h = tot_h = hidden_n = 0
+    for _ in range(M):
+        n = rnd.randint(2, 7)
+        tree = fresh_sp(rnd, n)
+        delta = 2.0
+        pw = [(rnd.uniform(50, 1500), rnd.uniform(5, 300)) for _ in range(n)]
+        v = rnd.randrange(n)
+        g = expand(tree, pw, delta)                    # leaf i is node i (both in DFS order)
+        ell = g.ell()
+        L0 = eager(g)[0]
+        L_rest = max((pw[u][0] + ell[u] for u in range(n) if u != v), default=0.0)
+        A = rnd.uniform(50, 4000)
+        pw2 = list(pw)
+        pw2[v] = (A, pw[v][1])
+        L1 = eager(expand(tree, pw2, delta))[0]
+        hidden = A + ell[v] <= L_rest
+        hidden_n += hidden
+        tot_h += 1
+        ok_h += abs(L1 - max(A + ell[v], L_rest)) < 1e-7 and (not hidden or L1 <= L0 + 1e-7)
+    check("C7.1 cold start of stage v costs max(A_v + l(v), L_rest) - L; free iff hidden by the DAG",
+          ok_h == tot_h, f"{ok_h}/{tot_h} ({hidden_n} hidden)")
+
+    # Corollary 7.2 (longest tail first): identical stages whose options differ only in
+    # provisioning (w fixed), unit storage, budget k -> the optimum restores the k stages with the
+    # largest remaining warm path l(v) and cold-starts the rest (a sort, no DP)
+    ok_g = tot_g = 0
+    for _ in range(M):
+        n = rnd.randint(2, 7)
+        tree = fresh_sp(rnd, n)
+        delta = rnd.choice([0.0, 2.0])
+        ws = [rnd.uniform(5, 300) for _ in range(n)]
+        A, r = rnd.uniform(300, 3000), rnd.uniform(20, 300)
+        opts = [[(A, ws[i], 0), (r, ws[i], 1)] for i in range(n)]
+        k = rnd.randint(0, n)
+        L_opt, _ = dp_joint(tree, opts, delta, k)
+        ell = expand(tree, [(0.0, ws[i]) for i in range(n)], delta).ell()
+        top = set(sorted(range(n), key=lambda i: -ell[i])[:k])
+        W, P = rules(tree, [(r if i in top else A, ws[i]) for i in range(n)], delta)
+        tot_g += 1
+        ok_g += abs(max(W, P) - L_opt) < 1e-7
+    check("C7.2 longest-tail-first: snapshot the k stages with the largest l(v) = exact optimum",
+          ok_g == tot_g, f"{ok_g}/{tot_g} vs the exact DP")
+    # CONTROL: the on-demand intuition (any k stages on the critical path) is not optimal
+    worse = 0
+    for _ in range(M):
+        n = rnd.randint(3, 7)
+        tree = fresh_sp(rnd, n)
+        ws = [rnd.uniform(5, 300) for _ in range(n)]
+        A, r = rnd.uniform(300, 3000), rnd.uniform(20, 300)
+        opts = [[(A, ws[i], 0), (r, ws[i], 1)] for i in range(n)]
+        k = rnd.randint(1, n - 1)
+        L_opt, _ = dp_joint(tree, opts, 2.0, k)
+        ell = expand(tree, [(0.0, ws[i]) for i in range(n)], 2.0).ell()
+        low = set(sorted(range(n), key=lambda i: ell[i])[:k])      # shortest tails instead
+        W, P = rules(tree, [(r if i in low else A, ws[i]) for i in range(n)], 2.0)
+        worse += max(W, P) > L_opt + 1e-7
+    check("CONTROL: snapshotting the SHORTEST-tail stages instead is suboptimal", worse > 0,
+          f"worse on {worse}/{M}")
+
+    # what unifying buys: MODEL.md's on-demand choice, run under look-ahead, vs the joint optimum
+    JAVA_OPTS = [(2510.0, 370 + 12.0, 0), (650.0, 370 + 12.0, 30), (650.0, 63 + 12.0, 30), (650.0, 20 + 12.0, 30)]
+    PY_OPTS = [(400.0, 15 + 20.0, 0), (60.0, 5 + 20.0, 20)]
+    rows = []
+    for _ in range(200 if quick else 1000):
+        n = rnd.randint(3, 8)
+        tree = fresh_sp(rnd, n)
+        opts = [JAVA_OPTS if rnd.random() < 0.6 else PY_OPTS for _ in range(n)]
+        full = sum(max(o[2] for o in op) for op in opts)
+        S = rnd.choice([0, 30, 60, 90, 120, full // 2, full])
+        L_od, K_od = dp_od(tree, opts, 2.0, S)
+        W, P = rules(tree, [(opts[i][K_od[i]][0], opts[i][K_od[i]][1]) for i in range(n)], 2.0)
+        L_la_Kod = max(W, P)
+        L_joint, K_j = dp_joint(tree, opts, 2.0, S)
+        cold_py_joint = sum(1 for i in range(n) if opts[i] is PY_OPTS and K_j[i] == 0)
+        cold_py_od = sum(1 for i in range(n) if opts[i] is PY_OPTS and K_od[i] == 0)
+        rows.append((L_od, L_la_Kod, L_joint, cold_py_joint, cold_py_od))
+    ge = all(r[1] >= r[2] - 1e-7 and r[0] >= r[1] - 1e-7 for r in rows)
+    check("T7 ordering on thesis-like SP workflows: on-demand opt >= look-ahead(MODEL.md choice) >= joint opt",
+          ge, f"{len(rows)} instances")
+    sub = [r for r in rows if r[1] > r[2] + 1e-7]
+    gain = [r[1] / r[2] for r in sub]
+    print(f"      look-ahead alone (same depths as MODEL.md picks): mean {statistics.mean(r[0] / r[1] for r in rows):.2f}x "
+          f"faster than on-demand")
+    if gain:
+        gs = sorted(gain)
+        print(f"      choosing depth for look-ahead (Thm 7) improves further on {len(sub)}/{len(rows)} instances: "
+              f"median {statistics.median(gs):.3f}x, p95 {gs[int(0.95 * (len(gs) - 1))]:.2f}x, max {gs[-1]:.2f}x")
+    else:
+        print("      choosing depth for look-ahead (Thm 7) never improved on MODEL.md's choice here")
+    print(f"      Python stages left without a snapshot: joint {sum(r[3] for r in rows)}, "
+          f"on-demand DP {sum(r[4] for r in rows)} (joint spends storage where lead time cannot hide the start)")
+    T7_STATS.update(n=len(rows), sub=len(sub), gain=gain, rows=rows)
+
+
+T7_STATS = {}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
@@ -568,6 +890,7 @@ def main():
     t6()
     p7()
     p8()
+    t7(a.quick)
     hdr("SUMMARY")
     bad = [n for n, ok in results if ok is False]
     skipped = [n for n, ok in results if ok is None]

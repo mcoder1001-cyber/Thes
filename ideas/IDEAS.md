@@ -10,7 +10,8 @@ so every number quoted from the thesis's own experiments comes from the document
 > latency-optimal, and just-in-time look-ahead is also memory-minimal (Theorems 1–2), with
 > trigger and speculation rules (Theorems 3–4); scrubbed priming yields an identical JIT profile
 > whenever it preserves the handler's branch predicates (Proposition 7). `theory/verify_dag.py`:
-> 33/33 checks. Read that file first; this one holds the evidence.
+> 44/44 checks, including Theorem 7 (depth and restore timing chosen jointly on series-parallel
+> DAGs). Read that file first; this one holds the evidence.
 
 Everything below is backed by one of three things, tagged the same way as `MODEL.md`:
 **[measured]** a real JVM run in this session, **[simulated]** `sim/dagsim.py` driven by the
