@@ -30,7 +30,10 @@ sudo ./criu-box/criu_box.py x3-rewarm   --reps 20 --vcpu 0.25 --K 50
 sudo ./criu-box/criu_box.py x4-mispriming --reps 20 --vcpu 0.25 --K 100
 ```
 
-Run **x2 first**. It is the go/no-go for Idea 1, the same way `criu-smoketest.sh`
+Run **x2 first**, in one command (checks the kernel, builds the workload, pulls the base
+image, runs 20 repetitions): `sudo ./ideas/criu-box/run_x2.sh [vcpu] [reps]`. The β
+calculation was checked with podman stubbed out: restores that finish one after another give
+β = 1.00, restores that all finish together give β = 0.01. It is the go/no-go for Idea 1, the same way `criu-smoketest.sh`
 level 3 was for the snapshot phase.
 
 ## Known rough edges

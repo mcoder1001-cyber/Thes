@@ -133,7 +133,7 @@ weaker.
 
 ## 3. The next goal
 
-> **Measure β on the box.** Run `x2-parallel` (1, 2, 4, 8 restores at once, 20 repetitions,
+> **Measure β on the box.** Run `x2-parallel` (`sudo ./ideas/criu-box/run_x2.sh`) (1, 2, 4, 8 restores at once, 20 repetitions,
 > 1 vCPU) and `x1-ladder`. One to three days.
 
 **Why this first:** Innovation 1 (restore ahead) assumes parallel restores do not slow each
