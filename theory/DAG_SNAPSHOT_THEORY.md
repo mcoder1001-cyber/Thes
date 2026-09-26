@@ -1,7 +1,8 @@
 # Workflow-aware snapshots: the approach, the policy, and the proofs
 
-Written 2026-09-26. Companion to `MODEL.md` (which decides *how deep* to snapshot each
-function under a storage budget) and to `../ideas/IDEAS.md` (the evidence). Every claim is
+Written 2026-09-26, cleaned up the same day: the approach reads **no user data** (the earlier
+input-derived priming is dropped; Appendix A keeps its record). Companion to `MODEL.md` and to
+`../ideas/IDEAS.md` (the evidence). Every claim is
 checked by `verify_dag.py`: **62/62 checks pass, 12 of them controls designed to fail**,
 which do. Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or randomised computation),
 **[measured]** (real runs), **[assumption]** (a model input that the S0 box must confirm).
@@ -10,59 +11,69 @@ which do. Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or ran
 
 ## 0. The approach in one page
 
-**Principle.** A single-function snapshot system (SnapStart, Prebaking, Pronghorn, Fireworks)
-sees one request at a time. A workflow orchestrator sees the whole DAG: which stages will run,
-roughly when, and on what inputs. Existing snapshot work throws that information away. We
-use it twice.
+**The idea.** A single-function snapshot system (SnapStart, Prebaking, Pronghorn, Fireworks)
+restores a function when its request arrives. In a workflow, stage 2's request arrives only
+after stage 1 finishes, so a cold `d`-stage workflow pays `d` restores in a row. A workflow
+orchestrator knows the DAG and each stage's measured timings. It can therefore start every
+stage's restore in parallel, each timed to finish just as that stage's input arrives: **the
+workflow's own upstream execution hides the downstream restores.** Nothing reads user data,
+and nothing predicts arrivals.
 
-| | **Innovation 1: look-ahead restore** (timing) | **Innovation 2: data-free, certifiable priming** (content) |
+**Three main results.** Everything else in §3 supports them.
+
+| question | result | guarantee |
 |---|---|---|
-| idea | The workflow's own upstream execution becomes the restore window for downstream snapshots | The messages the DAG already carries become the priming inputs, scrubbed so no user data enters an image |
-| replaces | restore-on-demand: a depth-d workflow pays d restores in series | hand-written priming scripts (SnapStart/CRaC) or live traffic with user data in the image (Pronghorn) |
-| guarantee | latency-optimal **and** memory-minimal at once (Thm 1, 2); depth chosen jointly with timing on any series-parallel DAG (Thm 7) | if the scrub preserves the handler's branch predicates, the JIT profile is *identical* (Prop 7); checkable per deployment |
-| evidence | Azure trace: cold workflows 2.34 s → 0.82 s mean, 6.2 s → 1.36 s p99 at equal memory | JVM: 0.98–1.11× the warm-up capture of real traffic, all CIs span 1; path equality 100% / 98.7% |
+| when to restore each stage | **Theorems 1–2**: trigger at `τ_v = S*_v − r_v` | the lowest latency any policy can reach, with no more memory·time than today's restore-on-demand |
+| which stages get a snapshot, how deep, where the image lives | **Theorem 7** with Corollaries 7.1–7.3 | exact optimum (a DP) under a storage budget, a price or an SLO |
+| memory | **Theorem 8** and the memory guard | look-ahead raises the peak; the guard never exceeds the budget and cannot deadlock, and on chains it is never slower than on-demand |
+
+Supporting results:
+- Corollaries 1.1–1.3: chains, restore contention β, random restore times.
+- Theorem 3: the trigger under uncertainty (the newsvendor quantile).
+- Theorem 4: if/else branches.
+- Lemma 5: do nothing when the workflow is warm.
+- Theorem 6: why keep-alive cannot replace look-ahead.
+- Proposition 8: when to stop warming up.
+
+**Evidence.** On the Azure 2021 trace (simulated, `ideas/sim` e4/e4b), cold workflows go from
+2.34 s to **0.82 s** mean and from 6.2 s to **1.36 s** p99, at equal memory. `verify_dag.py`
+checks every result.
 
 **The policy** (what the platform does), in the order it runs:
 
-*At build time, per function v* (on deploy, and when an edge's traffic drifts):
-1. **Collect** the messages on every DAG edge into v. The orchestrator already routes them.
-2. **Learn** which fields are control flow: strings **and integers** with few distinct values
-   (≤ 32 over ≥ 50 observations). Everything else is data.
-3. **Scrub** (fps2): keep keys, control-flow values and booleans. Replace every data character
-   by a random one of the same class, and keep each number's digit count and scale.
-4. **Certify**: run the handler on real and scrubbed samples with branch-coverage
-   instrumentation and require equal branch profiles (Prop 7). Here the check is
-   `src/Sig.java`; JaCoCo-style counts are the generic version.
-5. **Prime** on a mix of all incoming edges, until each edge's JIT counters converge: depth in
-   *work*, not requests (Prop 8). Run on a large machine, with the JVM pinned to the serving
-   container's CPU shape (exp-b). **Pick each stage's depth, or no snapshot at all, with
-   Theorem 7's DP.** Stages whose cold start the DAG hides need none (Cor 7.1). When the
-   options differ only in restore time, snapshot the longest-tail stages first (Cor 7.2).
-   With prices instead of a budget, choose from the DP's cost–latency front, by a latency
-   price or an SLO (Cor 7.3). This also decides whether an image lives next to the invoker
-   or in cheap remote storage (§3.6).
-6. **Checkpoint** with CRaC/CRIU, after `beforeCheckpoint` hooks reset RNG, UUID and secrets.
-
-Steps 1–4 only supply *safe warm-up inputs* for step 5. They matter only for JIT runtimes and
-structured (JSON-like) messages. They buy **equal warm-up without user data in the image**
-(exp-a: 0.98–1.11× real traffic; format-blind synthetic inputs up to 1.31×; none 2–5×). When
-step 4 fails, or the payload is not structured, fall back to developer-written warm-up requests
-or a depth-0 snapshot. Theorems 1–8 do not depend on them.
+*At build time, per function, on each deploy.* No user data is read or stored.
+1. **Profile** the function with a few test runs: cold start `A`, JIT warm-up `B`, restore
+   time `r`, image size `s`, memory `m`.
+2. **Pick the snapshot point.**
+   - The default is right after start-up, before any request. The image then holds no
+     request data.
+   - For runtimes with a large JIT warm-up (Java; .NET needs one request), also warm up with
+     **the developer's own test requests**. Stop when the JIT's compile counter flattens:
+     depth is work, not a number of requests (Proposition 8).
+   - For runtimes with nothing to warm (CPython, Go, C++), use start-up only.
+   - Warm on a large machine with the JVM pinned to the serving container's CPU shape (exp-b).
+3. **Choose which stages get a snapshot**, and at which point, with Theorem 7's DP.
+   - Options that restore no faster than a cold start get none (dominated).
+   - Stages whose cold start the DAG hides get none (Corollary 7.1).
+   - With prices or an SLO, choose from the cost–latency front (Corollary 7.3). This also
+     decides whether the image lives next to the invoker or in remote storage (§3.6).
+4. **Checkpoint** with CRaC/CRIU, after `beforeCheckpoint` hooks reset random-number state,
+   UUID generators and secrets. That uniqueness risk exists even with zero requests.
 
 *At run time, per workflow invocation:*
 1. Keep-alive as usual. **If the entry function has a live sandbox, do nothing more.** This
    gate is lossless (Lemma 5).
-2. Otherwise compute the eager schedule `S*_v` from the DAG and profiled `r_v, w_v`. Issue
-   `criu restore` for each stage at **τ_v = S*_v − r_v** (just in time, Theorem 2). Under
-   uncertainty, trigger so the sandbox is ready at the **κ-quantile** of the stage's input time,
-   **κ = b/(a+b)**, with `a` the latency price and `b` the memory price (Theorem 3).
-   **Every restore goes through the memory guard** (Theorem 8(c)). Stages whose input has
-   arrived come first, and may preempt look-ahead sandboxes not yet needed. Look-ahead keeps
-   memory·time but raises the peak.
-3. XOR branches: if the branch is decided at least `r_s` before the stage would start,
+2. Otherwise compute the eager schedule `S*_v` from the DAG and the profiled `r_v, w_v`, and
+   restore each stage at **`τ_v = S*_v − r_v`** (just in time, Theorem 2).
+   - Under uncertainty, be ready at the **κ-quantile** of the stage's input time,
+     **κ = b/(a+b)**, with `a` the latency price and `b` the memory price (Theorem 3).
+   - **Every restore goes through the memory guard** (Theorem 8(c)). Stages whose input has
+     arrived go first, and may preempt look-ahead sandboxes not yet needed.
+3. If/else branches: if the branch is decided at least `r_s` before the stage would start,
    restore after the decision. Otherwise **restore speculatively iff P(branch) ≥ κ**
-   (Theorem 4). A single price ratio governs both the trigger and the speculation.
-4. Optionally re-warm a restored stage with certified scrubbed requests while it waits.
+   (Theorem 4). One price ratio governs both the trigger and the speculation.
+4. Optionally, while a restored stage waits for its input, re-warm it with the developer's
+   test requests.
 
 ---
 
@@ -70,16 +81,17 @@ or a depth-0 snapshot. Theorems 1–8 do not depend on them.
 
 | closest work | what it does | what it does not do (our part) |
 |---|---|---|
-| Pronghorn (EuroSys '24) | when to *checkpoint* one function; which snapshot to use | restore *timing* across a DAG; priming without user data |
-| Fireworks (EuroSys '22), SnapStart | post-JIT / post-init snapshot of one function | either |
+| Pronghorn (EuroSys '24) | when to *checkpoint* one function, from live requests (user data in the image); which snapshot to use | restore *timing* across a DAG |
+| Fireworks (EuroSys '22), SnapStart | post-JIT / post-init snapshot of one function | restore timing across a DAG |
 | Xanadu (Middleware '20), ORION (OSDI '22) | DAG-aware *cold* prewarming | snapshots; optimality; memory neutrality (a cold boot cannot fit in the DAG's own lead time) |
-| REAP, FaaSnap, Snapipeline, Faast | make *one* restore faster (working set, pipelining) | cross-stage timing. They shrink `r_v` and **compose** with look-ahead |
-| SnapStart/CRaC priming guides | manual dummy requests | automatic, data-free, certifiable priming |
+| REAP, FaaSnap, Snapipeline, Faast, Spice | make *one* restore faster (working set, pipelining, OS support) | cross-stage timing. They shrink `r_v` and **compose** with look-ahead |
+| RainbowCake (ASPLOS '24), FaasCache (ASPLOS '21) | which containers or layers to keep alive | restores; the DAG |
 | Mitosis (OSDI '23) | remote fork of a live instance, incl. inside workflows | a snapshot restored ahead of need |
 
-The novelty is small, well-defined and double: **a scheduling result (look-ahead restore is
-Pareto-optimal) and a content result (predicate-preserving scrubbed priming)**. Both follow
-from the one thing a workflow knows that a function does not.
+The novelty is small and well-defined: **using the workflow DAG to schedule snapshot
+restores**, plus the decisions that follow from it (which stages get snapshots, and memory).
+Every snapshot system we found works on one function at a time. Every DAG-aware cold-start
+system we found uses cold boots or keep-alive.
 
 ---
 
@@ -141,7 +153,7 @@ If restores that start together slow each other so that `n` of them finish withi
 `r(1 + β(n−1))`, `β ∈ [0, 1]`, then on a chain the saving is at least `(1−β)(d−1)r`, never
 negative. On-demand restores in a chain never overlap, so they pay no contention.
 **[verified]** 40/40 analytically, and 12/12 inside the simulator's own (harsher) contention
-model. **x2 on the box measures β, and it is the go/no-go for Innovation 1.**
+model. **x2 on the box measures β, and it is the go/no-go for look-ahead restore.**
 
 ### Corollary 1.3 (random restore times) [proved] [verified]
 With random `r_j`, pointwise `L_eager ≤ max_j r_j + Σ w + (d−1)δ` on a chain, so
@@ -519,7 +531,72 @@ claimed. The operator sets the budget. Theorem 8(b) says what each extra GB buys
 
 ---
 
-## 4. Data-free, certifiable priming
+## 4. When to stop warming up
+
+### Proposition 8 (depth is work, not requests) [proved] [measured]
+This is the stopping rule of build-time step 2.
+Under threshold tiered compilation without deoptimisation, method `m` reaches tier `k` after
+a set `P` of warm-up requests iff `c_m(P) ≥ θ_k`, with additive counters `c_m(P) = Σ_{x∈P} n_m(x)` (this
+JDK: `Tier3InvocationThreshold = 200`, `Tier4InvocationThreshold = 5000`). Hence
+**`P ⊆ P′ ⇒ C_k(P) ⊆ C_k(P′)`**: adding requests never un-compiles. Two warm-up sets with the
+same request count `K` can differ in `c_m` by the per-request work ratio (~30× here), so `K`
+is not a sufficient statistic; `c_m` is.
+Caveat: receiver-type pollution and deoptimisation can make the *larger* set compile *slower*
+code, so the performance consequence is empirical.
+**Use:** stop warming up when the JIT's compile counter stops rising (HotSpot hsperfdata or
+JFR; .NET EventPipe; V8 trace flags). This needs no knowledge of what the requests contain.
+**[measured]** Compiled-method count at the snapshot rises monotonically with warm-up work
+(2/2 CPU levels). A mix containing the same heavy requests compiles at least as much (4/4)
+and leaves no more residual warm-up (4/4, 0.80–0.89×). Pollution was smaller than the gain on
+this workload.
+
+---
+
+## 5. What is proven, what is measured, what the box must still show
+
+| claim | status |
+|---|---|
+| look-ahead is latency-optimal; JIT look-ahead is also memory-minimal; speculation and trigger rules | **proved** in the model; verified on random DAGs and cross-checked against the simulator |
+| joint depth + timing on series-parallel DAGs (Thm 7): composition rules, exact DP, reduction to `MODEL.md`, hidden cold starts, longest-tail-first | **proved**; verified against brute force and the expanded-DAG evaluator |
+| which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
+| peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
+| the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
+| A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
+| A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |
+| depth in work (when to stop warming up) | **proved** for threshold compilation; **measured** on this workload |
+| no user data in any image | **by construction**: warm-up uses only the developer's test requests, or none |
+
+What cannot be proven, and is not claimed: absolute restore times and the contention β,
+which are properties of the hardware, not of the theory.
+
+## 6. How this sits with `MODEL.md`
+
+`MODEL.md`'s depth optimisation (MCKP, SP-DP) is exactly the **restore-on-demand** special case
+of Theorem 7: one number per sub-workflow, restore time on the path. Under look-ahead it is
+replaced by Theorem 7's `(W, P)` recursion. Theorem 7(c) shows the two coincide, with `w` in
+place of `r + w`, whenever restore times are equal across stages. `MODEL.md`'s capacity
+Theorem 5 and its refutations (submodularity, parallel convexity) stand unchanged; they are
+statements about the DAG, not about the timing policy. The thesis's measurements (the vCPU
+cliff, `B ≈ 0.185·W`, exp12's `L(K)`) are the calibration of `p_v(K)` and `w_v(K)`.
+
+Run: `./verify_dag.py` (≈ 30 s; P7 needs Java and the generated inputs, otherwise it is skipped).
+
+---
+
+## Appendix A. Dropped: input-derived priming (kept as a record)
+
+Until 2026-09-26 the build-time policy warmed deep snapshots on **copies of the messages the
+workflow carries**, with personal values replaced ("scrubbed") and a check that the copies take
+the same code paths. **It is dropped from the approach**, for four reasons:
+- it reads users' inputs;
+- it only works for structured (JSON-like) messages;
+- it still leaks structure (field lengths, category values);
+- it buys safety at equal speed, not latency.
+
+The approach now warms up only with the developer's own test requests, or not at all
+(build-time step 2). The experiments stay in `ideas/exp-a-context-priming/` and
+`ideas/IDEAS.md` §2–3, as the project's standing rules require. Proposition 7 is the one
+result that belonged to it; `verify_dag.py` still checks it (P7).
 
 ### Proposition 7 (predicate preservation ⇒ identical JIT profile) [proved] [measured]
 Model the handler `h` as deterministic, with control flow determined by a finite predicate
@@ -549,51 +626,5 @@ Warm-up capture (n = 20): fps 0.98–1.11×, fps2 1.02–1.12× the real-traffic
 fps2's 8 CIs span 1; the eighth is `1.06 [1.01, 1.13]` at K = 25, 1 vCPU, about the chance
 rate for eight tests. **Equal paths are sufficient, not necessary.** fps was already
 equivalent in performance because the branches it changes guard cheap code. **What fps2 adds
-is a guarantee that can be checked before deployment.** That is why step 4 of the build-time
-policy certifies branch profiles instead of trusting the scrubber.
+is a guarantee that can be checked before deployment.** (That was the certification step of the dropped build-time policy.)
 
-### Proposition 8 (depth is work, not requests) [proved] [measured]
-Under threshold tiered compilation without deoptimisation, method `m` reaches tier `k` after
-priming set `P` iff `c_m(P) ≥ θ_k`, with additive counters `c_m(P) = Σ_{x∈P} n_m(x)` (this
-JDK: `Tier3InvocationThreshold = 200`, `Tier4InvocationThreshold = 5000`). Hence
-**`P ⊆ P′ ⇒ C_k(P) ⊆ C_k(P′)`**: adding requests never un-compiles. Two priming sets with the
-same request count `K` can differ in `c_m` by the per-request work ratio (~30× here), so `K`
-is not a sufficient statistic; `c_m` is.
-Caveat: receiver-type pollution and deoptimisation can make the *larger* set compile *slower*
-code, so the performance consequence is empirical.
-**[measured]** Compiled-method count at the snapshot rises monotonically with priming work
-(2/2 CPU levels). A mix containing the same heavy requests compiles at least as much (4/4)
-and leaves no more residual warm-up (4/4, 0.80–0.89×). Pollution was smaller than the gain on
-this workload.
-
----
-
-## 5. What is proven, what is measured, what the box must still show
-
-| claim | status |
-|---|---|
-| look-ahead is latency-optimal; JIT look-ahead is also memory-minimal; speculation and trigger rules | **proved** in the model; verified on random DAGs and cross-checked against the simulator |
-| joint depth + timing on series-parallel DAGs (Thm 7): composition rules, exact DP, reduction to `MODEL.md`, hidden cold starts, longest-tail-first | **proved**; verified against brute force and the expanded-DAG evaluator |
-| which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
-| peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
-| the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
-| A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
-| A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |
-| scrubbed priming ⇒ same JIT profile | **proved** under predicate preservation; paths **measured** (Sig); warm-up capture **measured** (JVM, n = 20); a real-restore repeat is x4 |
-| depth in work | **proved** for threshold compilation; **measured** on this workload |
-
-What cannot be proven, and is not claimed: that every handler's control-flow-relevant fields
-are low-cardinality (Prop 7 then fails, and step 4's certification rejects the scrub and falls
-back to live-traffic priming); and absolute restore times, which are physics, not theory.
-
-## 6. How this sits with `MODEL.md`
-
-`MODEL.md`'s depth optimisation (MCKP, SP-DP) is exactly the **restore-on-demand** special case
-of Theorem 7: one number per sub-workflow, restore time on the path. Under look-ahead it is
-replaced by Theorem 7's `(W, P)` recursion. Theorem 7(c) shows the two coincide, with `w` in
-place of `r + w`, whenever restore times are equal across stages. `MODEL.md`'s capacity
-Theorem 5 and its refutations (submodularity, parallel convexity) stand unchanged; they are
-statements about the DAG, not about the timing policy. The thesis's measurements (the vCPU
-cliff, `B ≈ 0.185·W`, exp12's `L(K)`) are the calibration of `p_v(K)` and `w_v(K)`.
-
-Run: `./verify_dag.py` (≈ 30 s; P7 needs Java and the generated inputs, otherwise it is skipped).

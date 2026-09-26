@@ -5,15 +5,23 @@ Written 2026-09-26 after reading `RESEARCH_PLAN.md`, `SYNTHESIS.md`, `READING_LI
 (`Proposal_Final2.pdf`). `experiments/` (RESULTS.md, raw curves) is **not in this repository**,
 so every number quoted from the thesis's own experiments comes from the documents above.
 
-> **Update (after PR #1):** the approach is now stated as a policy with proofs in
-> [`theory/DAG_SNAPSHOT_THEORY.md`](../theory/DAG_SNAPSHOT_THEORY.md): look-ahead restore is
-> latency-optimal, and just-in-time look-ahead is also memory-minimal (Theorems 1–2), with
-> trigger and speculation rules (Theorems 3–4); scrubbed priming yields an identical JIT profile
-> whenever it preserves the handler's branch predicates (Proposition 7). `theory/verify_dag.py`:
-> 62/62 checks. They include Theorem 7 (depth and restore timing chosen jointly on
-> series-parallel DAGs); Corollary 7.3 with `sim/e6_cost.py` (which stages are worth a snapshot,
-> in latency and money); and Theorem 8 with `sim` e7 (look-ahead keeps memory·time but raises
-> the peak, and the memory guard that bounds it). Read that file first; this one holds the evidence.
+> **Update (cleanup, 2026-09-26): the approach reads no user data.** Ideas 2 and 3 (warming
+> snapshots on scrubbed copies of the workflow's messages) are **dropped**; their
+> measurements stay below as a record. Measured facts still used:
+> - warm-up before the snapshot matters for Java: none leaves 2–5× more;
+> - warming on the wrong kind of request is 1.3–2.6× worse, so test requests must cover every
+>   kind of call;
+> - depth is work, not a number of requests;
+> - prime on big, serve on small (Idea 5).
+>
+> The approach, policy and proofs are in
+> [`theory/DAG_SNAPSHOT_THEORY.md`](../theory/DAG_SNAPSHOT_THEORY.md) (`verify_dag.py`: 62/62
+> checks). Its three main results cover:
+> - **timing** (Theorems 1–2);
+> - **which stages get snapshots** (Theorem 7, Corollaries 7.1–7.3, `sim/e6_cost.py`);
+> - **memory** (Theorem 8, `sim` e7).
+>
+> Read that file first; this one holds the evidence.
 
 Everything below is backed by one of three things, tagged the same way as `MODEL.md`:
 **[measured]** a real JVM run in this session, **[simulated]** `sim/dagsim.py` driven by the
@@ -49,22 +57,21 @@ written for the CRIU box but not yet run (`criu-box/`, see §6 for why).
 |---|---|---|---|
 | **when** each downstream stage will be needed | **1. Restore-ahead**: restore all downstream stages in parallel at workflow entry | [simulated] 2.3–4.3× over restore-on-demand at depth 3–8 (closed-form controls 26/26); on the Azure trace, cold-workflow invocations 2.3 s → 0.82 s mean, 6.2 s → 1.4 s p99, at the same memory and restore count as restore-on-demand (gated variant) | **lead idea** |
 | **which branches** may run | 1b. Speculative restores on branches | [simulated] full speculation on a saga: p99 4.7 s → 1.3 s for +1.5 GB·s per invocation, less than half the memory-time of a plain cold start | part of 1 |
-| **what the inputs look like** (it carries every inter-stage message) | **2. Scrubbed priming**: prime deep snapshots on format-preserving scrubs of real edge traffic, so no user data enters the image | [measured, n = 20] residual warm-up 0.98–1.11× of real-traffic priming (all 8 CIs span 1), vs 1.02–1.31× for naive synthetic inputs | **strong, safety-relevant** |
-| **which edges** feed a stage, and how big their messages are | 3. Coverage-aware priming (not per-edge snapshots) | [measured, n = 20] light-edge priming costs 1.3–2.6× on the heavy edge, but heavy-edge priming *beats* the right edge on the light one (0.86–0.87×), and a mix with as many heavy requests beats the right edge alone (0.80–0.89×); depth should be counted in work, not requests | **a refinement, and a negative result for per-edge variants** |
+| **what the inputs look like** (it carries every inter-stage message) | **2. Scrubbed priming**: prime deep snapshots on format-preserving scrubs of real edge traffic, so no user data enters the image | [measured, n = 20] residual warm-up 0.98–1.11× of real-traffic priming (all 8 CIs span 1), vs 1.02–1.31× for naive synthetic inputs | **dropped (2026-09-26): it reads users' inputs** |
+| **which edges** feed a stage, and how big their messages are | 3. Coverage-aware priming (not per-edge snapshots) | [measured, n = 20] light-edge priming costs 1.3–2.6× on the heavy edge, but heavy-edge priming *beats* the right edge on the light one (0.86–0.87×), and a mix with as many heavy requests beats the right edge alone (0.80–0.89×); depth should be counted in work, not requests | **dropped as a mechanism; its measurements give the rule "test requests must cover every kind of call" and "depth is work"** |
 | **how much slack** a stage has between restore and input | 4. Re-warm in slack | [simulated] small (3–5%) with a conservative warm-up model; needs `L(K)` from the box | **conditional on x3** |
 | (not DAG) the vCPU cliff | 5. Prime on big, serve on small | [measured, n = 20] same snapshot quality (0.98–1.02×, CIs span 1) at 10× lower priming cost, *if* the JVM is pinned to the serving CPU shape; otherwise 11–17% worse | **a practical rule, not a thesis** |
 
 The one-sentence thesis these add up to:
 
 > *Snapshots make a workflow's downstream stages cheap enough to start **before** they are
-> needed, on **every** branch that might run, primed on **scrubbed** copies of the traffic
-> the DAG already carries. Together these turn a depth-d restore cascade into one restore
-> without putting user data into any image.*
+> needed, on **every** branch that might run. This turns a depth-d restore cascade into one
+> restore, using only the DAG and measured timings, with no user data.*
 
 It answers the proposal's own question (§5: "finding the best time to perform
 checkpointing … most prior methods take the first moment of readiness"). It moves the
-question from *when to checkpoint* (Pronghorn's) to *when to restore and what to prime
-with* (open), and it keeps CRIU, OpenWhisk and the Azure traces in the roles the proposal
+question from *when to checkpoint* (Pronghorn's) to *when to restore, and which stages
+get snapshots* (open), and it keeps CRIU, OpenWhisk and the Azure traces in the roles the proposal
 gave them.
 
 ---
@@ -232,7 +239,7 @@ exist. Queries to repeat with Scholar access: *"workflow" snapshot restore prewa
 
 ---
 
-## 2. Idea 2: scrubbed priming, safe deep snapshots from real DAG traffic
+## 2. Idea 2 (dropped: reads user inputs): scrubbed priming, safe deep snapshots from real DAG traffic
 
 ### The problem it removes
 A deep snapshot must be *primed*. Priming with real requests (what Pronghorn does, and what
@@ -306,7 +313,7 @@ scrubbing removes *request* data, not *process* secrets.
 
 ---
 
-## 3. Idea 3: coverage-aware priming (and why not per-edge snapshots)
+## 3. Idea 3 (dropped as a mechanism): coverage-aware priming (and why not per-edge snapshots)
 
 ### Hypothesis tested
 A stage reached from several DAG edges gets structurally different inputs per edge (here:
@@ -446,7 +453,7 @@ well as one primed at 0.25?
 | 1. Problem | cascade is linear in depth and ~98% of E2E (exp2, exp10) | done |
 | 2. Calibration | A/B/C per runtime, vCPU cliff, depth curve. **Position against Pronghorn and JEP 515**: we measure it, they automate or replace it | done, needs reframing |
 | 3. Model | `MODEL.md` + lead time (§1 above) + memory-time as the second knapsack resource | extend |
-| 4. Mechanism | DAG-aware snapshot orchestrator: restore-ahead (+ speculation) and scrubbed, coverage-aware priming, on OpenWhisk | design here; x1–x4 decide the details |
+| 4. Mechanism | DAG-aware snapshot orchestrator on OpenWhisk: restore-ahead (+ speculation), which stages get snapshots, the memory guard | design here; x1–x3 decide the details |
 | 5. Evaluation | trace-driven (`sim/`) + real OpenWhisk sequences on the S0 box vs restore-on-demand, cold prewarm, keep-alive, TieredStopAtLevel=3, JEP 515 | sim done; real runs to do on the S0 box |
 
 **Implementation path on OpenWhisk.** The cheapest integration is at the action-proxy
@@ -465,6 +472,8 @@ controller). Read the version on the box before committing to where the hook goe
 | **Snapshot lineage / shared base across stages** | already killed by the thesis's own experiments (and 318/330 JIT code-cache pages differ run to run, exp1b) |
 | **Fusion + one snapshot for the whole chain** | loses independent scaling; `SYNTHESIS.md`'s honest-accounting note on double counting applies |
 | **Restore once, fork N for fan-out** | known (SOCK, Catalyzer `sfork`, Mitosis) |
+| **Scrubbed priming** (Idea 2) and **coverage-aware priming** (Idea 3) | dropped 2026-09-26: they read users' inputs, only work for structured messages, and buy safety at equal speed rather than latency. Warm-up now uses only the developer's test requests, or none |
+| **Pre-restoring the entry before a predicted arrival** | Azure 2021: gaps before cold arrivals are irregular (median coefficient of variation 1.28; only 3% of workflows below 0.5). Catching 86% of cold arrivals needs a warm entry for ~56 min per cold call (`sim/predict_gaps.py`) |
 
 ## Sources checked in this session
 * Pronghorn, EuroSys '24 — <https://dl.acm.org/doi/10.1145/3627703.3629556>

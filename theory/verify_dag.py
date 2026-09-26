@@ -14,7 +14,8 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
   T4   speculation on XOR branches: restore ahead iff p >= kappa; unnecessary if decided early
   L5   gating is lossless without concurrency (dagsim), and is NOT under concurrency/XOR
   T6   keep-alive vs look-ahead memory for rare workflows (renewal Monte Carlo)
-  P7   predicate-preserving scrubbing preserves control-flow paths (src/Sig.java; needs java)
+  P7   (Appendix A, dropped idea) predicate-preserving scrubbing preserves control-flow paths
+       (src/Sig.java; needs java)
   P8   depth is work, not requests: JIT compile counts / residuals from exp-a (committed CSV)
   T7   UNIFIED: joint snapshot depth + look-ahead timing on series-parallel DAGs -- composition
        rules, exact (storage, W, P) Pareto DP vs brute force, hidden-restore reduction to

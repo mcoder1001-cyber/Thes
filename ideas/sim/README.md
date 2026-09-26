@@ -13,6 +13,7 @@
 | e5 | sensitivity to restore time `r` and restore contention `β` | `e5_sensitivity.csv` |
 | e6 | which stages are worth a snapshot, in latency **and money** (exact model, `e6_cost.py`): per-function break-even, per-workflow choices, the trace's cold invocations per day | `e6a_cost_functions.csv`, `e6b_cost_workflows.csv`, `e6c_cost_trace.csv` |
 | e7a / e7b | **memory overload**: a burst of cold workflows under a hard budget; the Azure trace at 16/24/32 GB; with and without the memory guard (Theorem 8) | `e7a_burst.csv`, `e7b_trace_budget.csv` |
+| `predict_gaps.py` | can the platform predict when a cold workflow will be called (to pre-restore its entry)? Azure 2021: 86% of cold arrivals fall in a histogram window, but the gaps are irregular (median CV 1.28) and the entry would be held ~56 min per cold call: **no** | printed |
 
 ```bash
 python3 prep_azure.py <AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt> 3   # -> data/
