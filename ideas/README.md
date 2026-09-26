@@ -4,7 +4,7 @@ New here? Read **[../REPORT.md](../REPORT.md)** first: the problem, conditions, 
 step and what has been done, in plain English.
 
 Start with **[../theory/DAG_SNAPSHOT_THEORY.md](../theory/DAG_SNAPSHOT_THEORY.md)**: the
-approach, the policy and the proofs (checked by `theory/verify_dag.py`, 44/44). Then
+approach, the policy and the proofs (checked by `theory/verify_dag.py`, 62/62). Then
 **[IDEAS.md](IDEAS.md)**: the evidence, five ideas ranked, what is measured vs simulated vs only
 specified, and how the thesis reorganises around them.
 

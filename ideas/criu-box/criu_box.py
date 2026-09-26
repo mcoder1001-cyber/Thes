@@ -122,6 +122,14 @@ def rss_mb(pid):
     return float("nan")
 
 
+def mem_available_mb():
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemAvailable"):
+                return int(line.split()[1]) / 1024
+    return float("inf")
+
+
 def drop_caches():
     sh("sync; echo 3 > /proc/sys/vm/drop_caches")
 
@@ -202,9 +210,17 @@ def x2_parallel(a):
        f"-cp '/ideas/criu-box/build:/ideas/exp-a-context-priming/lib/*' FnServer 8080")
     wait_ready(19000)
     req(19000, "GET", f"/prime?file=/ideas/exp-a-context-priming/inputs/real_bulk.jsonl&n={a.K}")
+    one = rss_mb(int(sh("podman inspect -f '{{.State.Pid}}' fnbase").stdout.strip()))
     sh(f"podman container checkpoint --export={img} fnbase")
     rows = []
     for N in (1, 2, 4, 8):
+        # memory guard for the box itself: N restored copies must fit with 50% margin, or the
+        # run would measure swapping instead of restore contention
+        need, avail = 1.5 * N * one, mem_available_mb()
+        if need > avail:
+            print(f"N={N}: skipped, needs ~{need:.0f} MB (1.5 x {N} x {one:.0f} MB RSS), "
+                  f"{avail:.0f} MB available", flush=True)
+            continue
         for rep in range(a.reps):
             names = [f"fnr{i}" for i in range(N)]
             for nm in names:
@@ -227,7 +243,7 @@ def x2_parallel(a):
                 sh(f"podman rm -f {nm}", check=False)
         print(N, statistics.median(x["restore_ms_max"] for x in rows if x["N"] == N), flush=True)
     base = statistics.median(x["restore_ms_max"] for x in rows if x["N"] == 1)
-    for N in (2, 4, 8):
+    for N in sorted({x["N"] for x in rows} - {1}):
         rN = statistics.median(x["restore_ms_max"] for x in rows if x["N"] == N)
         print(f"N={N}: r(N)/r(1) = {rN / base:.2f}  ->  dagsim beta ~ {(rN / base - 1) / (N - 1):.2f}")
     json.dump(rows, open(f"x2_parallel_vcpu{a.vcpu}.json", "w"), indent=1)

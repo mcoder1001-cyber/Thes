@@ -877,6 +877,336 @@ def t7(quick):
 T7_STATS = {}
 
 
+# ============================================================ C7.3 (which stages get a snapshot)
+def pareto_front(tree, opts, delta):
+    """All non-dominated (storage, latency) points of the joint problem (Theorem 7's DP with
+    S = total storage, then projected to (s, L)). Returns [(s, L, choice), ...] sorted by s."""
+    S = sum(max(o[2] for o in op) for op in opts)
+    key = lambda it: (it[0], it[1], it[2])
+
+    def go(t):
+        if t[0] == "leaf":
+            i = t[1]
+            return _prune([(s, w, p + w, ((i, k),)) for k, (p, w, s) in enumerate(opts[i])], key)
+        A, B = go(t[1]), go(t[2])
+        out = []
+        for s1, W1, P1, c1 in A:
+            for s2, W2, P2, c2 in B:
+                if t[0] == "ser":
+                    out.append((s1 + s2, W1 + delta + W2, max(P1 + delta + W2, P2), c1 + c2))
+                else:
+                    out.append((s1 + s2, max(W1, W2), max(P1, P2), c1 + c2))
+        return _prune(out, key)
+    pts = _prune([(s, max(W, P), dict(c)) for s, W, P, c in go(tree) if s <= S], lambda it: (it[0], it[1]))
+    return sorted(pts, key=lambda it: (it[0], it[1]))
+
+
+def c73(quick):
+    hdr("COROLLARY 7.3 -- which stages are worth a snapshot: price instead of budget")
+    rnd = random.Random(73)
+    M = 150 if quick else 600
+    ok = hull_ok = 0
+    for _ in range(M):
+        n = rnd.randint(2, 6)
+        tree = fresh_sp(rnd, n)
+        delta = rnd.choice([0.0, 2.0])
+        opts = random_opts(rnd, n)
+        mu = rnd.choice([0.0, 1.0, 10.0, 100.0, 1000.0])      # ms of latency one storage unit is worth
+        front = pareto_front(tree, opts, delta)
+        best_front = min(L + mu * s for s, L, _ in front)
+        # independent: brute force over every assignment with the expanded-DAG evaluator
+        best_bf = None
+        for combo in itertools.product(*[range(len(opts[i])) for i in range(n)]):
+            s = sum(opts[i][k][2] for i, k in enumerate(combo))
+            L = eager(expand(tree, [(opts[i][k][0], opts[i][k][1]) for i, k in enumerate(combo)], delta))[0]
+            best_bf = L + mu * s if best_bf is None else min(best_bf, L + mu * s)
+        ok += abs(best_front - best_bf) < 1e-6
+        # the minimiser of L + mu*s over the front is on its lower convex hull (never a point
+        # strictly above the segment joining two neighbours)
+        arg = min(front, key=lambda it: it[1] + mu * it[0])
+        i = front.index(arg)
+        inside = all(not (front[a][0] < arg[0] < front[b][0] and
+                          arg[1] > front[a][1] + (front[b][1] - front[a][1]) * (arg[0] - front[a][0])
+                          / (front[b][0] - front[a][0]) + 1e-9)
+                     for a in range(i) for b in range(i + 1, len(front)))
+        hull_ok += inside
+    check(f"C7.3 min (latency + mu * storage) is attained on the DP's (storage, latency) front  [{M}]",
+          ok == M, f"{ok}/{M} vs brute force over all assignments")
+    check("C7.3 the chosen point lies on the front's lower convex hull", hull_ok == M, f"{hull_ok}/{M}")
+    # cold-invocation rate under keep-alive TTL T with Poisson arrivals: lambda * exp(-lambda T),
+    # largest at lambda = 1/T with value 1/(e T): very frequent AND very rare workflows gain least
+    T = 600.0
+    lams = [10 ** (k / 20) / T for k in range(-60, 61)]
+    vals = [l * math.exp(-l * T) for l in lams]
+    kmax = max(range(len(lams)), key=lambda k: vals[k])
+    check("C7.3 cold invocations per second, lambda*exp(-lambda*T), peak at lambda = 1/T, value 1/(eT)",
+          abs(lams[kmax] * T - 1) < 1e-9 and abs(vals[kmax] - 1 / (math.e * T)) < 1e-12,
+          f"argmax lambda*T = {lams[kmax] * T:.3f}, max = {vals[kmax] * T:.4f}/T")
+    # renewal Monte Carlo of the same quantity (independent of the formula)
+    mc_ok = True
+    for lamT in (0.1, 1.0, 5.0):
+        lam = lamT / T
+        g = random.Random(int(lamT * 100))
+        t, cold, last = 0.0, 0, -math.inf
+        for _ in range(600_000):
+            t += g.expovariate(lam)
+            cold += (t - last) > T
+            last = t
+        mc_ok &= abs(cold / t - lam * math.exp(-lam * T)) / (lam * math.exp(-lam * T)) < 0.05
+    check("C7.3 renewal Monte Carlo agrees with lambda*exp(-lambda*T) (lambda T = 0.1, 1, 5)", mc_ok)
+    # CONTROL: pretending every invocation is cold (rate lambda) makes rare workflows look
+    # worth more than they are -- it ranks lambda*T = 5 above lambda*T = 1
+    naive = lambda l: l
+    check("CONTROL: rate lambda instead of lambda*exp(-lambda*T) mis-ranks frequent workflows",
+          naive(5 / T) > naive(1 / T) and (5 / T) * math.exp(-5) < (1 / T) * math.exp(-1))
+
+
+# ============================================================ T8 (peak memory, memory cap)
+def peak_mem(g, tau, F):
+    """max_t sum of m_v over stages holding memory at t (holding = [tau_v, F_v))."""
+    return max(sum(g.m[u] for u in range(g.n) if tau[u] <= tau[v] < F[u]) for v in range(g.n))
+
+
+def chain_slots(d, r, w, delta, k):
+    """Equal-stage chain, look-ahead with at most k sandboxes alive at once (k memory slots),
+    admission in stage order. Independent event computation (heap of slot-free times)."""
+    import heapq
+    slots = [0.0] * k
+    F_prev, L = None, 0.0
+    for v in range(d):
+        tau = v * (w + delta)                           # JIT trigger (Theorem 2)
+        start = max(tau, heapq.heappop(slots))
+        I = 0.0 if v == 0 else F_prev + delta
+        S = max(start + r, I)
+        F_prev = S + w
+        heapq.heappush(slots, F_prev)
+    return F_prev
+
+
+def chain_slots_rec(d, r, w, delta, k):
+    """Theorem 8(b)'s recurrence: S_v = r + (v-1)(w+delta) for v <= k, then
+    S_v = max(S_{v-k} + r + w, S_{v-1} + w + delta)."""
+    S = []
+    for v in range(d):
+        if v < k:
+            S.append(r + v * (w + delta))
+        else:
+            S.append(max(S[v - k] + r + w, S[v - 1] + w + delta))
+    return S[-1] + w
+
+
+def capped(g, C, lookahead=True, preempt=True, prio="tau"):
+    """Event-driven single-workflow schedule under a hard memory cap C (C >= max m).
+    Look-ahead: stage v asks for memory at its JIT trigger tau_v (on demand: at its input time).
+    Queue order: stages whose input has arrived (demand) first, then by trigger time; strict
+    head-of-line admission; a sandbox holds m_v from admission until the stage finishes.
+    preempt: a demand stage that does not fit evicts admitted stages whose input has NOT
+    arrived (latest trigger first); they re-queue and restore again later. Without it, memory
+    can fill with look-ahead sandboxes that all wait on a stage that cannot get memory.
+    prio="cp": among waiting stages, the one with the longest restore + remaining path
+    (r_v + l(v)) goes first instead of the earliest trigger.
+    Returns (L, peak, preemptions); L is None on deadlock."""
+    import heapq
+    _, _, tau_jit, _, _ = jit(g)
+    ell = g.ell()
+    rank = (lambda v: -(g.r[v] + ell[v])) if prio == "cp" else (lambda v: tau_jit[v] if lookahead else 0.0)
+    ev, seq = [], 0
+
+    def push(t, pri, kind, v, ver=0):
+        nonlocal seq
+        seq += 1
+        heapq.heappush(ev, (t, pri, seq, kind, v, ver))
+    npred = [len(g.preds[v]) for v in range(g.n)]
+    I, ready, F = [None] * g.n, [None] * g.n, [None] * g.n
+    admitted, ver = [False] * g.n, [0] * g.n
+    queue, used, peak, npre = [], 0.0, 0.0, 0
+    I[0] = 0.0
+    push(0.0, 1, "input", 0)
+    if lookahead:
+        for v in range(g.n):
+            push(tau_jit[v], 2, "trigger", v)
+    queued = set()
+
+    def admit(t):
+        nonlocal used, peak, npre
+        while queue:
+            queue.sort(key=lambda v: (I[v] is None, rank(v) if (lookahead or prio == "cp") else I[v], v))
+            v = queue[0]
+            if used + g.m[v] > C + 1e-9 and preempt and I[v] is not None:
+                victims = sorted((u for u in range(g.n) if admitted[u] and I[u] is None),
+                                 key=lambda u: -tau_jit[u] if prio == "tau" else (g.r[u] + ell[u]))
+                for u in victims:
+                    if used + g.m[v] <= C + 1e-9:
+                        break
+                    admitted[u], ready[u] = False, None
+                    ver[u] += 1                      # cancels its pending "ready"
+                    used -= g.m[u]
+                    queue.append(u)
+                    npre += 1
+            if used + g.m[v] > C + 1e-9:
+                return
+            queue.remove(v)
+            admitted[v] = True
+            used += g.m[v]
+            peak = max(peak, used)
+            push(t + g.r[v], 3, "ready", v, ver[v])
+
+    def try_start(v):
+        if ready[v] is not None and I[v] is not None and F[v] is None:
+            F[v] = max(ready[v], I[v]) + g.w[v]
+            push(F[v], 0, "finish", v)
+    while ev:
+        t, _, _, kind, v, vv = heapq.heappop(ev)
+        if kind == "finish":
+            used -= g.m[v]
+            admitted[v] = False
+            for s in g.succ[v]:
+                npred[s] -= 1
+                if npred[s] == 0:
+                    I[s] = max(F[u] for u in g.preds[s]) + g.delta
+                    push(I[s], 1, "input", s)
+        elif kind == "input":
+            if v not in queued:
+                if not lookahead:
+                    queued.add(v)
+                    queue.append(v)
+            try_start(v)
+        elif kind == "trigger":
+            if v not in queued:
+                queued.add(v)
+                queue.append(v)
+        elif kind == "ready":
+            if vv != ver[v]:
+                continue
+            ready[v] = t
+            try_start(v)
+        admit(t)
+    if any(f is None for f in F):
+        return None, peak, npre
+    return max(F[v] for v in range(g.n) if not g.succ[v]), peak, npre
+
+
+def t8(quick):
+    hdr("THEOREM 8 -- peak memory of look-ahead, and look-ahead under a memory cap")
+    rnd = random.Random(8)
+    # (a) chain of d equal stages: on-demand peak m, JIT peak m * min(d, ceil((r+w)/(w+delta)))
+    N = 500 if quick else 2000
+    ok_a = more = 0
+    for _ in range(N):
+        d = rnd.randint(1, 12)
+        r, w, delta, m = rnd.uniform(50, 3000), rnd.uniform(5, 500), rnd.choice([0.0, 2.0, 10.0]), 512.0
+        g = DAG(d, [[]] + [[v - 1] for v in range(1, d)], [r] * d, [w] * d, [m] * d, delta)
+        _, _, tj, _, Fj = jit(g)
+        _, _, to, _, Fo = on_demand(g)
+        pj, po = peak_mem(g, tj, Fj), peak_mem(g, to, Fo)
+        ok_a += abs(pj - m * min(d, math.ceil((r + w) / (w + delta)))) < 1e-6 and abs(po - m) < 1e-6
+        more += pj > po + 1e-6
+    check(f"T8(a) chain: peak memory on-demand = m, just-in-time look-ahead = m*min(d, ceil((r+w)/(w+delta)))  [{N}]",
+          ok_a == N, f"{ok_a}/{N}")
+    print(f"      thesis numbers (r 650, w 75, delta 2): ceil(725/77) = {math.ceil(725 / 77)} -> an 8-stage Java chain "
+          f"holds 8 x 512 MB = 4 GB at its peak under look-ahead, 512 MB on demand, for the same memory-time")
+    # same memory-time (Theorem 2) but a higher peak: on random DAGs
+    same_M = higher = 0
+    for _ in range(N):
+        g = random_dag(rnd)
+        _, Mj, tj, _, Fj = jit(g)
+        _, Mo, to, _, Fo = on_demand(g)
+        same_M += abs(Mj - Mo) < 1e-6 * max(1.0, Mo)
+        higher += peak_mem(g, tj, Fj) > peak_mem(g, to, Fo) + 1e-6
+    check("T8(a) random DAGs: JIT memory-time = on-demand memory-time (Theorem 2) ...", same_M == N, f"{same_M}/{N}")
+    check("CONTROL: ... but the PEAK is higher under look-ahead on most DAGs (so a cap is needed)",
+          higher > N // 2, f"higher on {higher}/{N}")
+
+    # (b) k memory slots on an equal-stage chain
+    ok_rec = ok_mono = ok_sat = ok_one = ok_rate = 0
+    M = 300 if quick else 1500
+    for _ in range(M):
+        d = rnd.randint(2, 14)
+        r, w, delta = rnd.uniform(50, 3000), rnd.uniform(5, 500), rnd.choice([0.0, 2.0, 10.0])
+        Ls = [chain_slots(d, r, w, delta, k) for k in range(1, d + 1)]
+        ok_rec += all(abs(Ls[k - 1] - chain_slots_rec(d, r, w, delta, k)) < 1e-6 for k in range(1, d + 1))
+        ok_mono += all(Ls[k] <= Ls[k - 1] + 1e-9 for k in range(1, len(Ls)))
+        Lstar = r + d * w + (d - 1) * delta
+        kstar = min(d, math.ceil((r + w) / (w + delta)))
+        ok_sat += all((abs(Ls[k - 1] - Lstar) < 1e-6) == (k >= kstar) for k in range(1, d + 1))
+        L_od = d * (r + w) + (d - 1) * delta
+        ok_one += abs(Ls[0] - d * (r + w)) < 1e-6 and Ls[0] <= L_od + 1e-9
+    for _ in range(50):
+        r, w, delta = rnd.uniform(50, 3000), rnd.uniform(5, 500), 2.0
+        k = rnd.randint(1, 8)
+        span = 40 * k                       # the schedule repeats every k stages, shifted by r+w
+        per = (chain_slots(100 + span, r, w, delta, k) - chain_slots(100, r, w, delta, k)) / span
+        ok_rate += abs(per - max(w + delta, (r + w) / k)) < 1e-6 * max(w + delta, (r + w) / k)
+    check(f"T8(b) k slots on a chain: event computation = the recurrence  [{M} chains, all k]", ok_rec == M, f"{ok_rec}/{M}")
+    check("T8(b) latency is non-increasing in k (more memory never hurts on a chain)", ok_mono == M, f"{ok_mono}/{M}")
+    check("T8(b) latency = L* exactly iff k >= min(d, ceil((r+w)/(w+delta)))", ok_sat == M, f"{ok_sat}/{M}")
+    check("T8(b) one slot = d(r+w): never worse than on-demand, which is d(r+w)+(d-1)delta", ok_one == M, f"{ok_one}/{M}")
+    check("T8(b) per-stage cost on long chains = max(w+delta, (r+w)/k): each slot divides the restore",
+          ok_rate == 50, f"{ok_rate}/50 exact")
+    r, w, delta = 650.0, 75.0, 2.0
+    row = "  ".join(f"k={k}: {chain_slots(8, r, w, delta, k) / 1000:.2f}s" for k in (1, 2, 3, 4, 8))
+    print(f"      8-stage Java chain (r 650, w 75): {row}  (on-demand {(8 * 725 + 14) / 1000:.2f}s)")
+
+    # (c) heterogeneous chains and DAGs under a cap C (memory units, C >= max m)
+    ok_inf = ok_jit_fit = tot = 0
+    worse_od = nonmono = over = 0
+    worse_od_dag = nonmono_dag = tot_dag = dead_nopre = worse_cp_dag = 0
+    ratio_dag = []
+    gaps = []
+    for trial in range(M):
+        is_chain = trial % 2 == 0
+        g = random_dag(rnd, chain=is_chain)
+        g.m = [rnd.choice([256.0, 512.0, 1024.0]) for _ in range(g.n)]
+        _, _, tj, _, Fj = jit(g)
+        pj = peak_mem(g, tj, Fj)
+        Linf = capped(g, 1e18)[0]
+        Lod_inf = capped(g, 1e18, lookahead=False)[0]
+        ok_inf += abs(Linf - L_star(g)) < 1e-6 and abs(Lod_inf - on_demand(g)[0]) < 1e-6
+        Lfit, pk, npre = capped(g, pj)
+        ok_jit_fit += abs(Lfit - L_star(g)) < 1e-6 and pk <= pj + 1e-6 and npre == 0
+        tot += 1
+        caps = sorted({max(g.m) * f for f in (1, 1.5, 2, 3, 4, 6, 8)})
+        runs = [capped(g, C) for C in caps]
+        Lc = [x[0] for x in runs]
+        over += sum(x[1] > C + 1e-6 for x, C in zip(runs, caps))
+        Lo = [capped(g, C, lookahead=False)[0] for C in caps]
+        dead_nopre += any(capped(g, C, preempt=False)[0] is None for C in caps)
+        wo = any(a > b + 1e-6 for a, b in zip(Lc, Lo))
+        nm = any(Lc[i + 1] > Lc[i] + 1e-6 for i in range(len(Lc) - 1))
+        if is_chain:
+            worse_od += wo
+            nonmono += nm
+            gaps.append((Lo[0] - Lc[0]) / (Lo[0] - L_star(g)) if Lo[0] > L_star(g) + 1e-6 else 1.0)
+        else:
+            tot_dag += 1
+            worse_od_dag += wo
+            nonmono_dag += nm
+            Lcp = [capped(g, C, prio="cp")[0] for C in caps]
+            worse_cp_dag += any(a > b + 1e-6 for a, b in zip(Lcp, Lo))
+            ratio_dag += [b / a for a, b in zip(Lc, Lo)]
+    check("T8(c) cap = infinity: the capped scheduler reproduces L* (look-ahead) and L_od (on demand) exactly",
+          ok_inf == tot, f"{ok_inf}/{tot}")
+    check("T8(c) cap >= the JIT schedule's own peak: latency stays L*, no preemption, cap never exceeded",
+          ok_jit_fit == tot, f"{ok_jit_fit}/{tot}")
+    check("T8(c) the cap is never exceeded, at any cap >= max m", over == 0, f"{over} violations")
+    n_chain = tot - tot_dag
+    check("T8(c) heterogeneous chains, any cap >= max m: capped look-ahead <= capped on-demand, "
+          "and monotone in the cap", worse_od == 0 and nonmono == 0,
+          f"worse than on-demand {worse_od}/{n_chain}, non-monotone {nonmono}/{n_chain}")
+    check("CONTROL: without preemption, look-ahead sandboxes can fill the cap and deadlock the workflow",
+          dead_nopre > 0, f"deadlock on {dead_nopre}/{tot} instances at some cap")
+    print(f"      chains at the tightest cap (= max m): capped look-ahead keeps a median "
+          f"{statistics.median(gaps):.0%} of the look-ahead gain")
+    print(f"      general DAGs (measured, not claimed): capped look-ahead worse than capped on-demand on "
+          f"{worse_od_dag}/{tot_dag} at some cap (critical-path priority instead: {worse_cp_dag}/{tot_dag}), "
+          f"non-monotone in the cap on {nonmono_dag}/{tot_dag}; mean speedup over capped on-demand across caps "
+          f"{statistics.mean(ratio_dag):.2f}x, worst {min(ratio_dag):.2f}x")
+    T8_STATS.update(worse_od_dag=worse_od_dag, nonmono_dag=nonmono_dag, tot_dag=tot_dag)
+
+
+T8_STATS = {}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
@@ -891,6 +1221,8 @@ def main():
     p7()
     p8()
     t7(a.quick)
+    c73(a.quick)
+    t8(a.quick)
     hdr("SUMMARY")
     bad = [n for n, ok in results if ok is False]
     skipped = [n for n, ok in results if ok is None]

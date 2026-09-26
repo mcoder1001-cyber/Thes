@@ -12,7 +12,7 @@ step, how to build it, and what has been done so far. Written 2026-09-26.*
 | **`REPORT.md`** (this file) | the whole story in simple English | first |
 | `ROADMAP.md` | tools to install and build, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs | you need the exact statements and proofs |
-| `theory/verify_dag.py` | a program that checks every theorem (44/44 pass) | you want to see the proofs checked by computer |
+| `theory/verify_dag.py` | a program that checks every theorem (62/62 pass) | you want to see the proofs checked by computer |
 | `ideas/IDEAS.md` | the evidence: experiments, simulations, numbers, novelty check | you need a number or a source |
 | `ideas/exp-a-context-priming/` | real Java experiments (1,600 runs) | you want to rerun or extend the measurements |
 | `ideas/sim/` | the workflow simulator and the Azure trace study | you want to rerun the simulations |
@@ -111,6 +111,27 @@ what it is for, **Output** is what it produces, and **How** says what exists in 
   **s**.
 - *How:* your existing `exp5` harness plus `ideas/criu-box/criu_box.py` (x1 for restore times).
 
+> **What steps A2–A5 are for, and whether they are worth it.** A *deep* snapshot (one that already
+> holds the JIT's work) needs warm-up requests run *before* the checkpoint. Something has to
+> supply those requests. The options are:
+> - none: a depth-0 snapshot, which captures no JIT work;
+> - dummy requests written by the developer (what SnapStart/CRaC guides tell you);
+> - real traffic, which leaves users' data inside an image that is stored and reused for everyone;
+> - copies of real messages with every personal value replaced (A2–A5).
+>
+> Measured (exp-a, n = 20):
+> - the scrubbed copies warm the JVM **as well as real traffic** (0.98–1.11×);
+> - format-blind synthetic inputs are **up to 31% worse** at depth;
+> - no warm-up at all is **2–5× worse**.
+>
+> So the steps buy **safety at equal speed**, plus up to 31% over naive synthetic inputs.
+> They are *not* where the big latency gain comes from; that is look-ahead (B3). They matter
+> **only for JIT runtimes** (Java; CPython and Go have nothing to warm). They assume the messages
+> are structured, like the JSON that OpenWhisk and Step Functions pass between stages. For
+> anything else (binary payloads, free text), or when A5's check fails, fall back to developer
+> dummy requests or a depth-0 snapshot. They are an **optional, secondary** part of the approach;
+> the timing, depth, cost and memory results (Theorems 1–8) do not depend on them.
+
 **A2. Collect the traffic on each incoming edge**
 - *Input:* the messages that flow into this function from each upstream stage (the orchestrator
   already passes them along; it only has to keep a sample).
@@ -149,12 +170,22 @@ what it is for, **Output** is what it produces, and **How** says what exists in 
 - *Input:* the DAG, the profiles from A1, a storage budget.
 - *Aim:* the lowest cold-workflow latency *under look-ahead restore* within the budget.
 - *Output:* for every stage, one of: no snapshot, or snapshot at depth K.
-- *How:* Theorem 7's algorithm (`dp_joint` in `theory/verify_dag.py`). Two quick rules come out
-  of it:
-  - a late stage whose cold start is hidden behind the earlier stages' work needs **no
-    snapshot** (Corollary 7.1);
-  - if snapshots differ only in speed, give them to the stages **earliest in the workflow**,
-    i.e. with the longest remaining path (Corollary 7.2).
+- *How:* Theorem 7's algorithm (`dp_joint` in `theory/verify_dag.py`). **Not every stage gets
+  a snapshot.** A stage gets none when:
+  - its snapshot is no faster than its cold start (**dominated**). Typical cases are a fast-starting
+    runtime, or a big image pulled from remote storage, where restore time grows with image size;
+  - its cold start is **hidden** behind other stages' work (Corollary 7.1). This can even be the
+    entry, when a parallel downstream restore takes longer;
+  - it is **not worth its cost** (Corollary 7.3). Give each option a monthly cost (image storage +
+    resources spent per cold invocation) and pick from the DP's cost-vs-latency curve, either by a
+    latency price or as the cheapest choice that meets a latency target (SLO).
+
+  If snapshots differ only in speed, give them to the stages **earliest in the workflow**, i.e.
+  with the longest remaining path (Corollary 7.2).
+- *What the cost view found* (`ideas/sim` e6): a Java image pays for itself in money only above
+  ~6–13 cold invocations per day, a Python image above ~24–36. The median Azure workflow has **1**.
+  So most snapshots **buy latency, not savings**, and the cost view mainly decides *where* each
+  image lives and which hidden stages can do without one.
 
 **A7. Warm up and take the snapshot**
 - *Input:* the function, the certified scrubbed set (from **all** incoming edges, enough work per
@@ -170,9 +201,11 @@ what it is for, **Output** is what it produces, and **How** says what exists in 
   - take the checkpoint (`jcmd <pid> JDK.checkpoint` with CRaC, or `criu dump`).
 
 **A8. Store the image near the machines that will run it**
-- *Input:* the image.
-- *Aim:* restores read from local disk or memory, not the network.
-- *Output:* the image cached on each invoker (disk or page cache).
+- *Input:* the image and the tier A6 chose for it.
+- *Aim:* restores read from local disk or memory, not the network, when the stage is on the
+  critical path.
+- *Output:* the image cached on each invoker (disk or page cache), or kept in cheap remote storage
+  when A6 found its restore is hidden anyway.
 
 ### Phase B: run time (every time a workflow is called)
 
@@ -194,8 +227,10 @@ what it is for, **Output** is what it produces, and **How** says what exists in 
 - *Aim:* the sandbox is ready exactly when needed, without holding memory longer than necessary.
 - *Output:* a start time for each restore: **τ = S\* − r**. When stage times are uncertain,
   aim to be ready at the κ-quantile of the input time (Theorem 3).
-- *Why it is good:* this gives the **lowest latency any policy can reach** (Theorem 1) and uses
-  **no more memory than today's restore-on-demand** (Theorem 2).
+- *Why it is good:* this gives the **lowest latency any policy can reach** (Theorem 1). It holds
+  **no more memory·time than today's restore-on-demand** (Theorem 2).
+- *But the peak is higher* (Theorem 8): restores overlap with the stages still running. An
+  8-stage Java chain peaks at 4 GB instead of 512 MB. That is why B5 goes through a memory guard.
 
 **B4. Decide about if/else branches**
 - *Input:* the probability p of each branch and κ.
@@ -208,7 +243,11 @@ what it is for, **Output** is what it produces, and **How** says what exists in 
 - *Aim:* run the workflow.
 - *Output:* the result.
 - *How:*
-  - fire `criu restore` (or the CRaC restore) for each stage at its time τ;
+  - **memory guard** (Theorem 8(c)): every restore asks for memory first. Stages whose input has
+    arrived go first. If one of them does not fit, it evicts look-ahead sandboxes that are not
+    needed yet (newest first). Without this, look-ahead sandboxes can fill the budget and block
+    the very stage they wait for (deadlock);
+  - fire `criu restore` (or the CRaC restore) for each stage at its time τ, once the guard admits it;
   - run each stage when its input arrives;
   - if a branch is not taken, release its early-restored sandboxes;
   - optionally, while a restored stage waits for its input, send it a few scrubbed requests to
@@ -299,7 +338,22 @@ writing code.
   **not run**.
 
 **Pull requests**
-- #1 and #2 merged. #3 (Theorem 7 and this report) is open.
+- #1–#5 merged (the approach and theory, Theorem 7 and this report, the roadmap, the x2 script).
+
+**Added after the report was first written** (your questions 1, 2 and 6)
+- *Which stages get a snapshot, and is it worth the money?* Corollary 7.3 (price or SLO instead
+  of a budget) and experiment e6 (A6 above). **Your cost idea works, but only at workflow
+  level.** A per-function "cold cost vs restore cost" comparison is misleading, because a
+  stage's value depends on its position in the DAG and on how often the workflow is actually
+  cold.
+- *Memory overload:* Theorem 8 (peak memory, what each extra GB buys, the memory guard) and
+  experiment e7.
+  - In a burst of cold workflows, the guard removes every over-budget start look-ahead caused.
+  - On the Azure trace at budgets below its working set, look-ahead and keep-alive compete for
+    the same memory. The guard trims look-ahead's extra overflow but does not remove it. The
+    operator chooses between look-ahead's latency and fewer over-budget starts.
+- *The x2 harness:* skips any N that would not fit in the box's free memory.
+- The checker now runs **62 checks, 12 of them controls**, all passing.
 
 **Mistakes caught and fixed** (kept visible, as your standing rules ask)
 - Two simulator bugs, both caught by the control checks:
@@ -322,7 +376,12 @@ writing code.
 | cold workflows on the Azure trace, mean / p99 | 2.34 / 6.20 s → **0.82 / 1.36 s**, same memory | `ideas/sim` e4 |
 | scrubbed vs real warm-up | 0.98–1.11× (no measurable difference) | exp-a, n = 20 |
 | identical code paths, scrubbed vs real | 100% and 98.7% (fps2); naive scrub 0% | `Sig.java` |
-| theorems checked by computer | 44/44 | `theory/verify_dag.py` |
+| peak memory, 8-stage Java chain: on demand vs look-ahead | 0.5 GB vs 4 GB (same memory·time) | Theorem 8(a) |
+| latency with 1 / 2 / 4 / 8 memory slots, same chain | 5.80 / 2.98 / 1.68 / 1.26 s (on demand 5.81 s) | Theorem 8(b) |
+| burst of 16 cold 8-stage chains, 8 GB budget: over-budget starts per run | look-ahead 32.6 → **0 with the guard** (on demand 0), still faster | `ideas/sim` e7a |
+| Azure trace at 24 GB (below its ~50 GB working set): over-budget starts / cold-workflow latency | on demand 1,513 / 2.35 s; look-ahead + guard 1,838 / 0.81 s; guard with no eviction of warm sandboxes 889 / 2.29 s | `ideas/sim` e7b |
+| cold invocations/day for a Java image to pay for itself | 6–13 (Azure median workflow: 1) | `ideas/sim` e6 |
+| theorems checked by computer | 62/62 | `theory/verify_dag.py` |
 
 ---
 
@@ -332,9 +391,14 @@ writing code.
    of its gain (the theory gives the exact loss).
 2. **x3 and x4**: repeat the warm-up results with real CRaC restores.
 3. **Build it in OpenWhisk** (section 4) and measure real workflows (SeBS-Flow).
-4. **Theory gaps:** nested if/else branches are not fully covered (Theorem 4 treats one branch
-   at a time), and DAGs that are not series-parallel have no exact algorithm yet.
-5. **Read Pronghorn's full paper** before writing the novelty chapter (only its abstract was
+4. **Theory gaps:**
+   - nested if/else branches are not fully covered (Theorem 4 treats one branch at a time);
+   - DAGs that are not series-parallel have no exact algorithm yet;
+   - under a hard memory cap, look-ahead is provably never worse than on-demand on chains, but
+     on general DAGs it occasionally is (12% of random DAGs at some cap, by up to 1.37×). This is
+     a known scheduling anomaly; no fix yet.
+5. **Measure the real image sizes** of Spring Boot and ML stages (e6 assumes 90 MB and 1 GB).
+6. **Read Pronghorn's full paper** before writing the novelty chapter (only its abstract was
    reachable from here).
 
 ---

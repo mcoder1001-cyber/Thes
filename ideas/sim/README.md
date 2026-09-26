@@ -11,17 +11,21 @@
 | e3 | per-edge snapshot variants vs one snapshot, as a function of the mis-priming penalty | `e3_context.csv` |
 | e4 / e4b | Azure 2021 trace (first 3 days, 68 workflows, 432,945 invocations), memory budgets 32 / 128 / 1024 GB | `e4_trace.csv`, `e4b_trace_gated.csv`, `e4_trace_bars.png` (plot_e4.py) |
 | e5 | sensitivity to restore time `r` and restore contention `β` | `e5_sensitivity.csv` |
+| e6 | which stages are worth a snapshot, in latency **and money** (exact model, `e6_cost.py`): per-function break-even, per-workflow choices, the trace's cold invocations per day | `e6a_cost_functions.csv`, `e6b_cost_workflows.csv`, `e6c_cost_trace.csv` |
+| e7a / e7b | **memory overload**: a burst of cold workflows under a hard budget; the Azure trace at 16/24/32 GB; with and without the memory guard (Theorem 8) | `e7a_burst.csv`, `e7b_trace_budget.csv` |
 
 ```bash
 python3 prep_azure.py <AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt> 3   # -> data/
-python3 run_sim.py            # all; e4 takes ~45 min (single core)
+python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores
 python3 plot_e4.py
 ```
 
 **Policies** (`dagsim.POLICIES`): `cold`, `keepalive`, `snap` (restore on demand), `prewarm`
 (DAG-aware cold prewarm), `ahead` (look-ahead restore), `+rw` (re-warm while waiting),
 `/gated` (only when the workflow is cold, Lemma 5), `/jit` (trigger at `S*_v − r_v`, Theorem 2
-of `theory/DAG_SNAPSHOT_THEORY.md`). `theory/verify_dag.py` checks that the JIT policy reproduces
+of `theory/DAG_SNAPSHOT_THEORY.md`), `/guard` or `|guard` (a demand start that does not fit
+preempts unclaimed look-ahead sandboxes, Theorem 8; options `noevict`, where look-ahead may not
+evict other workflows' idle sandboxes, and `h=<fraction>`, a headroom look-ahead may not use). `theory/verify_dag.py` checks that the JIT policy reproduces
 the theorem's optimal latency and minimum memory exactly.
 
 **Parameters** are the thesis's own measurements (`dagsim.py`: `JAVA`, `PY`, `PYML`, each

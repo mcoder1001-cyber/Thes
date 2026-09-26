@@ -8,7 +8,7 @@ need to build it, what math you need to prove and defend it, and in which order 
 ## 0. Where we are
 
 - **Done:** the approach (`REPORT.md`), 7 theorems with proofs checked by computer
-  (`theory/DAG_SNAPSHOT_THEORY.md`, 44/44), real JVM priming experiments (1,600 runs), a
+  (`theory/DAG_SNAPSHOT_THEORY.md`, 62/62), real JVM priming experiments (1,600 runs), a
   workflow simulator on the Azure trace.
 - **Not done:** nothing has been measured with **real** snapshot restores for this approach, and
   nothing is built inside OpenWhisk yet.
@@ -48,7 +48,7 @@ need to build it, what math you need to prove and defend it, and in which order 
 | component | job | start from |
 |---|---|---|
 | **Snapshot action image** | a Docker image that starts with `java -XX:CRaCRestoreFrom=<dir>` instead of a fresh JVM, and answers OpenWhisk's `/init` and `/run` on port 8080 | `ideas/criu-box/FnServer.java` already serves HTTP; change it to OpenWhisk's `/init`, `/run` contract. Deploy as a blackbox action (`wsk action create --docker`) |
-| **Workflow orchestrator + planner** | runs the DAG by calling OpenWhisk actions over its REST API, and does the look-ahead (steps B1–B5) | new, Python. **Recommended over changing OpenWhisk's controller** (Scala): OpenWhisk sequences are linear only, while you need fan-out and if/else, and your own orchestrator is where "the orchestrator knows the DAG" lives |
+| **Workflow orchestrator + planner** | runs the DAG by calling OpenWhisk actions over its REST API, does the look-ahead (steps B1–B5), and applies the **memory guard** (Theorem 8(c)). Its budget is the invoker's memory minus what is already running, and a start whose input has arrived preempts unclaimed look-ahead sandboxes. `theory/verify_dag.py: capped()` is the reference logic | new, Python. **Recommended over changing OpenWhisk's controller** (Scala): OpenWhisk sequences are linear only, while you need fan-out and if/else, and your own orchestrator is where "the orchestrator knows the DAG" lives |
 | **Wake call** | to "restore ahead", the planner sends a no-op activation (`{"__wake": true}`) to a downstream action at time τ. The invoker restores a container, the runtime returns at once, and the warm container is reused when the real input arrives | about 10 lines in the action image |
 | **Priming pipeline** | steps A2–A7: capture edge samples, scrub, certify, warm up, checkpoint | `ideas/exp-a-context-priming/gen_inputs.py` (`learn_categorical`, `scrub`), `src/Sig.java` |
 | **Depth planner** | step A6: picks depth per stage | `dp_joint` in `theory/verify_dag.py` |
@@ -136,6 +136,14 @@ weaker.
 > **Measure β on the box.** Run `x2-parallel` (`sudo ./ideas/criu-box/run_x2.sh`) (1, 2, 4, 8 restores at once, 20 repetitions,
 > 1 vCPU) and `x1-ladder`. One to three days.
 
+**Who runs it:** it has to run on the machine that has CRIU. A cloud Claude session cannot
+reach your Mac or anything behind it, including `ssh -p 2222 localhost`: its `localhost` is
+the cloud container, and outbound SSH is blocked there. To let Claude do it, start a session
+on the Mac: open a terminal where `ssh -p 2222 <user>@localhost` works, `cd` into the `Thes`
+folder, and run `claude remote-control`. That session appears in the Claude Code app and can
+SSH into the VM and run `run_x2.sh` itself. Alternatively, install Claude Code inside the VM
+and run it there.
+
 **Why this first:** Innovation 1 (restore ahead) assumes parallel restores do not slow each
 other much. Corollary 1.2 says the gain is at least `(1 − β)` of the ideal. If β is close to 1,
 restores run one after another anyway and Innovation 1 gives little. Everything later depends
@@ -197,6 +205,7 @@ next stage until it passes). Times are rough estimates for one person, full time
 - **Work:** the orchestrator with steps B1–B3 and B5 (gate, compute start times, trigger restores at `τ = S* − r`, wake calls), for chains of 3, 5 and 8 stages at 1 and 0.25 vCPU; policies: on-demand, eager, just-in-time.
 - **Output:** latency and memory-time per policy, n = 20.
 - **Exit (the control):** on-demand latency ≈ `Σ (r + w)` (Theorem 1c) and look-ahead ≈ `r + Σ w` scaled by the measured β (Corollaries 1.1, 1.2). If the measurement disagrees with the theorem, find out why before going on.
+- **Also measure memory:** the peak under look-ahead vs on-demand (Theorem 8(a) predicts up to 8× on an 8-stage chain), and latency with the guard at a budget of 1, 2 and 4 sandboxes (Theorem 8(b) predicts 5.80 / 2.98 / 1.68 s for the 8-stage chain with the thesis's `r` and `w`).
 
 ### Stage 5 — The priming pipeline *(3 weeks)*
 - **Goal:** snapshots are warmed with no user data, automatically.
@@ -212,7 +221,8 @@ next stage until it passes). Times are rough estimates for one person, full time
   - fan-out/fan-in workflows (Theorem 1 on a real DAG);
   - if/else branches with the `p ≥ κ` rule (Theorem 4);
   - uncertain input times with the κ-quantile trigger (Theorem 3);
-  - depth per stage from Theorem 7's DP (step A6).
+  - depth per stage from Theorem 7's DP (step A6), including "no snapshot" for dominated and hidden stages and the image's storage tier (Corollary 7.3; measure real image sizes first, since e6 assumes them);
+  - the memory guard under a burst of cold workflows (sim e7a predicts no over-budget starts, still faster than on-demand).
 - **Output:** one experiment per theorem, each with its control.
 - **Exit:** each theorem's prediction matches the measurement within its confidence interval, or the difference is explained.
 

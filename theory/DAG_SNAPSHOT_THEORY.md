@@ -2,7 +2,7 @@
 
 Written 2026-09-26. Companion to `MODEL.md` (which decides *how deep* to snapshot each
 function under a storage budget) and to `../ideas/IDEAS.md` (the evidence). Every claim is
-checked by `verify_dag.py`: **44/44 checks pass, 9 of them controls designed to fail**,
+checked by `verify_dag.py`: **62/62 checks pass, 12 of them controls designed to fail**,
 which do. Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or randomised computation),
 **[measured]** (real runs), **[assumption]** (a model input that the S0 box must confirm).
 
@@ -38,7 +38,16 @@ use it twice.
    container's CPU shape (exp-b). **Pick each stage's depth, or no snapshot at all, with
    Theorem 7's DP.** Stages whose cold start the DAG hides need none (Cor 7.1). When the
    options differ only in restore time, snapshot the longest-tail stages first (Cor 7.2).
+   With prices instead of a budget, choose from the DP's cost–latency front, by a latency
+   price or an SLO (Cor 7.3). This also decides whether an image lives next to the invoker
+   or in cheap remote storage (§3.6).
 6. **Checkpoint** with CRaC/CRIU, after `beforeCheckpoint` hooks reset RNG, UUID and secrets.
+
+Steps 1–4 only supply *safe warm-up inputs* for step 5. They matter only for JIT runtimes and
+structured (JSON-like) messages. They buy **equal warm-up without user data in the image**
+(exp-a: 0.98–1.11× real traffic; format-blind synthetic inputs up to 1.31×; none 2–5×). When
+step 4 fails, or the payload is not structured, fall back to developer-written warm-up requests
+or a depth-0 snapshot. Theorems 1–8 do not depend on them.
 
 *At run time, per workflow invocation:*
 1. Keep-alive as usual. **If the entry function has a live sandbox, do nothing more.** This
@@ -47,6 +56,9 @@ use it twice.
    `criu restore` for each stage at **τ_v = S*_v − r_v** (just in time, Theorem 2). Under
    uncertainty, trigger so the sandbox is ready at the **κ-quantile** of the stage's input time,
    **κ = b/(a+b)**, with `a` the latency price and `b` the memory price (Theorem 3).
+   **Every restore goes through the memory guard** (Theorem 8(c)). Stages whose input has
+   arrived come first, and may preempt look-ahead sandboxes not yet needed. Look-ahead keeps
+   memory·time but raises the peak.
 3. XOR branches: if the branch is decided at least `r_s` before the stage would start,
    restore after the decision. Otherwise **restore speculatively iff P(branch) ≥ κ**
    (Theorem 4). A single price ratio governs both the trigger and the speculation.
@@ -327,6 +339,184 @@ Honest summary: **the big gain is look-ahead itself; Theorem 7 makes the depth d
 correct for it**. Without it, the old objective occasionally leaves the new critical path
 unprotected.
 
+### 3.6 Which stages are worth a snapshot: latency, money, and where the image lives [proved] [verified]
+
+Not every stage should get a snapshot. Theorem 7 already lets each stage choose "no snapshot"
+(`K = ∅`). A snapshot option is not worth it for one of three reasons:
+
+1. **Dominated.** It is no better than a cold start: `p_v(K) ≥ A_v` and `w_v(K) ≥ B_v + C_v`.
+   `F_H(x) = max(x + W, P)` is non-decreasing in every `p` and `w` (Theorem 7(a)), so such an
+   option can never help and is dropped. Typical cases: a runtime whose cold start is already
+   fast, and a **large image restored from remote storage**, where the restore time grows with
+   the image, `p = r + s/bandwidth`.
+2. **Hidden by the DAG** (Corollary 7.1). Its cold start fits in time that other stages spend
+   anyway. This includes the *entry*, when a parallel downstream restore is longer than the
+   entry's cold start (e6: the Python entry of `mixed-order`).
+3. **Not worth its cost** (Corollary 7.3 below).
+
+**Corollary 7.3 (price instead of budget).** Give every option an additive cost `c_v(K)` per
+month: its image's storage price, plus the resources one cold invocation spends in the stage
+(memory × time, `m_v (p_v + w_v)`, additive by Theorem 2) times the number of cold invocations
+`n_c`. Let `a` be the price of one ms of workflow latency. Minimise `J = n_c·a·L + Σ_v c_v`.
+(a) The optimum is a point of the (cost, latency) Pareto front, which Theorem 7(b)'s DP
+computes with cost in place of storage.
+(b) It lies on the front's lower convex hull, so one slope `μ = 1/(n_c·a)` selects it. The
+**SLO form**, the cheapest point with `L ≤ SLO`, is read off the same front.
+(c) With Poisson arrivals at rate `λ` and keep-alive TTL `T`, `n_c` per unit time is
+`λ e^{−λT}`. It is largest at `λ = 1/T`, where it equals `1/(eT)`. **Very frequent workflows
+stay warm, very rare ones are rarely invoked; both gain little from a snapshot.**
+*Proof.* (a) `J` is non-decreasing in both coordinates. (b) A linear function over a finite set
+is minimised at a vertex of its convex hull. (c) A Poisson gap exceeds `T` with probability
+`e^{−λT}`. The derivative of `λ e^{−λT}` is `(1 − λT) e^{−λT}`. ∎
+**[verified]** `verify_dag.py`: front optimum = brute force over all assignments 600/600;
+the chosen point is on the lower hull 600/600; `λ e^{−λT}` and its maximum, and a renewal
+Monte Carlo at `λT = 0.1, 1, 5`. **Control:** counting every invocation as cold ranks
+frequent workflows wrongly.
+
+**What the cost view shows** (`ideas/sim/e6_cost.py`, exact model). Prices are public list
+prices used only as an example: $0.0000167 per GB-second, $0.08 per GB-month next to the
+invoker, $0.023 per GB-month in object storage, and 100 MB/s from object storage **[assumption]**.
+The Spring Boot image (90 MB) and the ML image (≈ its 1 GB of memory) are **[assumption]**.
+
+| function | cold start | restore, deepest snapshot | image in local / remote storage pays for itself above |
+|---|---|---|---|
+| Java (Spring Boot) | 2.89 s, 1.45 GB-s | 0.68 s, 0.34 GB-s (remote 1.58 s) | **12.7 / 6.2** cold invocations per day |
+| Python (light) | 0.44 s, 0.11 GB-s | 0.09 s, 0.02 GB-s (remote 0.29 s) | 35.7 / 24.0 per day |
+| ML stage (1 GB image) | 2.14 s, 2.14 GB-s | 0.50 s local; **10.7 s remote, slower than cold** | 97.6 / never |
+
+At a 10-minute TTL no workflow can have more than **53** cold invocations a day (c). The Azure
+2021 trace has a median of **1.0** per day and a maximum of 27. A Java image in local storage
+pays for itself in 6/68 workflows (13/68 in object storage), a Python image in 0–1/68, an ML
+image in none. **In money, most snapshots do not pay for themselves. They buy latency.** Cost
+decides *where* an image lives and which snapshots to drop when their latency value is zero.
+
+Per workflow, at 10 cold invocations a day (latency under look-ahead, $ per month):
+
+| workflow | today: every stage, restore on demand | every stage + look-ahead | Theorem 7: fastest, then cheapest | cheapest overall (`a = 0`) |
+|---|---|---|---|---|
+| Java chain, 5 stages | 3.42 s, $0.044 | 0.82 s, $0.044 | 0.82 s, $0.044 (5/5 images) | 1.72 s, $0.030 (5/5, all remote) |
+| ML pipeline (Py, ML, Java, Java, Py) | 2.04 s, $0.103 | 0.74 s, $0.103 | 0.74 s, $0.102 (both Python images remote) | 2.25 s, $0.024 (2/5) |
+| fan-out 4 (Java) | 2.14 s, $0.054 | 0.78 s, $0.054 | 0.78 s, $0.053 | 1.69 s, $0.036 (6/7, remote) |
+| mixed (Py, Java ‖ Py, Java, Py) | 1.54 s, $0.023 | 0.74 s, $0.023 | 0.74 s, **$0.019 with 3/5 images** | 1.65 s, $0.014 (2/5) |
+
+So: the same latency as snapshotting everything with **two images fewer** in `mixed` (the
+Python entry and the parallel Python stage are hidden); hidden small images can move to cheap
+remote storage at no latency cost; and the cheapest choice costs 2–3× the latency. Which point
+to take depends on what latency is worth (`a`, or an SLO). The theory cannot decide that; it
+computes the whole front so the operator can.
+
+**Is the cost view sound? Criticism.**
+- *Right:* it turns "is this snapshot worth it?" into a computable rule, picks the storage tier,
+  and shows that storage is cheap but cold invocations are rare.
+- *Wrong if done per function:* comparing one function's cold-start cost with its restore cost
+  ignores its position in the DAG. A hidden stage gains nothing however cheap its restore
+  (Corollary 7.1), and the entry is worth most (Corollary 7.2). The comparison must be made on
+  the workflow's latency, by the DP.
+- *Only cold invocations count:* the benefit scales with `λ e^{−λT}`, not `λ`.
+- *Money alone says "no snapshot"* for the median real workflow. Latency needs a price or an SLO.
+- *List prices are not a provider's cost.* For a provider, the scarce resources are local
+  image cache on the invokers (Theorem 7's budget form) and memory at peak (Theorem 8, a hard
+  limit, not a price).
+- *Inputs are uncertain:* restore time depends on load (β) and on where the image is cached.
+  Use measured distributions, as Theorem 3 does for triggers.
+
+### 3.7 Theorem 8 — memory: look-ahead keeps memory-time, not the peak [proved] [verified]
+
+Theorem 2 says just-in-time look-ahead holds no more memory·time than on-demand. It does not
+say the **peak** is the same, and it is not: look-ahead restores later stages *while* earlier
+ones run. A real invoker has a hard budget (OpenWhisk's was 1024 MB on the S0 box), so this
+matters.
+
+**Theorem 8.**
+(a) *(Peak.)* On a chain of `d` equal stages the on-demand peak is `m`. The just-in-time
+look-ahead peak is **`m · min(d, ⌈(r+w)/(w+δ)⌉)`**. Thesis numbers: `⌈725/77⌉ = 10`, so an
+8-stage Java chain holds 8 × 512 MB = 4 GB for about 0.7 s, instead of 512 MB.
+(b) *(Memory buys latency, chains.)* Allow at most `k` sandboxes at once, admitted in stage
+order. Then `S_v = r + (v−1)(w+δ)` for `v ≤ k` and `S_v = max(S_{v−k} + r + w, S_{v−1} + w + δ)`
+after, so:
+- latency is non-increasing in `k`;
+- `k = 1` gives `d(r+w)`, never worse than on-demand's `d(r+w) + (d−1)δ`;
+- latency is `L*` exactly iff `k ≥ min(d, ⌈(r+w)/(w+δ)⌉)`;
+- on long chains each stage costs `max(w+δ, (r+w)/k)`: **each extra slot divides the restore
+  cost**.
+
+  8-stage Java chain: `k` = 1, 2, 3, 4, 8 gives 5.80, 2.98, 2.25, 1.68, 1.26 s (on-demand 5.81 s).
+
+(c) *(The guard, any DAG, hard cap `C ≥ max m`.)* Memory requests queue: stages whose input has
+arrived come first, then by trigger time, with strict head-of-line admission. A stage whose
+input has arrived and does not fit **preempts** admitted stages whose input has not arrived
+(latest trigger first); these re-queue. Then:
+- the cap is never exceeded;
+- no deadlock (running stages always finish, and look-ahead sandboxes can always be preempted);
+- if `C` is at least the just-in-time schedule's own peak, latency is `L*` with no preemption;
+- on a chain, capped look-ahead is never slower than capped on-demand.
+
+*Proof.* (a) Under JIT, stage `v` holds memory on `[(v−1)(w+δ), (v−1)(w+δ) + r + w)`: intervals of
+length `r + w` starting every `w + δ`. At most `⌈(r+w)/(w+δ)⌉` of them contain any point. Under
+on-demand the intervals are disjoint.
+(b) Stages finish in order, so the slot for `v` is freed by `v − k`. Hence
+`S_v = max(S*_v, F_{v−k} + r, F_{v−1} + δ)`, and `S*_v ≤ S_{v−1} + w + δ`.
+- Monotone: by induction, since `S_{v−k−1} ≤ S_{v−k}`.
+- No stall iff `k(w+δ) ≥ r + w`: substitute `S_{v−1} = S_{v−k} + (k−1)(w+δ)`. A stall persists,
+  because `S*` advances by exactly `w + δ` per stage and `S` by at least that.
+- In a stall, `S_{v+k} = S_v + r + w`, so the schedule is periodic.
+
+(c) Preemption removes the only way memory can be held by stages that cannot progress.
+- If `C ≥` the JIT peak, every admission happens at its trigger time, as in the JIT schedule.
+- On a chain, when `v`'s input arrives, `v − 1` has finished and every other holder is a
+  look-ahead sandbox, which can be preempted. So `S_v ≤ I_v + r_v`, and induction on `I` gives
+  the claim. ∎
+
+**[verified]** `verify_dag.py`:
+- (a) holds 2000/2000 on chains. On random DAGs, memory·time equals on-demand's (2000/2000,
+  Theorem 2), yet the peak is higher on 1999/2000.
+- (b) the recurrence equals an independent slot simulation, and all four consequences hold
+  (1500 chains, every `k`).
+- (c) holds 1500/1500: cap never exceeded, `L*` once the cap covers the JIT peak, and on 750
+  heterogeneous chains never slower than capped on-demand and monotone in the cap. **Control:**
+  without preemption, look-ahead sandboxes fill the cap and deadlock the workflow (582/1500
+  instances at some cap).
+- *Measured, not proved:* on general DAGs capped look-ahead is 1.94× faster than capped
+  on-demand on average across caps, but not always. It is slower at some cap on 88/750 random
+  DAGs (12%), at worst by 1.37×. A scratch run over 21,000 (DAG, cap) pairs gives 1.7% slower,
+  median 6%. Critical-path priority does not remove it (89/750). It is the classical anomaly of
+  scheduling under a resource limit: speeding tasks up can lengthen the schedule (Graham,
+  *SIAM J. Appl. Math.* 1969).
+
+**In the simulator** (`ideas/sim` e7, policy `…/guard`: demand starts preempt unclaimed
+look-ahead sandboxes):
+- *Burst:* 16 cold 8-stage Java chains arrive within 1 s.
+  - Unguarded look-ahead **overflows the budget** (32.6 demand starts per run at 8 GB, where
+    on-demand has none).
+  - The guard brings this to **0 at every budget on-demand itself fits in**, and is still
+    faster: 5.77 vs 5.91 s at 8 GB, 4.35 s at 16, 2.81 s at 32, 1.19 s at 64.
+  - Below on-demand's own need (4 GB) it behaves exactly like on-demand.
+- *Azure trace* (e7b; its working set is ~50 GB, so these budgets are all tight). Every
+  policy overflows at 16 and 24 GB, on-demand included: the running sandboxes alone exceed the
+  budget. What look-ahead adds, at 24 GB:
+
+  | policy | starts over budget | GB-s over budget | cold-workflow latency, mean / p99 | restores |
+  |---|---|---|---|---|
+  | on-demand (`snap`) | 1,513 | 147 | 2.35 / 6.20 s | 116k |
+  | look-ahead, ungated (`ahead+rw`) | 6,823 | 641 | 0.85 / 1.82 s | 229k |
+  | recommended (`…/gated/jit`) | 1,980 | 198 | 0.81 / 1.30 s | 140k |
+  | recommended + guard | 1,838 | 184 | 0.81 / 1.31 s | 140k |
+  | recommended + guard, look-ahead may not evict warm sandboxes | **889** | **84** | 2.29 / 6.16 s | 111k |
+
+  The guard trims look-ahead's extra overflow but does not remove it. The rest comes from
+  look-ahead **evicting other workflows' idle warm sandboxes**, which causes about 20% more
+  restores later. Forbidding that eviction brings overflow *below* on-demand's, but the
+  look-ahead gain disappears with it: at these budgets memory is always full of idle keep-alive
+  sandboxes, so nothing is ever restored ahead. A headroom (look-ahead may use only 85% of the
+  budget) made overflow worse (2,335). At 32 GB the recommended policy has no overflow, with or
+  without the guard. **At a budget below the working set, look-ahead and keep-alive compete for
+  the same memory, and the operator must choose.** Theorem 8(b) prices each GB for the first;
+  Theorem 6 prices the second.
+
+**What the platform does:** run-time step 2 asks the memory guard before each restore, and
+starts that arrive when memory is short preempt look-ahead sandboxes that have not yet been
+claimed. The operator sets the budget. Theorem 8(b) says what each extra GB buys.
+
 ---
 
 ## 4. Data-free, certifiable priming
@@ -384,6 +574,8 @@ this workload.
 |---|---|
 | look-ahead is latency-optimal; JIT look-ahead is also memory-minimal; speculation and trigger rules | **proved** in the model; verified on random DAGs and cross-checked against the simulator |
 | joint depth + timing on series-parallel DAGs (Thm 7): composition rules, exact DP, reduction to `MODEL.md`, hidden cold starts, longest-tail-first | **proved**; verified against brute force and the expanded-DAG evaluator |
+| which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
+| peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
 | the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
 | A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
 | A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |
