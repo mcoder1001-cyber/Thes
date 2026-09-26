@@ -219,6 +219,8 @@ class Policy:
     ctx: bool = False               # context-keyed snapshot variants
     margin: float = 0.1             # trigger restore this fraction of r earlier than needed
     gate: bool = False              # plan ahead only if the entry function has no live sandbox
+    jit: bool = False               # trigger each restore r_v before its start in the EAGER
+                                    # schedule (theory/DAG_SNAPSHOT_THEORY.md, Theorem 2)
 
 
 POLICIES = {
@@ -232,6 +234,10 @@ POLICIES = {
     # restore ahead only when the workflow is cold (its entry function has no live sandbox):
     # avoids restoring for stages whose warm sandbox is merely busy under load
     "ahead+rw/gated": Policy("ahead+rw/gated", snap=True, ahead="restore", rewarm=True, gate=True),
+    # the policy the theory recommends: gated, just-in-time triggers (Theorem 2), with a
+    # safety margin of 0.3 r against restore-time jitter (Theorem 3 gives the exact quantile)
+    "ahead+rw/gated/jit": Policy("ahead+rw/gated/jit", snap=True, ahead="restore", rewarm=True,
+                                 gate=True, jit=True, margin=0.3),
 }
 
 
@@ -411,6 +417,9 @@ class Sim:
             node = dag.nodes[n]
             ps = preds[n]
             est_start[n] = 0.0 if not ps else max(est_fin[p] for p in ps) + EDGE_MS
+            if self.p.jit and n != dag.entry and self.p.ahead == "restore":
+                # eager-schedule start S*_v = max(input time, own restore completion)
+                est_start[n] = max(est_start[n], node.prof.r)
             if n == dag.entry:
                 dur = node.prof.C + (0 if self._idle_count(node.fn) else
                                      (node.prof.r + node.prof.RK if self.p.ahead == "restore"

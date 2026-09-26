@@ -8,3 +8,4 @@ python3 run_exp.py exp-a     --reps $REPS --slots 1,2,3
 python3 run_exp.py exp-a-web --reps $REPS --slots 1,2,3
 python3 run_exp.py exp-a-mix --reps $REPS --slots 1,2,3
 python3 run_exp.py exp-b     --reps $REPS
+python3 run_exp.py exp-a-fps2 --reps $REPS --slots 1,2,3

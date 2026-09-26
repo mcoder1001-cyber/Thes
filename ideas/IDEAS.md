@@ -5,6 +5,13 @@ Written 2026-09-26 after reading `RESEARCH_PLAN.md`, `SYNTHESIS.md`, `READING_LI
 (`Proposal_Final2.pdf`). `experiments/` (RESULTS.md, raw curves) is **not in this repository**,
 so every number quoted from the thesis's own experiments comes from the documents above.
 
+> **Update (after PR #1):** the approach is now stated as a policy with proofs in
+> [`theory/DAG_SNAPSHOT_THEORY.md`](../theory/DAG_SNAPSHOT_THEORY.md): look-ahead restore is
+> latency-optimal, and just-in-time look-ahead is also memory-minimal (Theorems 1–2), with
+> trigger and speculation rules (Theorems 3–4); scrubbed priming yields an identical JIT profile
+> whenever it preserves the handler's branch predicates (Proposition 7). `theory/verify_dag.py`:
+> 33/33 checks. Read that file first; this one holds the evidence.
+
 Everything below is backed by one of three things, tagged the same way as `MODEL.md`:
 **[measured]** a real JVM run in this session, **[simulated]** `sim/dagsim.py` driven by the
 thesis's own measured parameters and the Azure 2021 trace, **[protocol]** an experiment
@@ -70,9 +77,11 @@ scope note), against a warm execution of **~12 ms per stage** (exp15, 35 ms for 
 stages).
 
 A workflow orchestrator knows at the moment the workflow is invoked every stage that may
-run. It can issue `criu restore` for all of them **immediately, in parallel**, while stage 1
-is still being restored. Because `r ≫ C`, "just in time" and "immediately" are the same
-instant: by the time stage 1 finishes, stage 2 has been restoring for as long as stage 1.
+run. It can issue `criu restore` for all of them **in parallel with the upstream work**, each
+timed so the sandbox is ready when the stage's input arrives. Because `r ≫ C`, the triggers are
+close together (stage *j* at roughly `(j−1)·(w+δ)`), and every restore overlaps stage 1's.
+The exact schedule, and the proof that it costs no extra memory, is Theorem 2 of
+`theory/DAG_SNAPSHOT_THEORY.md`.
 
 ### The result (closed form, verified)
 For a chain with restore times `r_j`, residual warm-up `R_j`, steady execution `C_j`, edge
@@ -274,6 +283,15 @@ figure `results/exp-a_curves.png`.)
   `origin`, `title`, `priority`, `tags`, `city`, `country`). Those can be quasi-identifiers,
   and lengths are preserved. That is structural leakage, not content leakage, and it has to
   be stated as such.
+
+### Certifiable scrubbing (fps2), added after PR #1
+`src/Sig.java` records every predicate `Fn.handle` branches on, per request. fps keeps the
+path identical for 77.6% (bulk) and 57.3% (web) of requests. The predicates it changes are
+exactly order comparisons of small-integer fields (`tier ≥ 3`, `warrantyMonths > 12`).
+**fps2**, which also keeps low-cardinality integers, reaches **100% and 98.7%**; a naive scrub
+reaches 0%. Warm-up capture (n = 20) is unchanged at 1.02–1.12× (7 of 8 CIs span 1): equal
+paths are sufficient for equal JIT state (Proposition 7), not necessary. What fps2 buys is a
+guarantee that can be checked before deployment.
 
 ### Why it is new, and its limits
 Priming today is either hand-written dummy requests (SnapStart/CRaC priming guides) or live

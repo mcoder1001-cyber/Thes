@@ -18,6 +18,12 @@ python3 run_sim.py            # all; e4 takes ~45 min (single core)
 python3 plot_e4.py
 ```
 
+**Policies** (`dagsim.POLICIES`): `cold`, `keepalive`, `snap` (restore on demand), `prewarm`
+(DAG-aware cold prewarm), `ahead` (look-ahead restore), `+rw` (re-warm while waiting),
+`/gated` (only when the workflow is cold, Lemma 5), `/jit` (trigger at `S*_v − r_v`, Theorem 2
+of `theory/DAG_SNAPSHOT_THEORY.md`). `theory/verify_dag.py` checks that the JIT policy reproduces
+the theorem's optimal latency and minimum memory exactly.
+
 **Parameters** are the thesis's own measurements (`dagsim.py`: `JAVA`, `PY`, `PYML`, each
 with its source in a comment). The Python restore time and the ML-stage profile are
 assumptions, marked as such.

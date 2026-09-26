@@ -123,7 +123,8 @@ def analyse_a(exp="exp-a", target="bulk", prefix="a", right="real_bulk", Ks=(25,
             ref = base.get(f"{right}_K{K}")
             if not ref:
                 continue
-            for other in ("real_bulk2" if target == "bulk" else None, f"fps_{target}", "schema_bulk" if target == "bulk" else None,
+            for other in ("real_bulk2" if target == "bulk" else None, f"fps_{target}", f"fps2_{target}",
+                          "schema_bulk" if target == "bulk" else None,
                           "real_web" if target == "bulk" else "real_bulk", "mixed", "none"):
                 if other is None:
                     continue
@@ -132,6 +133,7 @@ def analyse_a(exp="exp-a", target="bulk", prefix="a", right="real_bulk", Ks=(25,
                     continue
                 r, lo, hi = boot_ratio(base[key], ref)
                 tag = {"real_bulk2": "A/A CONTROL (expect ~1)", f"fps_{target}": "format-preserving scrub",
+                       f"fps2_{target}": "fps2 (int enums kept)",
                        "schema_bulk": "schema-only synthetic", "real_web": "WRONG edge",
                        "real_bulk": "WRONG edge", "mixed": "mixed 50/50", "none": "no priming (K=0)"}[other]
                 print(f"     K={K:<4} {tag:<26} {r:6.2f}x  [{lo:5.2f}, {hi:5.2f}]")
