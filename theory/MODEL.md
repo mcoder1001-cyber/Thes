@@ -1,5 +1,9 @@
 # A formal model for snapshot placement and depth in FaaS workflows
 
+> **See also `DAG_SNAPSHOT_THEORY.md` (2026-09-26):** this file decides *how deep* each
+> function's snapshot is; that one decides *when to restore* it along the workflow DAG and
+> *what to prime it with*, with proofs checked by `verify_dag.py`.
+
 Written 2026-09-24. Companion to `experiments/RESULTS.md` (the measurements that
 supply this model's inputs and validate its assumptions) and `verify.py` (the
 computational check of every claim below).

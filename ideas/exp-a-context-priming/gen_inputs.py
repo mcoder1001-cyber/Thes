@@ -9,6 +9,8 @@ Priming sets (what a snapshot would have been warmed on):
   real_bulk     real traffic from the right edge            (what Pronghorn-style priming uses)
   real_bulk2    same distribution, different seed           (A/A CONTROL: must match real_bulk)
   fps_bulk      real_bulk after format-preserving scrubbing (no user values left: the safe option)
+  fps2_bulk     fps with low-cardinality integers kept as categorical (added after the
+                path-signature check; see theory/DAG_SNAPSHOT_THEORY.md Prop. 7)
   schema_bulk   random inputs generated from the schema only (naive synthetic priming)
   real_web      real traffic from the OTHER edge            (a context-oblivious snapshot)
   mixed         web and bulk interleaved 50/50              (one snapshot for all contexts)
@@ -143,16 +145,22 @@ def _paths(obj, prefix=""):
         yield prefix, obj
 
 
-def learn_categorical(sample, max_distinct=32, min_obs=50):
-    """Fields whose string values take few distinct values are control flow, not data.
+def learn_categorical(sample, max_distinct=32, min_obs=50, numbers=False):
+    """Fields whose values take few distinct values are control flow, not data.
 
     A field needs enough observations to be judged: a rarely-present field with few
     values is not evidence of low cardinality, so it defaults to DATA (scrubbed).
+
+    numbers=False (the scrubber exp-a used, "fps"): only strings are candidates.
+    numbers=True ("fps2"): low-cardinality INTEGER fields are candidates too. The path
+    signatures (src/Sig.java) showed fps changes exactly the branches that compare a
+    small-integer field against a threshold (tier >= 3, warrantyMonths > 12); an integer
+    field with a handful of values is an enum in all but name.
     """
     seen, count = {}, {}
     for rec in sample:
         for p, v in _paths(rec):
-            if isinstance(v, str):
+            if isinstance(v, str) or (numbers and isinstance(v, int) and not isinstance(v, bool)):
                 seen.setdefault(p, set()).add(v)
                 count[p] = count.get(p, 0) + 1
     return {p for p, vals in seen.items()
@@ -200,7 +208,7 @@ def scrub(obj, categorical, rnd, prefix=""):
     if isinstance(obj, str):
         return obj if prefix in categorical else _scrub_str(obj, rnd)
     if isinstance(obj, (int, float)) and not isinstance(obj, bool):
-        return _scrub_num(obj, rnd)
+        return obj if prefix in categorical else _scrub_num(obj, rnd)
     return obj
 
 
@@ -236,6 +244,13 @@ def main():
     real_web = [web_order(R(3_000_000 + i)) for i in range(n_prime)]
     cat_w = learn_categorical(real_web[:200])
     write("fps_web", [scrub(r, cat_w, R(6_500_000)) for r in real_web])
+
+    # fps2: the same scrubber, with low-cardinality integers treated as categorical
+    cat2 = learn_categorical(real_bulk[:200], numbers=True)
+    write("fps2_bulk", [scrub(r, cat2, R(6_000_000)) for r in real_bulk])
+    cat2_w = learn_categorical(real_web[:200], numbers=True)
+    write("fps2_web", [scrub(r, cat2_w, R(6_500_000)) for r in real_web])
+    print(f"fps2 additionally keeps: {sorted((cat2 | cat2_w) - (cat | cat_w))}")
 
     write("serve_bulk", [bulk_order(R(9_000_000 + i)) for i in range(n_serve)])
     write("serve_web", [web_order(R(9_500_000 + i)) for i in range(n_serve)])

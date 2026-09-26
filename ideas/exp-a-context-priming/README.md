@@ -26,6 +26,7 @@ absolute residuals are optimistic. `../criu-box/` x4 repeats exp-a with real res
 | exp-a | priming set {real_bulk, real_bulk2 (A/A control), fps_bulk, schema_bulk, real_web, mixed} × K {25, 100, 400} × vCPU {1, 0.25}, + K=0 and reference K=1500; serve bulk | 20 |
 | exp-a-web | priming set {real_web, fps_web, real_bulk, mixed} × vCPU {1, 0.25}, K=100, + K=0, ref; serve web | 20 |
 | exp-a-mix | mixed at K {200, 800} (same bulk count as real_bulk K {100, 400}) × vCPU {1, 0.25} | 20 |
+| exp-a-fps2 | fps2 (low-cardinality integers kept) at K {25, 100, 400} × vCPU {1, 0.25} (bulk) and K=100 (web) | 20 |
 | exp-b | prime at {0.25, 1, 4} vCPU × K {100, 400} × JVM sizing {pinned to 1 CPU + SerialGC, default ergonomics}, serve at 0.25 vCPU | 20 |
 
 **Metric:** residual warm-up `R300 = Σ max(0, latency − C)` over the 300 served requests,
@@ -48,4 +49,7 @@ python3 analyze.py         # tables, ratios with CIs, results/*_curves.png
 ```
 
 `gen_inputs.py` also contains the format-preserving scrubber (`learn_categorical`,
-`scrub`) and writes a leakage audit to `inputs/fps_audit.json`.
+`scrub`) and writes a leakage audit to `inputs/fps_audit.json`. `src/Sig.java` prints each
+request's control-flow signature (every predicate `Fn.handle` branches on); comparing the
+signatures of real and scrubbed inputs is the path-equality check of
+`theory/DAG_SNAPSHOT_THEORY.md` Proposition 7 (`javac -d build -cp "build:lib/*" src/Sig.java`).

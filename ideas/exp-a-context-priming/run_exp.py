@@ -212,6 +212,21 @@ def design_exp_a_mix(reps):
     return [dict(s, rep=r) for s in specs for r in range(reps)]
 
 
+def design_exp_a_fps2(reps):
+    """Follow-up: fps2 (low-cardinality integers kept) reaches 100% / 98.7% identical
+    control-flow paths (src/Sig.java). Does it prime as well as real traffic?"""
+    specs = []
+    for q in (1.0, 0.25):
+        for K in (25, 100, 400):
+            specs.append(dict(name=f"a_q{q}_fps2_bulk_K{K}", prime="fps2_bulk", K=K, q_prime=q, q_serve=q,
+                              serve="serve_bulk"))
+        specs.append(dict(name=f"w_q{q}_fps2_web_K100", prime="fps2_web", K=100, q_prime=q, q_serve=q,
+                          serve="serve_web"))
+    for s in specs:
+        s.update(n_serve=300, settle_ms=1000, flags=BASE_FLAGS)
+    return [dict(s, rep=r) for s in specs for r in range(reps)]
+
+
 def design_exp_b(reps):
     """Prime on big, serve on small. All serving at 0.25 vCPU."""
     pinned = BASE_FLAGS + ["-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC"]
@@ -232,20 +247,25 @@ def design_exp_b(reps):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("exp", choices=["exp-a", "exp-a-web", "exp-a-mix", "exp-b"])
+    ap.add_argument("exp", choices=["exp-a", "exp-a-web", "exp-a-mix", "exp-a-fps2", "exp-b"])
     ap.add_argument("--reps", type=int, default=10)
     ap.add_argument("--slots", default="1,2,3", help="cpusets, one parallel worker each (exp-a*)")
     ap.add_argument("--only", default=None, help="substring filter on condition name")
     a = ap.parse_args()
 
     runs = {"exp-a": design_exp_a, "exp-a-web": design_exp_a_web, "exp-a-mix": design_exp_a_mix,
-            "exp-b": design_exp_b}[a.exp](a.reps)
+            "exp-a-fps2": design_exp_a_fps2, "exp-b": design_exp_b}[a.exp](a.reps)
     if a.only:
         runs = [r for r in runs if a.only in r["name"]]
     random.Random(42).shuffle(runs)                  # interleave conditions against drift
     out_dir = os.path.join(RES, "exp-a" if a.exp == "exp-a-mix" else a.exp)
-    os.makedirs(out_dir, exist_ok=True)
-    todo = [r for r in runs if not os.path.exists(os.path.join(out_dir, f"{r['name']}__r{r['rep']}.json"))]
+    if a.exp == "exp-a-fps2":
+        out_dir = None                               # per run: bulk -> exp-a, web -> exp-a-web
+    def odir(spec):
+        return out_dir or os.path.join(RES, "exp-a-web" if spec["name"].startswith("w_") else "exp-a")
+    for r in runs:
+        os.makedirs(odir(r), exist_ok=True)
+    todo = [r for r in runs if not os.path.exists(os.path.join(odir(r), f"{r['name']}__r{r['rep']}.json"))]
     print(f"{a.exp}: {len(runs)} runs, {len(todo)} to do", flush=True)
 
     if a.exp == "exp-b":
@@ -260,10 +280,10 @@ def main():
             i = free.pop()
         try:
             rec = one_run(spec, slots[i], f"fnexp{i}")
-            with open(os.path.join(out_dir, f"{spec['name']}__r{spec['rep']}.json"), "w") as f:
+            with open(os.path.join(odir(spec), f"{spec['name']}__r{spec['rep']}.json"), "w") as f:
                 json.dump(rec, f)
         except Exception as e:                       # record, never silently drop
-            with open(os.path.join(out_dir, f"{spec['name']}__r{spec['rep']}.err"), "w") as f:
+            with open(os.path.join(odir(spec), f"{spec['name']}__r{spec['rep']}.err"), "w") as f:
                 f.write(repr(e))
         finally:
             with lock:
