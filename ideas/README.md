@@ -13,6 +13,6 @@ Raw results are committed (`exp-a-context-priming/results/*/`, `sim/results/`). 
 inputs (74 MB) and the Jackson jars are not; the scripts recreate them deterministically.
 
 Standing rules followed (from `RESEARCH_PLAN.md` §9): every experiment has a control whose
-answer is known in advance (A/A priming set; closed-form chain latencies), n = 10 per cell
+answer is known in advance (A/A priming set; closed-form chain and fan-out latencies), n = 20 per cell
 with bootstrap CIs, negative results reported next to positive ones (per-edge snapshot
 variants: not worth it; re-warming: small in simulation).

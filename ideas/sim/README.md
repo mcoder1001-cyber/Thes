@@ -9,7 +9,7 @@
 | e1 | depth 1–8 Java chain, every stage missing keep-alive | `e1_cascade.csv/.png` |
 | e2 | speculation threshold θ on a saga and a router DAG, restore-ahead vs cold prewarm | `e2_speculation.csv/.png` |
 | e3 | per-edge snapshot variants vs one snapshot, as a function of the mis-priming penalty | `e3_context.csv` |
-| e4 / e4b | Azure 2021 trace (first 3 days, 68 workflows, 432,945 invocations), memory budgets 32 / 128 / 1024 GB | `e4_trace.csv`, `e4b_trace_gated.csv`, `e4_trace*.png` |
+| e4 / e4b | Azure 2021 trace (first 3 days, 68 workflows, 432,945 invocations), memory budgets 32 / 128 / 1024 GB | `e4_trace.csv`, `e4b_trace_gated.csv`, `e4_trace_bars.png` (plot_e4.py) |
 | e5 | sensitivity to restore time `r` and restore contention `β` | `e5_sensitivity.csv` |
 
 ```bash

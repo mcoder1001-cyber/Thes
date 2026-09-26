@@ -8,6 +8,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = os.path.join(HERE, "results")
@@ -22,33 +23,37 @@ COL = {"cold": "#9a9a9a", "keepalive": "#6b6b6b", "keepalive-60min": "#444444", 
        "snap": "#d1603d", "snap@ttl0": "#e8a48f", "ahead": "#2f7fbf", "ahead+rw": "#1f9e89",
        "ahead+rw/gated": "#0b5d4f", "ahead+rw@ttl0": "#8fd1c4"}
 budgets = sorted({int(r["budget_GB"]) for r in rows})
-fig, axs = plt.subplots(3, len(budgets), figsize=(4.2 * len(budgets), 9), sharey="row", squeeze=False)
+# one category list for every panel: the rows share a y axis, so each panel must place the
+# same policy at the same position (an earlier version used per-panel lists and mislabelled bars)
+present = {r["policy"] for r in rows}
+pols = [p for p in ORDER if p in present]
+fig, axs = plt.subplots(3, len(budgets), figsize=(4.4 * len(budgets), 9.5), sharey="row", squeeze=False)
 for j, M in enumerate(budgets):
     sub = {r["policy"]: r for r in rows if int(r["budget_GB"]) == M}
-    pols = [p for p in ORDER if p in sub]
     for i, (key, lab, scale) in enumerate((("after_idle_mean_ms", "mean latency after >10 min idle, s", 1e-3),
                                            ("p99_ms", "p99 latency, all invocations, s", 1e-3),
                                            (None, "sandbox starts per 1000 invocations", 1))):
         ax = axs[i][j]
-        if key:
-            vals = [float(sub[p][key]) * scale for p in pols]
-        else:
-            vals = [1000 * (int(sub[p]["cold_boots"]) + int(sub[p]["restores"])) / int(sub[p]["n"]) for p in pols]
-        ax.barh(range(len(pols)), vals, color=[COL[p] for p in pols])
+        for k, p in enumerate(pols):
+            if p not in sub:
+                continue
+            r = sub[p]
+            v = (float(r[key]) * scale if key else
+                 1000 * (int(r["cold_boots"]) + int(r["restores"])) / int(r["n"]))
+            ax.barh(k, v, color=COL[p])
+            extra = f"  ({float(r['avg_mem_GB']):.1f} GB)" if i == 0 else ""
+            ax.text(v, k, (f" {v:.2f}" if v < 10 else f" {v:.0f}") + extra, va="center", fontsize=7)
         ax.set_yticks(range(len(pols)))
         ax.set_yticklabels(pols, fontsize=8)
-        ax.invert_yaxis()
+        ax.set_ylim(len(pols) - 0.5, -0.5)
         ax.set_xscale("log")
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.grid(axis="x", alpha=.3)
-        for k, v in enumerate(vals):
-            extra = f"  ({float(sub[pols[k]]['avg_mem_GB']):.1f} GB)" if i == 0 else ""
-            ax.text(v, k, f" {v:.2f}{extra}" if v < 10 else f" {v:.0f}{extra}", va="center", fontsize=7)
         if i == 0:
             ax.set_title(f"memory budget {M} GB", fontsize=10)
-        if j == 0:
-            ax.set_ylabel("")
         ax.set_xlabel(lab, fontsize=8)
-fig.suptitle("Azure 2021 trace, 3 days, 68 workflows: (GB) = average resident memory", fontsize=10)
+fig.suptitle("Azure 2021 trace, first 3 days, 68 workflows, 432,945 invocations; "
+             "(GB) = average resident memory; empty row = policy not run at that budget", fontsize=9)
 fig.tight_layout()
 fig.savefig(os.path.join(R, "e4_trace_bars.png"), dpi=150)
 print("wrote e4_trace_bars.png")

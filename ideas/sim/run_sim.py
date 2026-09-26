@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Experiments on dagsim. Every experiment writes a CSV to results/ and a figure.
 
-  e0  controls: closed-form latencies of a deterministic chain (known in advance)
+  e0  controls: closed-form latencies of deterministic chains and a fan-out DAG (known in advance)
   e1  cascade collapse: isolated workflow invocation, depth 1..8, per policy
   e2  branch speculation: latency vs memory as the speculation threshold varies
   e3  context-keyed snapshots on the router DAG (R_mis from exp-a)
   e4  trace-driven: Azure 2021 arrivals, 68 workflows, 3 days, several memory budgets
+  e4b the gated restore-ahead variant on the same trace (figure: plot_e4.py)
   e5  sensitivity: restore time r and restore contention beta
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
@@ -268,26 +269,7 @@ def e4(days=3, budgets_gb=(32, 128, 1024), policies=None, out="e4_trace.csv"):
                "n_after_idle", "after_idle_mean_ms", "after_idle_p50_ms", "after_idle_p99_ms", "hot_mean_ms",
                "avg_mem_GB", "avg_idle_mem_GB", "cold_boots", "restores", "ahead_started",
                "ahead_unused", "overflow", "evictions"])
-    if plt and not policies:
-        fig, axs = plt.subplots(1, 2, figsize=(11, 4))
-        for ax, (col, lab) in zip(axs, ((8, "mean latency of invocations after >10 min idle, s"),
-                                        (5, "p99 latency, all invocations, s"))):
-            for r in rows:
-                pn = r[1]
-                base = pn.split("@")[0].replace("-60min", "")
-                c = COL.get(base, "#444")
-                mk = {32: "v", 128: "s", 1024: "o"}[r[0]]
-                ax.scatter(r[12], r[col] / 1000, color=c, marker=mk, s=40,
-                           facecolors="none" if "@ttl0" in pn else c)
-                ax.annotate(pn, (r[12], r[col] / 1000), fontsize=6, xytext=(3, 2), textcoords="offset points")
-            ax.set_xscale("log")
-            ax.set_yscale("log")
-            ax.set_xlabel("average resident memory on host, GB (log)")
-            ax.set_ylabel(lab)
-            ax.grid(alpha=.3)
-        axs[0].set_title("markers: ▼ 32 GB, ■ 128 GB, ● 1 TB budget; hollow = no keep-alive", fontsize=8)
-        fig.tight_layout()
-        fig.savefig(os.path.join(OUT, "e4_trace.png"), dpi=150)
+    # figure: plot_e4.py (per-budget bars; reads e4_trace.csv and e4b_trace_gated.csv)
     return rows
 
 
@@ -312,6 +294,6 @@ def e5():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e4"]
+    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e4", "e4b"]
     for w in which:
         globals()[w]()

@@ -23,10 +23,10 @@ absolute residuals are optimistic. `../criu-box/` x4 repeats exp-a with real res
 
 | design | factors | n |
 |---|---|---|
-| exp-a | priming set {real_bulk, real_bulk2 (A/A control), fps_bulk, schema_bulk, real_web, mixed} × K {25, 100, 400} × vCPU {1, 0.25}, + K=0 and reference K=1500; serve bulk | 10 |
-| exp-a-web | priming set {real_web, fps_web, real_bulk, mixed} × vCPU {1, 0.25}, K=100, + K=0, ref; serve web | 10 |
-| exp-a-mix | mixed at K {200, 800} (same bulk count as real_bulk K {100, 400}) × vCPU {1, 0.25} | 10 |
-| exp-b | prime at {0.25, 1, 4} vCPU × K {100, 400} × JVM sizing {pinned to 1 CPU + SerialGC, default ergonomics}, serve at 0.25 vCPU | 10 |
+| exp-a | priming set {real_bulk, real_bulk2 (A/A control), fps_bulk, schema_bulk, real_web, mixed} × K {25, 100, 400} × vCPU {1, 0.25}, + K=0 and reference K=1500; serve bulk | 20 |
+| exp-a-web | priming set {real_web, fps_web, real_bulk, mixed} × vCPU {1, 0.25}, K=100, + K=0, ref; serve web | 20 |
+| exp-a-mix | mixed at K {200, 800} (same bulk count as real_bulk K {100, 400}) × vCPU {1, 0.25} | 20 |
+| exp-b | prime at {0.25, 1, 4} vCPU × K {100, 400} × JVM sizing {pinned to 1 CPU + SerialGC, default ergonomics}, serve at 0.25 vCPU | 20 |
 
 **Metric:** residual warm-up `R300 = Σ max(0, latency − C)` over the 300 served requests,
 with `C` the steady-state latency (median of the last 200 requests of the reference
@@ -35,15 +35,15 @@ runs.
 
 **Controls:** `real_bulk2` is the same distribution as `real_bulk` with a different seed, so
 its ratio must be ~1; K=0 and K=1500 bracket the range. Conditions are shuffled across the
-run order; 3 parallel workers are pinned to separate cores, the harness and simulator to core 0. exp-b needs all four cores and ran alone. 8 exp-b runs that overlapped with a
-simulator process were deleted and re-run.
+run order; 3 parallel workers are pinned to separate cores, the harness and simulator to core 0. exp-b needs all four cores and ran alone. exp-b runs that overlapped with a
+simulator or plotting process (15 in total) were deleted and re-run.
 
 ## Reproduce
 
 ```bash
 ./fetch_deps.sh            # Jackson 2.17.2 + javac
 python3 gen_inputs.py      # deterministic; ~74 MB of JSON lines in inputs/
-sudo ./run_all.sh          # resumable; ~60 min on 4 cores
+sudo ./run_all.sh          # resumable; ~2 h on 4 cores
 python3 analyze.py         # tables, ratios with CIs, results/*_curves.png
 ```
 
