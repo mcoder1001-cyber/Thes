@@ -1,0 +1,16 @@
+{
+ "categorical": [
+  ".channel",
+  ".currency",
+  ".customer.tags[]",
+  ".items[].kind",
+  ".items[].origin",
+  ".items[].plan",
+  ".items[].title",
+  ".meta.priority",
+  ".ship.city",
+  ".ship.country"
+ ],
+ "scrubbed_strings": 149402,
+ "collisions": 28
+}

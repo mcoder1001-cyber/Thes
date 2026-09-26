@@ -1,0 +1,6 @@
+# regenerable: fetch_deps.sh / gen_inputs.py / javac
+exp-a-context-priming/lib/*.jar
+exp-a-context-priming/build/
+exp-a-context-priming/inputs/*.jsonl
+criu-box/build/
+__pycache__/

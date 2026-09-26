@@ -184,3 +184,39 @@ Ordered by how much it matters to *this* thesis, not by date.
 
 *automatic priming*, *priming depth*, *checkpoint point selection*, *snapshot staleness*,
 *JIT warm-up serverless*, *tiered compilation cold start*.
+
+---
+
+## Added 2026-09-26 — found while developing `ideas/IDEAS.md`
+
+**Read #29 before anything else in this list: it overlaps the "depth is unswept" claim.**
+
+### 29. Pronghorn: Effective Checkpoint Orchestration for Serverless Hot-Starts 💰
+* **EuroSys '24** · Kohli, Kharbanda, Bruno, Carreira, Fonseca · DOI `10.1145/3627703.3629556`
+* Slides: https://www.dpss.inesc-id.pt/~rbruno/papers/skohli-eurosys24-slides.pdf
+* A snapshot orchestrator that "monitors function performance and decides **when to take a
+  snapshot and which snapshot to use**" for JIT runtimes; OpenJDK 17 + CRIU, PyPy. 37.2%
+  median latency improvement over state-of-the-art checkpointing policies. **This answers
+  "how many requests before checkpointing" for single functions.** Rodrigo Bruno is also
+  on CloudJIT [4] of the proposal. Single-function only: no DAG, no CPU-allocation axis,
+  no treatment of user data in snapshots (unverified; ACM DL was not reachable).
+
+### 30. Fireworks: A Fast, Efficient, and Safe Serverless Framework using VM-level post-JIT Snapshot 💰
+* **EuroSys '22** · Shin, Kim, Min · DOI `10.1145/3492321.3519581`
+* Snapshots a microVM **after JIT compilation** of the function. Prior art for "deep"
+  snapshots.
+
+### 31. Snapipeline: Accelerating Snapshot Startup for FaaS Containers 💰
+* **SoCC '24** · Lan, Peng, Wang · DOI `10.1145/3698038.3698513`
+* CRIU-family: pipelines decompression, hot-page restore and execution *within one restore*
+  (userfaultfd). Composes with restore-ahead, which pipelines restores *across DAG stages*.
+
+### 32. Faast: An Efficient Serverless Framework Made Snapshot-based Function Response Fast 💰
+* **HPDC '24** · DOI `10.1145/3625549.3658681`
+* Observes snapshot restore overhead varies with **function inputs**; builds a lightweight
+  working set. Related to the input-dependence finding in `ideas/` exp-a.
+
+### 33. JEP 515: Ahead-of-Time Method Profiling (JDK 25) 🆓
+* https://openjdk.org/jeps/515 — stores method profiles from a training run in the AOT cache
+  so the JIT compiles immediately at startup. **A no-snapshot competitor to deep snapshots
+  on the JVM**, the same role `-XX:TieredStopAtLevel=3` plays in S6. Belongs in the evaluation.
