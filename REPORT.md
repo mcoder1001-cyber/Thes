@@ -257,9 +257,9 @@ writing code.
 - Built CRIU 4.2 from source. It **cannot run here**: this VM's kernel lacks a system call CRIU
   needs (`kcmp`). So snapshots were *emulated*: a process that has served K requests stands in
   for a depth-K snapshot. This is exact for comparing warm-up methods, but excludes restore time.
-- Wrote a realistic Java function (Jackson JSON, BigDecimal, regex) and ran it
-  CPU limits (0.25, 1 and 4 vCPU), 20 runs per condition, each with a control whose answer is
-  known in advance:
+- Wrote a realistic Java function (Jackson JSON, BigDecimal, regex) and ran it under
+  CPU limits (0.25, 1 and 4 vCPU): **1,600 runs**, 20 per condition, each experiment with a
+  control whose answer is known in advance:
   - **scrubbed warm-up is as good as real traffic**: 0.98–1.11×, every confidence interval
     includes 1;
   - warming on the wrong edge's traffic is 1.3–2.6× worse; warming on a mix of all edges with
