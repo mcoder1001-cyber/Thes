@@ -10,6 +10,7 @@ step, how to build it, and what has been done so far. Written 2026-09-26.*
 | file | what it is | read it when |
 |---|---|---|
 | **`REPORT.md`** (this file) | the whole story in simple English | first |
+| `ROADMAP.md` | tools to install and build, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs | you need the exact statements and proofs |
 | `theory/verify_dag.py` | a program that checks every theorem (44/44 pass) | you want to see the proofs checked by computer |
 | `ideas/IDEAS.md` | the evidence: experiments, simulations, numbers, novelty check | you need a number or a source |
