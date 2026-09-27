@@ -229,7 +229,7 @@ next stage until it passes). Times are rough estimates for one person, full time
   - depth per stage from Theorem 7's DP (step A3), including "no snapshot" for dominated and hidden stages and the image's storage tier (Corollary 7.3; measure real image sizes first, since e6 assumes them);
   - the memory guard under a burst of cold workflows (sim e7a predicts no over-budget starts, still faster than on-demand);
   - the planner under a tight budget on a DAG like `ALGORITHM.md` §5's example (predicted: guard 1.93 s, planned 1.29 s).
-- **In the simulator, before or alongside:** e8, workflow-level keep-alive (Proposition 9) vs per-function keep-alive on the Azure trace.
+- **In the simulator (done, e8):** per-function GDSF keep-alive beats LRU; whole-workflow eviction (Proposition 9) loses. Use GDSF in the orchestrator's keep-alive.
 - **Output:** one experiment per theorem, each with its control.
 - **Exit:** each theorem's prediction matches the measurement within its confidence interval, or the difference is explained.
 

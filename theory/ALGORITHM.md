@@ -95,7 +95,7 @@ neighbouring problem:
 | choose modes, no cap | **discrete time–cost trade-off** (DTCTP) | strongly NP-hard on general DAGs (De et al. 1997); solvable by series/parallel reduction on SP DAGs (Demeulemeester et al. 1996) | Theorem 7: exact `(storage, W, P)` DP on SP DAGs; Corollary 7.3 for prices and SLOs. Chains with prices are Costless's constrained shortest path, but look-ahead latency is not a sum, hence `(W, P)` |
 | cap, equal chain | RCPSP/max, special structure | closed form | Theorem 8(b), **now shown optimal** (A3) |
 | cap, general | **RCPSP/max, one resource** | NP-hard in the strong sense: with `r = 0`, `δ = 0`, `m_v = 1`, it is `P\|prec\|C_max` (Ullman 1975) | exact branch and bound (§3) for small DAGs; the memory guard (Theorem 8(c)) as an online list-scheduling heuristic |
-| keep-alive between invocations (a neighbouring problem) | online weighted caching (GreedyDual-Size, GDSF) | online | Theorem 6 + Proposition 9 (§7): under look-ahead, the value of warm sandboxes is **not per function** |
+| keep-alive between invocations (a neighbouring problem) | online weighted caching (GreedyDual-Size, GDSF) | online | Theorem 6 + Proposition 9 (§7): for a cold arrival, a warm sandbox's value is not per function; as an eviction policy this loses in simulation (e8), so per-function GDSF is used |
 
 **What is ours and what is not.** The problem class, the branch and bound and the heuristics
 are textbook OR. What is ours: the modelling (Lemma A1 turns a snapshot-restoring workflow
@@ -157,7 +157,8 @@ it.
 
 ## 4. The algorithm
 
-Four parts. Parts 2 and 4 are new relative to the policy already in `DAG_SNAPSHOT_THEORY.md` §0.
+Four parts. Part 2 is new relative to the policy already in `DAG_SNAPSHOT_THEORY.md` §0; part 4
+is existing work (FaasCache/CIDRE), chosen by experiment e8.
 
 **Algorithm 1: BUILD (per function, on each deploy; no user data)**
 ```
@@ -200,11 +201,11 @@ Theorem 8(c) guarantees: never over the cap, and no deadlock.
 
 **Algorithm 4: KEEP-ALIVE (between invocations)**
 ```
-unit of eviction = a workflow's "top set" (Proposition 9), not a single function
-priority (GDSF) = clock + frequency × saving / memory of the top set
-saving = L*(nothing warm) − L*(top set warm)          (Proposition 9's formula)
+evict idle sandboxes per function by GreedyDual-Size-Frequency (FaasCache / CIDRE):
+priority = clock + frequency × restore cost / memory
 ```
-Not yet simulated. `ideas/sim` still uses per-function keep-alive.
+The workflow-level eviction that Proposition 9 suggests was tried in the simulator (e8, §7)
+and **loses**; per-function GDSF wins.
 
 ---
 
@@ -292,14 +293,34 @@ A per-function policy thinks the entry alone saves 650 ms. It saves 77 ms: the n
 restore is now the long pole. **Control:** the per-function valuation overstates the saving
 for 99% of stages on random DAGs.
 
-*What this means.*
-- Keep-alive memory should go to **whole workflows** (or their top sets). Stray warm stages
-  are nearly worthless once look-ahead exists. This is where look-ahead and keep-alive stop
-  competing for memory (the e7b problem): spend keep-alive memory on the few busy workflows
-  kept fully warm, and let look-ahead serve the rest.
-- The gate "if the entry is warm, do nothing" (Lemma 5) is lossless only when warm sets are
-  whole workflows. Algorithm 2's step 1 is the general form: plan with the warm stages as
-  `r = 0`.
+*What this means, and what the simulator says (e8).* Proposition 9 is exact for a **cold**
+arrival that look-ahead serves. So it suggested evicting whole workflows instead of single
+functions. `ideas/sim` e8 tested that on the Azure trace at 16, 24, 32 and 48 GB:
+
+| policy (24 GB, Azure trace, 433k invocations) | mean | p99 | cold-workflow mean | over-budget starts | restores |
+|---|---|---|---|---|---|
+| look-ahead + per-function LRU (today's default) | 267 ms | 1343 ms | 814 ms | 1,838 | 140k |
+| look-ahead + **per-function GDSF** (FaasCache/CIDRE) | **258 ms** | **1193 ms** | 817 ms | **1,081** | 144k |
+| look-ahead + whole-workflow eviction (Prop. 9) | 295 ms | 1759 ms | 822 ms | 8,529 | 178k |
+| look-ahead + workflow priority, evict only what is needed, tail stages first | 276 ms | 1475 ms | 817 ms | 3,014 | 149k |
+| look-ahead + LRU + "all stages" gate | 266 ms | 1220 ms | 815 ms | 2,339 | 158k |
+
+- **Keep-alive does not change cold workflows** (~0.81 s under every policy): nothing of theirs
+  is warm anyway. It only changes the *hot* traffic.
+- **Whole-workflow eviction is worse.** It does cut arrivals that find a workflow partly warm
+  (17.7k → 2.7k), but it throws away more warm sandboxes than needed: 27% more restores and
+  4.6× more over-budget starts. Evicting only what is needed, tail stages first, is better
+  but still behind LRU at 16–24 GB, and equal at 32–48 GB.
+- **Why the proposition does not transfer.** Most arrivals are *hot* (the workflow ran within 10
+  minutes). The gate then skips look-ahead, so a missing stage is restored on demand and costs
+  its **full** restore time. For hot traffic, the per-function valuation is the right one.
+- **Per-function GDSF is the best keep-alive**, modestly: at 24 GB, mean −3%, p99 −11%, and 41%
+  fewer over-budget starts than LRU. It helps on-demand restore too (mean −7%). This is
+  existing work (FaasCache, CIDRE), and the thesis adopts it rather than claiming it.
+- Proposition 9 stays as a statement about cold arrivals. It is also why the simple entry gate
+  (Lemma 5) is only approximate: a partly warm workflow still benefits from look-ahead for its
+  cold stages. Planning with warm stages as `r = 0` (Algorithm 2, step 1) is the general form.
+  The "all stages" gate helps p99 a little (1220 vs 1343 ms) at the cost of more restores.
 
 ---
 

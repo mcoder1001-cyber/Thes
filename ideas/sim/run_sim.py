@@ -11,6 +11,8 @@
   e6  which stages are worth a snapshot, in latency and money (e6_cost.py; exact model)
   e7  memory overload: look-ahead's higher peak (Theorem 8) and the preemption guard --
       e7a a burst of cold workflows under a hard budget, e7b the Azure trace at tight budgets
+  e8  keep-alive under look-ahead (theory/ALGORITHM.md Proposition 9): per-function LRU and
+      GDSF eviction vs evicting whole workflows, on the Azure trace at tight budgets
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
 """
@@ -308,19 +310,32 @@ def e7a(W=16, seeds=20, budgets_gb=(4, 8, 16, 32, 64)):
     return rows
 
 
+def _policy(pn):
+    """'<base>' or '<base>|opt,opt,...' with opts guard (preemption), noevict, h=<headroom>,
+    keep=<lru|gdsf|wf>, gateall."""
+    if pn in POLICIES:
+        return POLICIES[pn]
+    base, spec = pn.split("|")
+    kw = dict(name=pn)
+    for part in spec.split(","):
+        if part == "guard":
+            kw["preempt"] = True
+        elif part == "noevict":
+            kw["ahead_evicts"] = False
+        elif part.startswith("h="):
+            kw["headroom"] = float(part[2:])
+        elif part.startswith("keep="):
+            kw["keep"] = part[5:]
+        elif part == "gateall":
+            kw["gate_all"] = True
+        else:
+            raise ValueError(part)
+    return replace(POLICIES[base], **kw)
+
+
 def _trace_row(args):
     M, pn, days = args
-    if pn in POLICIES:
-        pol = POLICIES[pn]
-    else:                       # "<base>|guard[,noevict][,h=0.1]": the base policy plus the memory guard
-        base, spec = pn.split("|")
-        kw = dict(preempt=True, name=pn)
-        for part in spec.split(",")[1:]:
-            if part == "noevict":
-                kw["ahead_evicts"] = False
-            elif part.startswith("h="):
-                kw["headroom"] = float(part[2:])
-        pol = replace(POLICIES[base], **kw)
+    pol = _policy(pn)
     arr = load_arrivals(days)
     apps = sorted({a for _, a in arr})
     dags = {a: TEMPLATES[a % len(TEMPLATES)][1](f"app{a}") for a in apps}
@@ -363,6 +378,56 @@ def e7b(days=3, budgets_gb=(16, 24, 32)):
     return rows
 
 
+def _e8_row(args):
+    M, pn, days = args
+    pol = _policy(pn)
+    arr = load_arrivals(days)
+    apps = sorted({a for _, a in arr})
+    dags = {a: TEMPLATES[a % len(TEMPLATES)][1](f"app{a}") for a in apps}
+    last, gap = {}, []
+    for t, a in arr:
+        gap.append(t - last[a] if a in last else math.inf)
+        last[a] = t
+    t0 = time.time()
+    sim = Sim(pol, mem_budget_mb=M * 1024, seed=1)
+    for t, a in arr:
+        sim.invoke(t, dags[a], a)
+    sim.run()
+    key = {(w, t): lat for w, _, t, lat in sim.results}
+    lats = [key[(a, t)] for t, a in arr if (a, t) in key]
+    gaps = [g for (t, a), g in zip(arr, gap) if (a, t) in key]
+    miss = [l for l, g in zip(lats, gaps) if g > 600_000]
+    hot = [l for l, g in zip(lats, gaps) if g <= 600_000]
+    return (M, pn, len(lats), statistics.mean(lats), pct(lats, .5), pct(lats, .99),
+            len(miss), statistics.mean(miss), pct(miss, .99), statistics.mean(hot), pct(hot, .99),
+            sim.stats["partial_warm"], sim.stats["evictions"], sim.stats["restores"],
+            sim.stats["overflow"], sim.over_memtime / 1024 / 1000, time.time() - t0)
+
+
+def e8(days=3, budgets_gb=(16, 24, 32, 48), pols=None):
+    """Keep-alive under look-ahead (Proposition 9). Same trace as e4/e7b, budgets below and near
+    its working set (~50 GB), where eviction decides what stays warm. On-demand baselines with
+    LRU and with GDSF (FaasCache-style); the recommended look-ahead policy with LRU, GDSF, and
+    workflow-level eviction ('wf'), each also with the all-stages gate."""
+    from multiprocessing import Pool
+    print(f"e8: keep-alive under look-ahead, Azure 2021 trace, first {days} days")
+    R = "ahead+rw/gated/jit/guard"
+    pols = pols or ["snap", "snap|keep=gdsf", R, R + "|keep=gdsf", R + "|keep=wf", R + "|gateall",
+            R + "|keep=wf,gateall", R + "|keep=wfp", R + "|keep=wfp,gateall"]
+    jobs = [(M, pn, days) for M in budgets_gb for pn in pols]
+    with Pool(int(os.environ.get("SIM_PROCS", "3"))) as pool:
+        rows = pool.map(_e8_row, jobs)
+    for r in rows:
+        print(f"   M={r[0]:>3}GB {r[1]:40s} mean {r[3]:5.0f} p99 {r[5]:5.0f} | after-idle n={r[6]} mean {r[7]:5.0f} "
+              f"p99 {r[8]:5.0f} | hot mean {r[9]:5.0f} p99 {r[10]:5.0f} | partial-warm {r[11]:5d} | "
+              f"evictions {r[12]:6d} restores {r[13]:6d} overflow {r[14]:5d} ({r[16]:.0f}s)", flush=True)
+    write_csv("e8_keepalive.csv", [r[:-1] for r in rows],
+              ["budget_GB", "policy", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
+               "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "partial_warm_arrivals",
+               "evictions", "restores", "overflow", "over_budget_GBs"])
+    return rows
+
+
 def e6():
     import e6_cost
     e6_cost.main()
@@ -388,6 +453,6 @@ def e5():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b"]
+    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b", "e8"]
     for w in which:
         globals()[w]()

@@ -227,6 +227,17 @@ class Policy:
     preempt: bool = False
     headroom: float = 0.0
     ahead_evicts: bool = True       # may an ahead restore evict other workflows' idle sandboxes?
+    # keep-alive eviction under memory pressure (e8, theory/ALGORITHM.md Proposition 9):
+    #   "lru"  least recently used idle sandbox first (OpenWhisk-like; the default)
+    #   "gdsf" per function, GreedyDual-Size-Frequency (FaasCache/CIDRE): priority =
+    #          clock + freq * cost / memory, cost = the function's own restore (or cold) time
+    #   "wf"   per WORKFLOW: the unit is all of a workflow's idle sandboxes, priority =
+    #          clock + freq * saving / memory, saving = look-ahead latency with nothing warm
+    #          minus with everything warm (under look-ahead a partly warm workflow saves little)
+    #   "wfp"  the same workflow priority, but evict only as many sandboxes as needed, the
+    #          stage with the smallest r_v + l(v) first (the top-set order of Proposition 9)
+    keep: str = "lru"
+    gate_all: bool = False          # gate: skip planning only if EVERY stage has a live sandbox
 
 
 POLICIES = {
@@ -299,6 +310,32 @@ def rewarm_residual(R, C, slack, rho):
         i += 1
 
 
+def _group(fn):
+    """Workflow a function belongs to: functions are named '<workflow tag>.<stage>'."""
+    return fn.split(".", 1)[0]
+
+
+def wf_saving(dag: DAG, p: Policy):
+    """Proposition 9 on a dagsim DAG: look-ahead latency with nothing warm minus with every
+    stage warm, and the memory the whole workflow holds. Stages reached with probability below
+    theta are left out; branches are treated as if all taken (an upper bound on the path)."""
+    pr, preds = dag.reach_prob(), dag.preds()
+    live = [n for n in dag.topo() if pr[n] >= p.theta]
+    ell_w, ell_c = {}, {}
+    for n in reversed(live):
+        node = dag.nodes[n]
+        outs = [x for x in list(node.succ) + [y for _, alt in (node.choice or []) for y in alt] if x in ell_w]
+        prov_w = node.prof.RK if p.snap else node.prof.B
+        ell_w[n] = node.prof.C + max((EDGE_MS + ell_w[x] for x in outs), default=0.0)
+        ell_c[n] = node.prof.C + prov_w + max((EDGE_MS + ell_c[x] for x in outs), default=0.0)
+    prov = {n: (dag.nodes[n].prof.r if p.snap else dag.nodes[n].prof.A) for n in live}
+    cold = max(prov[n] + ell_c[n] for n in live)
+    warm = ell_w[dag.entry]
+    size = sum(dag.nodes[n].prof.m for n in live)
+    rank = {dag.nodes[n].fn: prov[n] + ell_c[n] for n in live}
+    return max(0.0, cold - warm), size, rank
+
+
 # ============================================================ simulator
 class Sim:
     def __init__(self, policy: Policy, mem_budget_mb: float = 64_000, restore_beta: float = 0.0,
@@ -322,8 +359,13 @@ class Sim:
         self.stats = dict(cold_boots=0, restores=0, ahead_started=0, ahead_unused=0,
                           warm_hits=0, overflow=0, rewarm_ms=0.0, ctx_miss=0, evictions=0,
                           preempted=0)
+        self.stats["partial_warm"] = 0  # arrivals whose entry is live but some stage has no sandbox
         self.peak_mem = 0.0
         self.over_memtime = 0.0     # MB*ms spent above the budget (demand overflow)
+        self.clock = 0.0            # GreedyDual clock (keep="gdsf" / "wf")
+        self.freq, self.base = {}, {}
+        self.wf_saving, self.wf_size = {}, {}
+        self.fn_rank = {}           # r_v + l(v) per function (keep="wfp")
         self.inv = {}
         self.ninv = 0
         self.wcount = {}
@@ -387,11 +429,40 @@ class Sim:
 
     def _evict(self, amount):
         idle = [s for lst in self.sb.values() for s in lst if s.state == IDLE and s.reserved is None]
-        idle.sort(key=lambda s: s.last_used)
         freed = 0.0
+        if self.p.keep in ("wf", "wfp"):
+            groups = {}
+            for s in idle:
+                groups.setdefault(_group(s.fn), []).append(s)
+
+            def H(g):
+                return self.base.get(g, 0.0) + self.freq.get(g, 0) * self.wf_saving.get(g, 0.0) / self.wf_size.get(g, 1.0)
+            for g in sorted(groups, key=H):
+                if freed >= amount:
+                    break
+                self.clock = max(self.clock, H(g))
+                grp = groups[g]
+                if self.p.keep == "wfp":
+                    grp = sorted(grp, key=lambda s: self.fn_rank.get(s.fn, 0.0))
+                for s in grp:
+                    if self.p.keep == "wfp" and freed >= amount:
+                        break
+                    freed += s.prof.m
+                    self._kill(s)
+                    self.stats["evictions"] += 1
+            return
+        if self.p.keep == "gdsf":
+            def H(s):
+                cost = (s.prof.r + s.prof.RK) if self.p.snap else (s.prof.A + s.prof.B)
+                return self.base.get(s.fn, 0.0) + self.freq.get(s.fn, 0) * cost / s.prof.m
+            idle.sort(key=lambda s: (H(s), s.last_used))
+        else:
+            idle.sort(key=lambda s: s.last_used)
         for s in idle:
             if freed >= amount:
                 break
+            if self.p.keep == "gdsf":
+                self.clock = max(self.clock, H(s))
             freed += s.prof.m
             self._kill(s)
             self.stats["evictions"] += 1
@@ -437,9 +508,27 @@ class Sim:
         st = dict(dag=dag, wid=wid, t0=self.now, done=set(), skipped=set(), started=set(),
                   draws=draws, ctx={}, preds=dag.preds(), fin={})
         self.inv[iid] = st
-        if self.p.ahead and not (self.p.gate and self.sb.get(dag.nodes[dag.entry].fn)):
+        self._touch(dag, wid)
+        entry_live = bool(self.sb.get(dag.nodes[dag.entry].fn))
+        pr = dag.reach_prob()
+        all_live = all(self.sb.get(dag.nodes[n].fn) for n in dag.nodes if pr[n] >= self.p.theta)
+        if entry_live and not all_live:
+            self.stats["partial_warm"] += 1
+        skip = all_live if self.p.gate_all else entry_live
+        if self.p.ahead and not (self.p.gate and skip):
             self._plan_ahead(iid)
         self._start_node(iid, dag.entry)
+
+    def _touch(self, dag, wid):
+        """Record an access for the GreedyDual priorities (per function and per workflow)."""
+        g = _group(dag.nodes[dag.entry].fn)
+        if g not in self.wf_saving:
+            self.wf_saving[g], self.wf_size[g], rank = wf_saving(dag, self.p)
+            for fn, v in rank.items():
+                self.fn_rank[fn] = max(self.fn_rank.get(fn, 0.0), v)
+        for key in {g} | {n.fn for n in dag.nodes.values()}:
+            self.freq[key] = self.freq.get(key, 0) + 1
+            self.base[key] = self.clock
 
     def _plan_ahead(self, iid):
         """At workflow arrival: for every downstream node, schedule a restore (or cold

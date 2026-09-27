@@ -25,6 +25,8 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 | file | what it is | read it when |
 |---|---|---|
 | **`REPORT.md`** (this file) | the whole story in simple English | first |
+| `DEFINITIONS.md` | every term and symbol, defined once, on one running example | a word or symbol is unclear |
+| `PROFESSOR_REPORT.md` / `.pdf` | a 3-page high-level summary for your supervisor | you present the work |
 | `ROADMAP.md` | tools, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs (§0 is a one-page summary) | you need exact statements and proofs |
 | `theory/ALGORITHM.md` | **the algorithm**, and the known OR problem it solves (project scheduling) | you need the algorithm, or the "which known problem is it" answer |
@@ -222,9 +224,11 @@ done.
 - Fire the restore for each stage at τ, run each stage when its input arrives, and release the
   sandboxes of branches not taken.
 
-**B6. Keep-alive afterwards.** Under look-ahead, keeping *one* stage of a workflow warm is worth
-little: the next stage's restore becomes the long pole (Proposition 9: in a 5-stage Java chain,
-the entry alone saves 77 ms, all five save 650 ms). So keep whole workflows warm, or none.
+**B6. Keep-alive afterwards.** Keep idle sandboxes as usual. When memory is short, evict by
+GreedyDual-Size-Frequency per function (FaasCache/CIDRE): at 24 GB on the Azure trace it gives
+3% lower mean latency, 11% lower p99 and 41% fewer over-budget starts than LRU (`ideas/sim` e8).
+Evicting whole workflows at a time, which Proposition 9 suggested, was tested and is worse
+(`theory/ALGORITHM.md` §7).
 
 ---
 
