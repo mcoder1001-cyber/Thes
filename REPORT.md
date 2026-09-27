@@ -27,6 +27,7 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 | **`REPORT.md`** (this file) | the whole story in simple English | first |
 | `DEFINITIONS.md` | every term and symbol, defined once, on one running example | a word or symbol is unclear |
 | `PROFESSOR_REPORT.md` / `.pdf` | a 3-page high-level summary for your supervisor | you present the work |
+| `figures/` | the 8 thesis figures (PDF for LaTeX, PNG for slides) with draft captions; `make_figures.py` redraws them | you write the thesis or slides |
 | `ROADMAP.md` | tools, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs (§0 is a one-page summary) | you need exact statements and proofs |
 | `theory/ALGORITHM.md` | **the algorithm**, and the known OR problem it solves (project scheduling) | you need the algorithm, or the "which known problem is it" answer |
