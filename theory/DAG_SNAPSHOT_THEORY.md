@@ -47,7 +47,8 @@ Supporting results:
   per-function GDSF does.
 
 **Evidence.** On the Azure 2021 trace (simulated, `ideas/sim` e4/e4b), cold workflows go from
-2.34 s to **0.82 s** mean and from 6.2 s to **1.36 s** p99, at equal memory. `verify_dag.py`
+2.34 s to **0.81 s** mean and from 6.2 s to **1.25 s** p99, at equal memory (the final policy of
+`ALGORITHM.md`; `ideas/sim` e10). `verify_dag.py`
 checks every result.
 
 **The policy** (what the platform does), in the order it runs:

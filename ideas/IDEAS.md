@@ -55,7 +55,7 @@ written for the CRIU box but not yet run (`criu-box/`, see §6 for why).
 
 | what the DAG knows | idea | evidence | verdict |
 |---|---|---|---|
-| **when** each downstream stage will be needed | **1. Restore-ahead**: restore all downstream stages in parallel at workflow entry | [simulated] 2.3–4.3× over restore-on-demand at depth 3–8 (closed-form controls 26/26); on the Azure trace, cold-workflow invocations 2.3 s → 0.82 s mean, 6.2 s → 1.4 s p99, at the same memory and restore count as restore-on-demand (gated variant) | **lead idea** |
+| **when** each downstream stage will be needed | **1. Restore-ahead**: restore all downstream stages in parallel at workflow entry | [simulated] 2.3–4.3× over restore-on-demand at depth 3–8 (closed-form controls 26/26); on the Azure trace, cold-workflow invocations 2.3 s → 0.81 s mean, 6.2 s → 1.25 s p99, at the same memory and restore count as restore-on-demand (final policy, e10) | **lead idea** |
 | **which branches** may run | 1b. Speculative restores on branches | [simulated] full speculation on a saga: p99 4.7 s → 1.3 s for +1.5 GB·s per invocation, less than half the memory-time of a plain cold start | part of 1 |
 | **what the inputs look like** (it carries every inter-stage message) | **2. Scrubbed priming**: prime deep snapshots on format-preserving scrubs of real edge traffic, so no user data enters the image | [measured, n = 20] residual warm-up 0.98–1.11× of real-traffic priming (all 8 CIs span 1), vs 1.02–1.31× for naive synthetic inputs | **dropped (2026-09-26): it reads users' inputs** |
 | **which edges** feed a stage, and how big their messages are | 3. Coverage-aware priming (not per-edge snapshots) | [measured, n = 20] light-edge priming costs 1.3–2.6× on the heavy edge, but heavy-edge priming *beats* the right edge on the light one (0.86–0.87×), and a mix with as many heavy requests beats the right edge alone (0.80–0.89×); depth should be counted in work, not requests | **dropped as a mechanism; its measurements give the rule "test requests must cover every kind of call" and "depth is work"** |
@@ -160,6 +160,7 @@ Memory budget 128 GB (not binding; 1 TB gives identical numbers):
 | restore-ahead + re-warm | 0.81 / 1.36 s | 0.60 / 1.00 s | 59.3 GB | 28 |
 | **restore-ahead + re-warm, gated** | **0.82 / 1.36 s** | **0.63 / 1.69 s** | **50.1 GB** | **21** |
 | restore-ahead + re-warm, *no keep-alive at all* | 0.82 / 1.36 s | 1.31 / 1.44 s | **3.6 GB** | 6042 |
+| **final policy** (gated JIT + re-warm + guard + planner + GDSF keep-alive; e10b) | **0.81 / 1.25 s** | 0.64 / 1.69 s | 50.1 GB | 21 |
 
 (`sim/results/e4_trace.csv`, `e4b_trace_gated.csv`, figure `e4_trace_bars.png`.)
 
