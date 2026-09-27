@@ -332,7 +332,8 @@ Written and tested with fake restores, **not yet run for real**.
      on-demand (12% of random DAGs at some cap, by up to 1.37×), a known scheduling anomaly.
      Exact planning at arrival fixes this for small workflows; large ones (> ~10 stages) rely
      on the guard or a node-limited search.
-   - Proposition 9's workflow-level keep-alive is proved but not yet simulated on the trace.
+   - Proposition 9's workflow-level keep-alive was simulated (e8) and lost to per-function
+     GDSF, which the approach now uses; nothing left open there.
 6. **Read Pronghorn's full paper** before writing the novelty chapter.
 
 ---
