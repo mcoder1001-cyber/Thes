@@ -13,11 +13,12 @@
 | e5 | sensitivity to restore time `r` and restore contention `β` | `e5_sensitivity.csv` |
 | e6 | which stages are worth a snapshot, in latency **and money** (exact model, `e6_cost.py`): per-function break-even, per-workflow choices, the trace's cold invocations per day | `e6a_cost_functions.csv`, `e6b_cost_workflows.csv`, `e6c_cost_trace.csv` |
 | e7a / e7b | **memory overload**: a burst of cold workflows under a hard budget; the Azure trace at 16/24/32 GB; with and without the memory guard (Theorem 8) | `e7a_burst.csv`, `e7b_trace_budget.csv` |
+| e8 | **keep-alive under look-ahead** (Proposition 9): per-function LRU and GDSF eviction vs whole-workflow eviction, and the all-stages gate; Azure trace at 16/24/32/48 GB | `e8_keepalive.csv` |
 | `predict_gaps.py` | can the platform predict when a cold workflow will be called (to pre-restore its entry)? Azure 2021: 86% of cold arrivals fall in a histogram window, but the gaps are irregular (median CV 1.28) and the entry would be held ~56 min per cold call: **no** | printed |
 
 ```bash
 python3 prep_azure.py <AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt> 3   # -> data/
-python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores
+python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores, e8 ~10 min on 4 cores (SIM_PROCS sets the pool size)
 python3 plot_e4.py
 ```
 
@@ -26,7 +27,9 @@ python3 plot_e4.py
 `/gated` (only when the workflow is cold, Lemma 5), `/jit` (trigger at `S*_v − r_v`, Theorem 2
 of `theory/DAG_SNAPSHOT_THEORY.md`), `/guard` or `|guard` (a demand start that does not fit
 preempts unclaimed look-ahead sandboxes, Theorem 8; options `noevict`, where look-ahead may not
-evict other workflows' idle sandboxes, and `h=<fraction>`, a headroom look-ahead may not use). `theory/verify_dag.py` checks that the JIT policy reproduces
+evict other workflows' idle sandboxes, and `h=<fraction>`, a headroom look-ahead may not use), `|keep=gdsf` or `|keep=wf` (evict idle
+sandboxes by per-function GreedyDual-Size-Frequency, or whole workflows at a time, Proposition 9)
+and `|gateall` (skip planning only when every stage has a live sandbox). `theory/verify_dag.py` checks that the JIT policy reproduces
 the theorem's optimal latency and minimum memory exactly.
 
 **Parameters** are the thesis's own measurements (`dagsim.py`: `JAVA`, `PY`, `PYML`, each

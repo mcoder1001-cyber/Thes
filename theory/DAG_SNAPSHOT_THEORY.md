@@ -42,8 +42,9 @@ Supporting results:
 - Lemma 5: do nothing when the workflow is warm.
 - Theorem 6: why keep-alive cannot replace look-ahead.
 - Proposition 8: when to stop warming up.
-- Proposition 9 (`ALGORITHM.md` §7): under look-ahead, keep-alive is all-or-nothing per
-  workflow; a warm sandbox is worth far less than its own cold start.
+- Proposition 9 (`ALGORITHM.md` §7): for a cold arrival under look-ahead, a partly warm
+  workflow saves little. As an eviction policy it does **not** pay on the trace (e8);
+  per-function GDSF does.
 
 **Evidence.** On the Azure 2021 trace (simulated, `ideas/sim` e4/e4b), cold workflows go from
 2.34 s to **0.82 s** mean and from 6.2 s to **1.36 s** p99, at equal memory. `verify_dag.py`
@@ -582,7 +583,7 @@ this workload.
 | which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
 | peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
 | the capped problem is RCPSP/max; exact branch and bound; Thm 8(b) optimal; restore channels; the guard's gap; planned triggers (`ALGORITHM.md`) | reduction **proved** (Lemma A1); solver **verified** against brute force; gaps **measured** on random DAGs |
-| keep-alive under look-ahead is a threshold decision (Prop 9) | **proved**; verified against brute force; not yet simulated on the trace |
+| keep-alive under look-ahead is a threshold decision (Prop 9) | **proved**; verified against brute force; **simulated (e8): whole-workflow eviction loses to per-function GDSF**, so it is not used as a policy |
 | the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
 | A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
 | A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |

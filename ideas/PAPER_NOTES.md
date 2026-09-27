@@ -486,7 +486,7 @@ workflow is **MRCPSP/max**: multi-mode resource-constrained project scheduling w
 | Costless | the chain-with-prices case as constrained shortest path (LARAC) |
 | ORION | input-time distributions by convolution/max, the input to Theorem 3's quantile trigger |
 | Xanadu | the JIT timeline; the most-likely-path idea for branches |
-| CIDRE / FaasCache | GDSF eviction, which Proposition 9 corrects for look-ahead |
+| CIDRE / FaasCache | GDSF eviction; per function, it is the best keep-alive in e8 (the workflow-level variant Proposition 9 suggested loses) |
 | MPC scheduler | receding-horizon re-planning when a stage runs early or late |
 
 ### 3. Numbers we can plug in
@@ -506,8 +506,9 @@ workflow is **MRCPSP/max**: multi-mode resource-constrained project scheduling w
 ### 5. What changes in the plan
 - **Planner:** exact branch and bound at arrival, with the guard as executor (`ALGORITHM.md`
   Algorithms 2–3).
-- **Keep-alive:** evaluate workflow-level GDSF (Proposition 9) in `ideas/sim`. A new
-  experiment, e8.
+- **Keep-alive:** e8 evaluated workflow-level eviction (Proposition 9) in `ideas/sim`. It
+  **loses** to per-function GDSF, which the thesis adopts from FaasCache/CIDRE
+  (`theory/ALGORITHM.md` §7).
 - **Data:**
   - ORION's released DAG traces and the Huawei cold-start trace can calibrate `ideas/sim`
     beyond Azure 2021;
