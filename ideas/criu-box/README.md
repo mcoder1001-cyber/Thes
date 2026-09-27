@@ -15,8 +15,8 @@ the restore-based numbers can match but not beat.
 |---|---|---|---|
 | **x1-ladder** | activation latency and memory held, per readiness tier: cold JVM · restore from disk · restore from page cache · pre-restored & stopped (`criu restore --leave-stopped`, then `SIGCONT`) · warm | Idea 1's mechanism and the ladder's tier costs (`dagsim` parameters `r`, `m`) | none; it is calibration |
 | **x2-parallel** | wall-clock to restore N = 1, 2, 4, 8 copies of one image at once | Idea 1 itself: restore-ahead needs restores that run in parallel. Output: `beta = (r(N)/r(1) − 1)/(N − 1)` | **beta ≳ 0.7**: restores serialise and restore-ahead gains little (`dagsim` e5: 1.0× at beta = 1) |
-| **x3-rewarm** | `L(K)` = warm-up lost to the checkpoint, and how much of it synthetic re-warming (scrubbed `fps_bulk` requests) recovers | Idea 4 | `L(K)` ≈ 0 at the target vCPU, or re-warming recovers < ~30% of it |
-| **x4-mispriming** | exp-a's comparison (right edge / scrubbed / wrong edge / mixed) with **real restores** instead of process continuation | Ideas 2 and 3 hold after a real checkpoint | scrubbed priming ≥ 1.2× the real-traffic residual once `L(K)` is included |
+| **x3-rewarm** | `L(K)` = warm-up lost to the checkpoint, and how much of it re-warming recovers (synthetic `fps_bulk` requests stand in for the developer's test requests) | Idea 4 | `L(K)` ≈ 0 at the target vCPU, or re-warming recovers < ~30% of it |
+| **x4-mispriming** (optional, record only) | exp-a's comparison (right edge / scrubbed / wrong edge / mixed) with **real restores** instead of process continuation | only the dropped Ideas 2 and 3; not needed for the approach | scrubbed priming ≥ 1.2× the real-traffic residual once `L(K)` is included |
 
 ## Setup
 

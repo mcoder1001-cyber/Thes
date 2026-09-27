@@ -8,6 +8,9 @@
   e4  trace-driven: Azure 2021 arrivals, 68 workflows, 3 days, several memory budgets
   e4b the gated restore-ahead variant on the same trace (figure: plot_e4.py)
   e5  sensitivity: restore time r and restore contention beta
+  e6  which stages are worth a snapshot, in latency and money (e6_cost.py; exact model)
+  e7  memory overload: look-ahead's higher peak (Theorem 8) and the preemption guard --
+      e7a a burst of cold workflows under a hard budget, e7b the Azure trace at tight budgets
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
 """
@@ -274,6 +277,97 @@ def e4(days=3, budgets_gb=(32, 128, 1024), policies=None, out="e4_trace.csv"):
 
 
 # ------------------------------------------------------------------ e5
+def e7a(W=16, seeds=20, budgets_gb=(4, 8, 16, 32, 64)):
+    """W cold 8-stage Java chains (distinct functions) arrive within one second into an empty
+    platform with a hard memory budget. On demand holds ~W x 512 MB at most; just-in-time
+    look-ahead ~8x that per workflow (Theorem 8(a))."""
+    print(f"e7a: burst of {W} cold 8-stage Java chains within 1 s, hard memory budget")
+    dags = [chain(8, JAVA, tag=f"b{i}") for i in range(W)]
+    pols = ["snap", "ahead+rw/gated/jit", "ahead+rw/gated/jit/guard"]
+    rows = []
+    for M in budgets_gb:
+        for pn in pols:
+            lats, over, ovmt, pre, peak = [], 0, 0.0, 0, 0.0
+            for seed in range(seeds):
+                sim = Sim(POLICIES[pn], mem_budget_mb=M * 1024, seed=seed)
+                for i, d in enumerate(dags):
+                    sim.invoke(i * 1000.0 / W, d, f"b{i}")
+                sim.run()
+                lats += [r[3] for r in sim.results]
+                over += sim.stats["overflow"]
+                ovmt += sim.over_memtime / 1024 / 1000
+                pre += sim.stats["preempted"]
+                peak = max(peak, sim.peak_mem / 1024)
+            row = (M, pn, len(lats), statistics.mean(lats), pct(lats, .99), over / seeds, ovmt / seeds,
+                   pre / seeds, peak)
+            rows.append(row)
+            print(f"   M={M:>3}GB {pn:26s} mean {row[3]:6.0f} p99 {row[4]:6.0f} ms | overflow {row[5]:5.1f}/run "
+                  f"({row[6]:6.1f} GB-s above budget) | preempted {row[7]:5.1f} | peak {row[8]:5.1f} GB", flush=True)
+    write_csv("e7a_burst.csv", rows, ["budget_GB", "policy", "n", "mean_ms", "p99_ms", "overflow_per_run",
+                                      "over_budget_GBs_per_run", "preempted_per_run", "peak_GB"])
+    return rows
+
+
+def _trace_row(args):
+    M, pn, days = args
+    if pn in POLICIES:
+        pol = POLICIES[pn]
+    else:                       # "<base>|guard[,noevict][,h=0.1]": the base policy plus the memory guard
+        base, spec = pn.split("|")
+        kw = dict(preempt=True, name=pn)
+        for part in spec.split(",")[1:]:
+            if part == "noevict":
+                kw["ahead_evicts"] = False
+            elif part.startswith("h="):
+                kw["headroom"] = float(part[2:])
+        pol = replace(POLICIES[base], **kw)
+    arr = load_arrivals(days)
+    apps = sorted({a for _, a in arr})
+    dags = {a: TEMPLATES[a % len(TEMPLATES)][1](f"app{a}") for a in apps}
+    last, gap = {}, []
+    for t, a in arr:
+        gap.append(t - last[a] if a in last else math.inf)
+        last[a] = t
+    t0 = time.time()
+    sim = Sim(pol, mem_budget_mb=M * 1024, seed=1)
+    for t, a in arr:
+        sim.invoke(t, dags[a], a)
+    sim.run()
+    key = {(w, t): lat for w, _, t, lat in sim.results}
+    lats = [key[(a, t)] for t, a in arr if (a, t) in key]
+    gaps = [g for (t, a), g in zip(arr, gap) if (a, t) in key]
+    miss = [l for l, g in zip(lats, gaps) if g > 600_000]
+    return (M, pn, len(lats), statistics.mean(lats), pct(lats, .99), pct(lats, .999),
+            statistics.mean(miss), pct(miss, .99), sim.stats["overflow"], sim.over_memtime / 1024 / 1000,
+            sim.peak_mem / 1024, sim.stats["preempted"], sim.stats["evictions"], sim.stats["restores"],
+            time.time() - t0)
+
+
+def e7b(days=3, budgets_gb=(16, 24, 32)):
+    """The Azure trace (as e4) at budgets below its working set (~50 GB): does look-ahead
+    overload memory, and does the guard stop it? '|guard' = the same policy with preemption."""
+    from multiprocessing import Pool
+    print(f"e7b: Azure 2021 trace, first {days} days, tight memory budgets")
+    pols = ["snap", "ahead+rw", "ahead+rw|guard", "ahead+rw/gated/jit", "ahead+rw/gated/jit/guard",
+            "ahead+rw/gated/jit|guard,noevict"]
+    jobs = [(M, pn, days) for M in budgets_gb for pn in pols]
+    with Pool(3) as pool:
+        rows = pool.map(_trace_row, jobs)
+    for r in rows:
+        print(f"   M={r[0]:>3}GB {r[1]:26s} mean {r[3]:6.0f} p99 {r[4]:6.0f} | after-idle mean {r[6]:6.0f} "
+              f"p99 {r[7]:6.0f} | overflow {r[8]:5d} ({r[9]:8.1f} GB-s over) | peak {r[10]:5.1f} GB | "
+              f"preempted {r[11]:5d} | evictions {r[12]:6d} | restores {r[13]:6d} ({r[14]:.0f}s)", flush=True)
+    write_csv("e7b_trace_budget.csv", [r[:-1] for r in rows],
+              ["budget_GB", "policy", "n", "mean_ms", "p99_ms", "p999_ms", "after_idle_mean_ms",
+               "after_idle_p99_ms", "overflow", "over_budget_GBs", "peak_GB", "preempted", "evictions", "restores"])
+    return rows
+
+
+def e6():
+    import e6_cost
+    e6_cost.main()
+
+
 def e5():
     print("e5: sensitivity to restore time r and restore contention beta (chain5, java)")
     rows = []
@@ -294,6 +388,6 @@ def e5():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e4", "e4b"]
+    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b"]
     for w in which:
         globals()[w]()

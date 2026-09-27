@@ -1,0 +1,61 @@
+workflow,cold_per_day,choice,latency_ms,usd_month,snapshots,stages,peak_mem_MB,per_stage
+java-chain-5,1,"none (cold, look-ahead prewarm)",4428.0,0.0036150072300000003,0,5,2560,cold cold cold cold cold
+java-chain-5,1,"snapshot every stage (deepest, local)",818.0,0.036008751705,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,1,"fastest, cheapest such (Thm 7)",818.0,0.036008751705,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,1,"cheapest overall (Cor 7.3, mu=0)",4428.0,0.0036150072300000003,0,5,2560,cold cold cold cold cold
+java-chain-5,1,"today: every stage, restore on demand",3418.0,0.036008751705,5,5,512,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,10,"none (cold, look-ahead prewarm)",4428.0,0.0361500723,0,5,2560,cold cold cold cold cold
+java-chain-5,10,"snapshot every stage (deepest, local)",818.0,0.04368126705,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,10,"fastest, cheapest such (Thm 7)",818.0,0.04368126705,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,10,"cheapest overall (Cor 7.3, mu=0)",1718.0,0.029882461424999996,5,5,2560,remote:K200 remote:K200 remote:K200 remote:K200 remote:K200
+java-chain-5,10,"today: every stage, restore on demand",3418.0,0.04368126705,5,5,512,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,50,"none (cold, look-ahead prewarm)",4428.0,0.1807503615,0,5,2560,cold cold cold cold cold
+java-chain-5,50,"snapshot every stage (deepest, local)",818.0,0.07778133525,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,50,"fastest, cheapest such (Thm 7)",818.0,0.07778133525,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,50,"cheapest overall (Cor 7.3, mu=0)",818.0,0.07778133525,5,5,2560,local:K200 local:K200 local:K200 local:K200 local:K200
+java-chain-5,50,"today: every stage, restore on demand",3418.0,0.07778133525,5,5,512,local:K200 local:K200 local:K200 local:K200 local:K200
+ml-pipeline,1,"none (cold, look-ahead prewarm)",3313.0,0.0026247552495000004,0,5,2304,cold cold cold cold cold
+ml-pipeline,1,"snapshot every stage (deepest, local)",743.0,0.09779975122449999,5,5,2304,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,1,"fastest, cheapest such (Thm 7)",743.0,0.0956231888245,5,5,2304,remote:K0 local:K0 local:K200 local:K200 remote:K0
+ml-pipeline,1,"cheapest overall (Cor 7.3, mu=0)",3313.0,0.0026247552495000004,0,5,2304,cold cold cold cold cold
+ml-pipeline,1,"today: every stage, restore on demand",2042.0,0.09779975122449999,5,5,1024,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,10,"none (cold, look-ahead prewarm)",3313.0,0.026247552495,0,5,2304,cold cold cold cold cold
+ml-pipeline,10,"snapshot every stage (deepest, local)",743.0,0.10331001224500001,5,5,2304,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,10,"fastest, cheapest such (Thm 7)",743.0,0.10158345074500001,5,5,2304,remote:K0 local:K0 local:K200 local:K200 remote:K0
+ml-pipeline,10,"cheapest overall (Cor 7.3, mu=0)",2245.0,0.023740508145,2,5,2304,cold cold remote:K200 remote:K200 cold
+ml-pipeline,10,"today: every stage, restore on demand",2042.0,0.10331001224500001,5,5,1024,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,50,"none (cold, look-ahead prewarm)",3313.0,0.13123776247500002,0,5,2304,cold cold cold cold cold
+ml-pipeline,50,"snapshot every stage (deepest, local)",743.0,0.127800061225,5,5,2304,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,50,"fastest, cheapest such (Thm 7)",743.0,0.127800061225,5,5,2304,local:K0 local:K0 local:K200 local:K200 local:K0
+ml-pipeline,50,"cheapest overall (Cor 7.3, mu=0)",2235.0,0.088800143225,4,5,2048,local:K0 cold local:K200 local:K200 local:K0
+ml-pipeline,50,"today: every stage, restore on demand",2042.0,0.127800061225,5,5,1024,local:K0 local:K0 local:K200 local:K200 local:K0
+fan-out-4,1,"none (cold, look-ahead prewarm)",3697.0,0.004392383784750001,0,7,3072,cold cold cold cold cold cold cold
+fan-out-4,1,"snapshot every stage (deepest, local)",777.0,0.044783627067250004,7,7,3072,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,1,"fastest, cheapest such (Thm 7)",777.0,0.04369534586725,7,7,3328,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 remote:K0
+fan-out-4,1,"cheapest overall (Cor 7.3, mu=0)",3697.0,0.004392383784750001,0,7,3072,cold cold cold cold cold cold cold
+fan-out-4,1,"today: every stage, restore on demand",2137.0,0.044783627067250004,7,7,2048,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,10,"none (cold, look-ahead prewarm)",3697.0,0.04392383784750001,0,7,3072,cold cold cold cold cold cold cold
+fan-out-4,10,"snapshot every stage (deepest, local)",777.0,0.0540862706725,7,7,3072,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,10,"fastest, cheapest such (Thm 7)",777.0,0.0532229899225,7,7,3328,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 remote:K0
+fan-out-4,10,"cheapest overall (Cor 7.3, mu=0)",1687.0,0.0364027047975,6,7,3328,remote:K200 remote:K200 remote:K200 remote:K200 remote:K200 remote:K200 cold
+fan-out-4,10,"today: every stage, restore on demand",2137.0,0.0540862706725,7,7,2048,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,50,"none (cold, look-ahead prewarm)",3697.0,0.2196191892375,0,7,3072,cold cold cold cold cold cold cold
+fan-out-4,50,"snapshot every stage (deepest, local)",777.0,0.0954313533625,7,7,3072,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,50,"fastest, cheapest such (Thm 7)",777.0,0.0954313533625,7,7,3072,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,50,"cheapest overall (Cor 7.3, mu=0)",777.0,0.0954313533625,7,7,3072,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+fan-out-4,50,"today: every stage, restore on demand",2137.0,0.0954313533625,7,7,2048,local:K200 local:K200 local:K200 local:K200 local:K200 local:K200 local:K0
+mixed-order,1,"none (cold, look-ahead prewarm)",3313.0,0.0016091282182500001,0,5,1536,cold cold cold cold cold
+mixed-order,1,"snapshot every stage (deepest, local)",743.0,0.01912287574575,5,5,1536,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,1,"fastest, cheapest such (Thm 7)",743.0,0.01499709472075,3,5,1536,cold local:K200 cold local:K200 remote:K0
+mixed-order,1,"cheapest overall (Cor 7.3, mu=0)",3313.0,0.0016091282182500001,0,5,1536,cold cold cold cold cold
+mixed-order,1,"today: every stage, restore on demand",1540.0,0.01912287574575,5,5,768,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,10,"none (cold, look-ahead prewarm)",3313.0,0.0160912821825,0,5,1536,cold cold cold cold cold
+mixed-order,10,"snapshot every stage (deepest, local)",743.0,0.0224787574575,5,5,1536,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,10,"fastest, cheapest such (Thm 7)",743.0,0.0193654784575,3,5,1536,cold local:K200 cold local:K200 remote:K0
+mixed-order,10,"cheapest overall (Cor 7.3, mu=0)",1653.0,0.013584237832499998,2,5,1536,cold remote:K200 cold remote:K200 cold
+mixed-order,10,"today: every stage, restore on demand",1540.0,0.0224787574575,5,5,768,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,50,"none (cold, look-ahead prewarm)",3313.0,0.0804564109125,0,5,1536,cold cold cold cold cold
+mixed-order,50,"snapshot every stage (deepest, local)",743.0,0.0373937872875,5,5,1536,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,50,"fastest, cheapest such (Thm 7)",743.0,0.0373937872875,5,5,1536,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,50,"cheapest overall (Cor 7.3, mu=0)",743.0,0.0373937872875,5,5,1536,local:K0 local:K200 local:K0 local:K200 local:K0
+mixed-order,50,"today: every stage, restore on demand",1540.0,0.0373937872875,5,5,768,local:K0 local:K200 local:K0 local:K200 local:K0

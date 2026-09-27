@@ -7,8 +7,9 @@ need to build it, what math you need to prove and defend it, and in which order 
 
 ## 0. Where we are
 
-- **Done:** the approach (`REPORT.md`), 7 theorems with proofs checked by computer
-  (`theory/DAG_SNAPSHOT_THEORY.md`, 44/44), real JVM priming experiments (1,600 runs), a
+- **Done:** the approach (`REPORT.md`), 8 theorems with proofs checked by computer
+  (`theory/DAG_SNAPSHOT_THEORY.md`, 75/75), the algorithm as a known OR problem with an exact
+  solver (`theory/ALGORITHM.md`), notes on 28 papers (`ideas/PAPER_NOTES.md`), real JVM warm-up experiments (1,600 runs), a
   workflow simulator on the Azure trace.
 - **Not done:** nothing has been measured with **real** snapshot restores for this approach, and
   nothing is built inside OpenWhisk yet.
@@ -37,7 +38,6 @@ need to build it, what math you need to prove and defend it, and in which order 
 | Docker capabilities for CRaC | a CRaC restore *inside* a container needs extra Linux capabilities (Azul's CRaC docs list them; recent kernels need `CHECKPOINT_RESTORE` and `SYS_PTRACE`) | first test with `--privileged`, then narrow down |
 | OpenWhisk invoker settings | (1) the invoker memory budget was **1024 MB**: an 8-stage workflow at 512 MB/stage needs 4 GB. (2) the container run arguments must carry the capabilities above | raise the budget, add the capabilities in the invoker's container-args config (check the exact key in your build) |
 | a local Docker registry | OpenWhisk "blackbox" (custom image) actions may pull the image on a cold start; a local registry keeps pull time out of your numbers | `docker run -d -p 5000:5000 registry:2` |
-| **JaCoCo** | branch-coverage counts to certify scrubbed priming (step A5) | a jar, no install |
 | **JDK 25** | baseline: JEP 515 ahead-of-time method profiles, the non-snapshot competitor | second JDK next to the CRaC one |
 | Python: numpy, scipy, pandas, matplotlib | analysis, plots, simulator (already used) | `pip install` |
 | **Hypothesis** (optional) | property-based tests: turns `verify_dag.py`'s random checks into shrinking counterexamples | `pip install hypothesis` |
@@ -48,9 +48,9 @@ need to build it, what math you need to prove and defend it, and in which order 
 | component | job | start from |
 |---|---|---|
 | **Snapshot action image** | a Docker image that starts with `java -XX:CRaCRestoreFrom=<dir>` instead of a fresh JVM, and answers OpenWhisk's `/init` and `/run` on port 8080 | `ideas/criu-box/FnServer.java` already serves HTTP; change it to OpenWhisk's `/init`, `/run` contract. Deploy as a blackbox action (`wsk action create --docker`) |
-| **Workflow orchestrator + planner** | runs the DAG by calling OpenWhisk actions over its REST API, and does the look-ahead (steps B1–B5) | new, Python. **Recommended over changing OpenWhisk's controller** (Scala): OpenWhisk sequences are linear only, while you need fan-out and if/else, and your own orchestrator is where "the orchestrator knows the DAG" lives |
+| **Workflow orchestrator + planner** | runs the DAG by calling OpenWhisk actions over its REST API, does the look-ahead (steps B1–B5), and applies the **memory guard** (Theorem 8(c)). When the JIT schedule's peak exceeds the budget, it first **plans** the triggers exactly (`ALGORITHM.md` Algorithm 2; reference code `exact_capped()` in `theory/verify_dag.py`) and the guard executes the plan. Its budget is the invoker's memory minus what is already running, and a start whose input has arrived preempts unclaimed look-ahead sandboxes. `theory/verify_dag.py: capped()` is the reference logic | new, Python. **Recommended over changing OpenWhisk's controller** (Scala): OpenWhisk sequences are linear only, while you need fan-out and if/else, and your own orchestrator is where "the orchestrator knows the DAG" lives |
 | **Wake call** | to "restore ahead", the planner sends a no-op activation (`{"__wake": true}`) to a downstream action at time τ. The invoker restores a container, the runtime returns at once, and the warm container is reused when the real input arrives | about 10 lines in the action image |
-| **Priming pipeline** | steps A2–A7: capture edge samples, scrub, certify, warm up, checkpoint | `ideas/exp-a-context-priming/gen_inputs.py` (`learn_categorical`, `scrub`), `src/Sig.java` |
+| **Snapshot builder** | steps A1–A4: profile the function; warm up with the developer's own test requests if the runtime has a JIT, stopping when its compile counters flatten; reset random state and secrets; checkpoint; store the image | `ideas/criu-box/criu_box.py` (checkpoint/restore helpers), `FnServer.java` (`/prime` endpoint) |
 | **Depth planner** | step A6: picks depth per stage | `dp_joint` in `theory/verify_dag.py` |
 | **Trace replayer** | sends workflow requests at the times of the Azure 2021 trace | `ideas/sim/prep_azure.py` already parses the trace |
 | **Measurement collector** | per-stage times and memory | OpenWhisk activation records (`start`, `end`, `waitTime` and `initTime` annotations; `initTime` appears on cold starts) + cgroup `memory.current` sampling |
@@ -95,8 +95,7 @@ weaker.
 | Theorem 6 | keep-alive needs unboundedly more memory on rare workflows | **Poisson process**, exponential distribution, **renewal argument** | Ross: Poisson process and renewal theory chapters |
 | **Theorem 7** | two numbers (W, P) describe any sub-workflow; an exact DP picks depth and timing together | functions of the form `max(x+W, P)` (**max-plus algebra**), **induction on the series-parallel decomposition tree**, **dynamic programming**, Pareto sets, **NP-hardness by reduction** (multiple-choice knapsack) | Kleinberg & Tardos, *Algorithm Design* (DP chapter, NP chapter); Kellerer, Pferschy & Pisinger, *Knapsack Problems* (multiple-choice knapsack); Valdes, Tarjan & Lawler (1982) for series-parallel graphs; first chapter of Heidergott, Olsder & van der Woude, *Max Plus at Work* (optional) |
 | Corollaries 7.1, 7.2 | some cold starts are hidden by the DAG; give snapshots to the longest tail first | monotonicity, **exchange argument** | Kleinberg & Tardos, greedy chapter (exchange arguments) |
-| Proposition 7 | same code paths ⇒ same JIT profile | control-flow graphs, counting argument, determinism | how HotSpot's tiered compilation counts invocations and branches (OpenJDK docs) |
-| Proposition 8 | depth is work, not number of requests | additive counters, thresholds | same |
+| Proposition 8 | depth is work, not number of requests (when to stop warming up) | additive counters, thresholds | how HotSpot's tiered compilation counts invocations (OpenJDK docs) |
 | `MODEL.md` | depth on chains (the on-demand special case) | multiple-choice knapsack, convexity, greedy, **isotonic regression (PAVA)** | Kellerer et al.; any isotonic-regression reference |
 
 ### 2.3 For the experiments
@@ -136,9 +135,17 @@ weaker.
 > **Measure β on the box.** Run `x2-parallel` (`sudo ./ideas/criu-box/run_x2.sh`) (1, 2, 4, 8 restores at once, 20 repetitions,
 > 1 vCPU) and `x1-ladder`. One to three days.
 
-**Why this first:** Innovation 1 (restore ahead) assumes parallel restores do not slow each
+**Who runs it:** it has to run on the machine that has CRIU. A cloud Claude session cannot
+reach your Mac or anything behind it, including `ssh -p 2222 localhost`: its `localhost` is
+the cloud container, and outbound SSH is blocked there. To let Claude do it, start a session
+on the Mac: open a terminal where `ssh -p 2222 <user>@localhost` works, `cd` into the `Thes`
+folder, and run `claude remote-control`. That session appears in the Claude Code app and can
+SSH into the VM and run `run_x2.sh` itself. Alternatively, install Claude Code inside the VM
+and run it there.
+
+**Why this first:** Look-ahead restore assumes parallel restores do not slow each
 other much. Corollary 1.2 says the gain is at least `(1 − β)` of the ideal. If β is close to 1,
-restores run one after another anyway and Innovation 1 gives little. Everything later depends
+restores run one after another anyway and look-ahead gives little. Everything later depends
 on this number, and it is cheap to get.
 
 **Write the prediction down before running** (standing rule 7): each restore runs in its own
@@ -156,7 +163,7 @@ the path you will deploy.
 |---|---|---|
 | **< 0.3** | restores run in parallel | continue as planned |
 | **0.3 – 0.7** | partial slow-down | continue, but limit how many restores start at once and report gains scaled by `(1 − β)` |
-| **≥ 0.7** | restores are serialised (the kill criterion in `ideas/criu-box/README.md`) | find the cause first (CPU, disk, or a lock in CRIU). If it cannot be fixed, Innovation 1 becomes weak on this hardware. The thesis then rests on Innovation 2 (safe priming) + Theorem 7 (depth choice) + the measurement study, and the fallback for timing is the "pre-restored and stopped" tier from `x1` |
+| **≥ 0.7** | restores are serialised (the kill criterion in `ideas/criu-box/README.md`) | find the cause first (CPU, disk, or a lock in CRIU). If it cannot be fixed, look-ahead becomes weak on this hardware. The thesis then rests on Theorem 7 (which stages get snapshots, and how deep), the memory results and the measurement study, and the fallback for timing is the "pre-restored and stopped" tier from `x1` |
 
 ---
 
@@ -166,7 +173,7 @@ Each stage has a **goal**, **input**, **output**, and an **exit test** (you do n
 next stage until it passes). Times are rough estimates for one person, full time.
 
 ### Stage 1 — Go/no-go on the box *(1 week)*
-- **Goal:** know whether Innovation 1 works on real hardware.
+- **Goal:** know whether look-ahead restore works on real hardware.
 - **Input:** the S0 box, `ideas/criu-box/`.
 - **Work:** `x2` (plus the CRaC-in-Docker variant), `x1`.
 - **Output:** β; restore time `r` for each tier (disk, page cache, pre-restored); memory held.
@@ -179,10 +186,10 @@ next stage until it passes). Times are rough estimates for one person, full time
 - **Work:**
   - snapshot at depth K = 0, 1, 5, 20, 50, 100, 200 and measure `r(K)`, leftover warm-up `R(K)`, image size `s(K)` (RESEARCH_PLAN S1, S2);
   - `x3`: warm-up lost at checkpoint `L(K)`;
-  - `x4`: priming comparison with real restores;
-  - check what private state the image carries and reset it in `beforeCheckpoint` (S3).
+  - check what private state the image carries and reset it in `beforeCheckpoint` (S3);
+  - the real image sizes (the cost analysis assumes 90 MB for Spring Boot).
 - **Output:** the real profile table (step A1), updated `dagsim` parameters.
-- **Exit:** `x4`: scrubbed priming within 1.2× of real-traffic priming (the kill criterion in `criu-box/README.md`).
+- **Exit:** a real restore keeps most of the warm-up (`L(K)` small next to `B`), and the profile table holds measured `r`, `R`, `s` for the start-up point and the chosen depth.
 
 ### Stage 3 — One snapshot action inside OpenWhisk *(2–3 weeks)*
 - **Goal:** OpenWhisk starts an action by restoring a CRaC snapshot.
@@ -192,18 +199,25 @@ next stage until it passes). Times are rough estimates for one person, full time
 - **Exit:** 20/20 cold starts succeed, and OpenWhisk cold start ≈ standalone restore time + a measured, constant OpenWhisk overhead.
 
 ### Stage 4 — Look-ahead on chains: the first headline result *(3 weeks)*
-- **Goal:** measure Innovation 1 on a real system.
+- **Goal:** measure look-ahead restore on a real system.
 - **Input:** Stage 3; the profiles from Stage 2.
 - **Work:** the orchestrator with steps B1–B3 and B5 (gate, compute start times, trigger restores at `τ = S* − r`, wake calls), for chains of 3, 5 and 8 stages at 1 and 0.25 vCPU; policies: on-demand, eager, just-in-time.
 - **Output:** latency and memory-time per policy, n = 20.
 - **Exit (the control):** on-demand latency ≈ `Σ (r + w)` (Theorem 1c) and look-ahead ≈ `r + Σ w` scaled by the measured β (Corollaries 1.1, 1.2). If the measurement disagrees with the theorem, find out why before going on.
+- **The cascade × cliff figure:** latency against depth `d` at 0.25 and 1 vCPU, on-demand and look-ahead. Fit a line to each: the on-demand slope should be `r(c) + w(c) + δ` per stage, the look-ahead slope `w(c) + δ`. Report R² (Xanadu reports 0.993 for the cascade on AWS Step Functions). This one figure shows both effects and what the thesis does to them.
+- **Also measure memory:** the peak under look-ahead vs on-demand (Theorem 8(a) predicts up to 8× on an 8-stage chain), and latency with the guard at a budget of 1, 2 and 4 sandboxes (Theorem 8(b) predicts 5.80 / 2.98 / 1.68 s for the 8-stage chain with the thesis's `r` and `w`).
 
-### Stage 5 — The priming pipeline *(3 weeks)*
-- **Goal:** snapshots are warmed with no user data, automatically.
-- **Input:** edge samples captured by the orchestrator; `gen_inputs.py`; JaCoCo.
-- **Work:** steps A2–A5 and A7: capture, find control-flow fields, scrub, certify with branch coverage, warm up in a small-shaped JVM, checkpoint.
-- **Output:** a "deploy → certified snapshot image" pipeline.
-- **Exit:** certification decides correctly on the exp-a function (fps2 passes, the naive scrub fails), and scrubbed images serve as well as real-traffic images inside OpenWhisk.
+### Stage 5 — The snapshot builder *(2 weeks)*
+- **Goal:** every deploy produces a safe snapshot automatically, with no user data.
+- **Input:** the function, the developer's test requests (or none), the profile from Stage 2.
+- **Work:**
+  - steps A1–A4 of `REPORT.md`: profile, pick the snapshot point per runtime, reset hooks, checkpoint, store;
+  - one Java and one Python function;
+  - warm-up stops when the JIT's compile counter flattens (Proposition 8).
+- **Output:** a "deploy → snapshot image" pipeline.
+- **Exit (the controls):**
+  - two copies restored from one image produce **different** random numbers and UUIDs (the reset hooks work);
+  - the stop rule lands where the measured depth curve flattens.
 
 ### Stage 6 — Full DAGs: parallel, branches, depth choice *(4 weeks)*
 - **Goal:** the rest of the theory, measured.
@@ -212,7 +226,10 @@ next stage until it passes). Times are rough estimates for one person, full time
   - fan-out/fan-in workflows (Theorem 1 on a real DAG);
   - if/else branches with the `p ≥ κ` rule (Theorem 4);
   - uncertain input times with the κ-quantile trigger (Theorem 3);
-  - depth per stage from Theorem 7's DP (step A6).
+  - depth per stage from Theorem 7's DP (step A3), including "no snapshot" for dominated and hidden stages and the image's storage tier (Corollary 7.3; measure real image sizes first, since e6 assumes them);
+  - the memory guard under a burst of cold workflows (sim e7a predicts no over-budget starts, still faster than on-demand);
+  - the planner under a tight budget on a DAG like `ALGORITHM.md` §5's example (predicted: guard 1.93 s, planned 1.29 s).
+- **In the simulator, before or alongside:** e8, workflow-level keep-alive (Proposition 9) vs per-function keep-alive on the Azure trace.
 - **Output:** one experiment per theorem, each with its control.
 - **Exit:** each theorem's prediction matches the measurement within its confidence interval, or the difference is explained.
 

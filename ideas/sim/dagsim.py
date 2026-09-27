@@ -221,6 +221,12 @@ class Policy:
     gate: bool = False              # plan ahead only if the entry function has no live sandbox
     jit: bool = False               # trigger each restore r_v before its start in the EAGER
                                     # schedule (theory/DAG_SNAPSHOT_THEORY.md, Theorem 2)
+    # memory guard (Theorem 8): a demand start that does not fit PREEMPTS ahead-of-time
+    # sandboxes not yet claimed by their node (newest first) instead of overflowing the budget;
+    # ahead restores may only fill the budget up to (1 - headroom)
+    preempt: bool = False
+    headroom: float = 0.0
+    ahead_evicts: bool = True       # may an ahead restore evict other workflows' idle sandboxes?
 
 
 POLICIES = {
@@ -238,6 +244,11 @@ POLICIES = {
     # safety margin of 0.3 r against restore-time jitter (Theorem 3 gives the exact quantile)
     "ahead+rw/gated/jit": Policy("ahead+rw/gated/jit", snap=True, ahead="restore", rewarm=True,
                                  gate=True, jit=True, margin=0.3),
+    # the same with the memory guard (Theorem 8(c)): demand starts preempt unclaimed look-ahead
+    # sandboxes. In a burst this removes look-ahead's overflow; on a trace below its working set,
+    # look-ahead's evictions of idle sandboxes still add some (e7b; see ahead_evicts)
+    "ahead+rw/gated/jit/guard": Policy("ahead+rw/gated/jit/guard", snap=True, ahead="restore", rewarm=True,
+                                       gate=True, jit=True, margin=0.3, preempt=True),
 }
 
 
@@ -309,7 +320,10 @@ class Sim:
         self.idle_mem = 0.0
         self.restoring = 0
         self.stats = dict(cold_boots=0, restores=0, ahead_started=0, ahead_unused=0,
-                          warm_hits=0, overflow=0, rewarm_ms=0.0, ctx_miss=0, evictions=0)
+                          warm_hits=0, overflow=0, rewarm_ms=0.0, ctx_miss=0, evictions=0,
+                          preempted=0)
+        self.peak_mem = 0.0
+        self.over_memtime = 0.0     # MB*ms spent above the budget (demand overflow)
         self.inv = {}
         self.ninv = 0
         self.wcount = {}
@@ -325,6 +339,7 @@ class Sim:
         if dt > 0:
             self.memtime += self.mem * dt
             self.idle_memtime += self.idle_mem * dt
+            self.over_memtime += max(0.0, self.mem - self.M) * dt
         self.mem_last = self.now
 
     def _set_state(self, s: Sandbox, state):
@@ -338,9 +353,12 @@ class Sim:
 
     def _new(self, fn, prof, origin, dur, ahead=False, variant=None, demand=True):
         need = prof.m
-        if self.mem + need > self.M:
-            self._evict(self.mem + need - self.M)
-        if self.mem + need > self.M:
+        limit = self.M if demand else self.M * (1.0 - self.p.headroom)
+        if self.mem + need > limit and (demand or self.p.ahead_evicts):
+            self._evict(self.mem + need - limit)
+        if self.mem + need > limit and demand and self.p.preempt:
+            self._preempt(self.mem + need - limit)
+        if self.mem + need > limit:
             if not demand:
                 return None
             self.stats["overflow"] += 1
@@ -349,6 +367,7 @@ class Sim:
         s = Sandbox(self.nsid, fn, prof, RESTORE if origin == "snap" else BOOT,
                     self.now + dur, origin, ahead=ahead, variant=variant)
         self.mem += need
+        self.peak_mem = max(self.peak_mem, self.mem)
         self.sb.setdefault(fn, []).append(s)
         if origin == "snap":
             self.stats["restores"] += 1
@@ -376,6 +395,24 @@ class Sim:
             freed += s.prof.m
             self._kill(s)
             self.stats["evictions"] += 1
+
+    def _preempt(self, amount):
+        """Free memory for a demand start by killing ahead-of-time sandboxes that no node has
+        claimed yet, newest first; their nodes fall back to a demand start when their input
+        arrives (Theorem 8(c): this is what keeps capped look-ahead from deadlocking)."""
+        cand = [s for lst in self.sb.values() for s in lst
+                if s.ahead and s.reserved is not None and not s.claimed and not s.waiting
+                and s.state in (IDLE, RESTORE, BOOT)]
+        cand.sort(key=lambda s: -s.sid)
+        freed = 0.0
+        for s in cand:
+            if freed >= amount:
+                break
+            if s.state == RESTORE:
+                self.restoring -= 1
+            freed += s.prof.m
+            self._kill(s)
+            self.stats["preempted"] += 1
 
     def _restore_time(self, prof, rng):
         r = prof.r * rng.lognormvariate(0, 0.15)
