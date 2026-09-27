@@ -287,6 +287,11 @@ POLICIES = {
     # look-ahead's evictions of idle sandboxes still add some (e7b; see ahead_evicts)
     "ahead+rw/gated/jit/guard": Policy("ahead+rw/gated/jit/guard", snap=True, ahead="restore", rewarm=True,
                                        gate=True, jit=True, margin=0.3, preempt=True),
+    # THE FINAL POLICY (theory/ALGORITHM.md, Algorithms 1-4): gated just-in-time look-ahead with
+    # re-warm, the memory guard, the exact planner when memory is short (e9), and per-function
+    # GDSF keep-alive (e8)
+    "recommended": Policy("recommended", snap=True, ahead="restore", rewarm=True, gate=True, jit=True,
+                          margin=0.3, preempt=True, plan=True, keep="gdsf"),
 }
 
 

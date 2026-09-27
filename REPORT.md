@@ -271,8 +271,10 @@ Supporting rules: uncertain timings (Theorem 3), branches (Theorem 4), skip when
 why keep-alive cannot replace it (Theorem 6), when to stop warming up (Proposition 8).
 
 **Simulation** (Azure Functions 2021 trace, 68 workflows, 432,945 calls):
-- cold workflows go from **2.34 s to 0.82 s** on average, and from 6.20 s to 1.36 s at p99, with
-  the same memory and number of restores as restore-on-demand;
+- cold workflows go from **2.34 s to 0.81 s** on average, and from 6.20 s to **1.25 s** at p99, with
+  the same memory and number of restores as restore-on-demand (final policy, `ideas/sim` e10);
+- at a tight 32 GB budget the gain holds (0.81 s mean, 1.24 s p99). The p99 over all calls drops
+  from 3.24 to 1.10 s, at 29% more restores;
 - with the memory guard, a burst of cold workflows never exceeds the budget;
 - on the trace at budgets below its working set, look-ahead and keep-alive compete for memory,
   and the operator has to choose.
@@ -306,8 +308,9 @@ Written and tested with fake restores, **not yet run for real**.
 |---|---|---|
 | cold vs warm, 3-stage Spring Boot workflow (1 vCPU) | 12.1 s vs 35 ms | your exp15 |
 | one Spring Boot restore under CPU limits | 0.64–9.05 s | your exp11/12 |
-| restore-on-demand vs look-ahead, 3 / 5 / 8-stage Java chain | 2.20 / 3.67 / 5.89 s vs 0.94 / 1.12 / 1.37 s | `ideas/sim` e1 |
-| cold workflows on the Azure trace, mean / p99 | 2.34 / 6.20 s → **0.82 / 1.36 s**, same memory | `ideas/sim` e4 / e4b |
+| restore-on-demand vs look-ahead (final policy), 3 / 5 / 8-stage Java chain | 2.20 / 3.67 / 5.89 s vs **0.88 / 0.99 / 1.19 s** (2.5× / 3.7× / 5.0×) | `ideas/sim` e10a |
+| cold workflows on the Azure trace, mean / p99 (final policy) | 2.34 / 6.20 s → **0.81 / 1.25 s**, same memory (50 GB) and restores | `ideas/sim` e10b |
+| same, tight 32 GB budget: cold workflows; p99 of all calls | 2.35 / 6.20 s → 0.81 / 1.24 s; 3.24 s → 1.10 s | `ideas/sim` e10b |
 | peak memory, 8-stage Java chain: on demand vs look-ahead | 0.5 GB vs 4 GB (same memory·time) | Theorem 8(a) |
 | latency with 1 / 2 / 4 / 8 memory slots, same chain | 5.80 / 2.98 / 1.68 / 1.26 s (on demand 5.81 s) | Theorem 8(b) |
 | burst of 16 cold 8-stage chains at 8 GB: starts over the budget per run | look-ahead 32.6 → **0 with the guard**, still faster than on demand | `ideas/sim` e7a |

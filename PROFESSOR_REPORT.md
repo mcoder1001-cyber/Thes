@@ -97,7 +97,8 @@ Each result is proved and checked by a verification program (76 automated checks
 | kind | result |
 |---|---|
 | **measured** (real JVM runs) | cold 12.1 s vs 35 ms warm; deeper snapshots cut the 3-stage workflow to 0.23 s; the vCPU cliff (13–35×) |
-| **simulated** (Azure 2021 trace, 68 workflows, 433 k invocations) | cold workflows: mean **2.34 s → 0.82 s**, p99 **6.2 s → 1.36 s**, at the same memory |
+| **simulated** (Azure 2021 trace, 68 workflows, 433 k invocations) | cold workflows: mean **2.34 s → 0.81 s**, p99 **6.2 s → 1.25 s**, at the same memory |
+| **simulated** (Java chains, cold) | 3 / 5 / 8 stages: **2.2 → 0.88 s**, **3.7 → 0.99 s**, **5.9 → 1.19 s** (up to 5× faster) |
 | **simulated** (memory planner) | under a tight memory budget, planning the restore order exactly: up to **48% faster** than a simple memory guard for one workflow, 3–11% for bursts |
 | **verified** (theory) | 76/76 checks pass |
 

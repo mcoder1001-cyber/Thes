@@ -15,6 +15,9 @@
       GDSF eviction vs evicting whole workflows, on the Azure trace at tight budgets
   e9  the exact planner (theory/ALGORITHM.md, Algorithm 2) vs the guard alone: e9a single
       workflows under a budget, e9b a burst of mixed workflows, e9c the Azure trace
+  e10 the headline numbers again, with the final policy ("recommended"): e10a isolated chains
+      (as e1), e10b the Azure trace (as e4/e4b), against restore-on-demand with the same
+      keep-alive
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
 """
@@ -539,6 +542,81 @@ def e9():
     e9c()
 
 
+def e10a(seeds=200):
+    """Isolated cold Java chains (as e1): restore-on-demand vs the first headline policy
+    (ahead+rw) vs the final policy. No memory budget, so the planner and keep-alive are idle."""
+    print("e10a: isolated cold Java chains, final policy")
+    pols = ["snap", "ahead+rw", "recommended"]
+    rows = []
+    for d in range(1, 9):
+        res = {}
+        for pn in pols:
+            lats, mems = isolated(chain(d), POLICIES[pn], seeds=seeds)
+            res[pn] = statistics.mean(lats)
+            rows.append((d, pn, statistics.mean(lats), pct(lats, .5), pct(lats, .99), statistics.mean(mems)))
+        print(f"   d={d}: on demand {res['snap']:6.0f}  ahead+rw {res['ahead+rw']:6.0f}  recommended "
+              f"{res['recommended']:6.0f} ms  ({res['snap'] / res['recommended']:.2f}x)", flush=True)
+    write_csv("e10a_chains_final.csv", rows, ["depth", "policy", "mean_ms", "p50_ms", "p99_ms", "mem_GBs"])
+    return rows
+
+
+def _e10_row(args):
+    """One Azure-trace run with e4's columns plus overflow."""
+    M, pn, days, seed = args
+    pol = _policy(pn)
+    arr = load_arrivals(days)
+    apps = sorted({a for _, a in arr})
+    dags = {a: TEMPLATES[a % len(TEMPLATES)][1](f"app{a}") for a in apps}
+    last, gap = {}, []
+    for t, a in arr:
+        gap.append(t - last[a] if a in last else math.inf)
+        last[a] = t
+    t0 = time.time()
+    sim = Sim(pol, mem_budget_mb=M * 1024, seed=seed)
+    for t, a in arr:
+        sim.invoke(t, dags[a], a)
+    sim.run()
+    key = {(w, t): lat for w, _, t, lat in sim.results}
+    lats = [key[(a, t)] for t, a in arr if (a, t) in key]
+    gaps = [g for (t, a), g in zip(arr, gap) if (a, t) in key]
+    miss = [l for l, g in zip(lats, gaps) if g > 600_000]
+    hot = [l for l, g in zip(lats, gaps) if g <= 600_000]
+    hours = days * 24
+    n = len(lats)
+    return (M, pn, seed, n, statistics.mean(lats), pct(lats, .5), pct(lats, .99), pct(lats, .999),
+            len(miss), statistics.mean(miss), pct(miss, .5), pct(miss, .99), statistics.mean(hot),
+            sim.memtime / 1e6 / 3600 / hours, sim.idle_memtime / 1e6 / 3600 / hours,
+            (sim.stats["cold_boots"] + sim.stats["restores"]) / n * 1000, sim.stats["overflow"],
+            sim.stats["plans"], time.time() - t0)
+
+
+def e10b(days=3, budgets_gb=(24, 32, 128), seeds=(1,)):
+    """The Azure trace (as e4/e4b) with the final policy. Baselines: restore-on-demand with
+    OpenWhisk-like LRU keep-alive (e4's baseline) and with the same GDSF keep-alive as the
+    final policy (so the difference is look-ahead, not keep-alive); the first headline
+    policy (ahead+rw/gated) for continuity."""
+    from multiprocessing import Pool
+    print(f"e10b: the Azure 2021 trace, first {days} days, final policy")
+    pols = ["snap", "snap|keep=gdsf", "ahead+rw/gated", "recommended"]
+    jobs = [(M, pn, days, sd) for M in budgets_gb for sd in seeds for pn in pols]
+    with Pool(int(os.environ.get("SIM_PROCS", "3"))) as pool:
+        rows = pool.map(_e10_row, jobs)
+    for r in rows:
+        print(f"   M={r[0]:>4}GB {r[1]:18s} mean {r[4]:5.0f} p99 {r[6]:5.0f} p99.9 {r[7]:5.0f} | cold workflows "
+              f"(n={r[8]}) mean {r[9]:5.0f} p99 {r[11]:5.0f} | mem {r[13]:5.1f} GB (idle {r[14]:5.1f}) | "
+              f"starts/1000 {r[15]:6.1f} | overflow {r[16]:5d} | plans {r[17]} ({r[-1]:.0f}s)", flush=True)
+    write_csv("e10b_trace_final.csv", [r[:-1] for r in rows],
+              ["budget_GB", "policy", "seed", "n", "mean_ms", "p50_ms", "p99_ms", "p999_ms", "n_after_idle",
+               "after_idle_mean_ms", "after_idle_p50_ms", "after_idle_p99_ms", "hot_mean_ms", "avg_mem_GB",
+               "avg_idle_mem_GB", "starts_per_1000", "overflow", "plans"])
+    return rows
+
+
+def e10():
+    e10a()
+    e10b()
+
+
 def e6():
     import e6_cost
     e6_cost.main()
@@ -564,6 +642,6 @@ def e5():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b", "e8", "e9"]
+    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b", "e8", "e9", "e10"]
     for w in which:
         globals()[w]()
