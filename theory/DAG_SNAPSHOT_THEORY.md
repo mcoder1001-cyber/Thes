@@ -2,8 +2,9 @@
 
 Written 2026-09-26, cleaned up the same day: the approach reads **no user data** (the earlier
 input-derived priming is dropped; Appendix A keeps its record). Companion to `MODEL.md` and to
-`../ideas/IDEAS.md` (the evidence). Every claim is
-checked by `verify_dag.py`: **62/62 checks pass, 12 of them controls designed to fail**,
+`../ideas/IDEAS.md` (the evidence). **The algorithm that puts the results together, and
+the known OR problem it solves, is in `ALGORITHM.md`.** Every claim is
+checked by `verify_dag.py`: **75/75 checks pass, 14 of them controls designed to fail**,
 which do. Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or randomised computation),
 **[measured]** (real runs), **[assumption]** (a model input that the S0 box must confirm).
 
@@ -27,6 +28,13 @@ and nothing predicts arrivals.
 | which stages get a snapshot, how deep, where the image lives | **Theorem 7** with Corollaries 7.1–7.3 | exact optimum (a DP) under a storage budget, a price or an SLO |
 | memory | **Theorem 8** and the memory guard | look-ahead raises the peak; the guard never exceeds the budget and cannot deadlock, and on chains it is never slower than on-demand |
 
+**The algorithm** (`ALGORITHM.md`). The whole problem is a known one: **multi-mode
+resource-constrained project scheduling with time lags (MRCPSP/max)**. A sandbox is an
+activity lasting `r + w`, a DAG edge is the time lag `p_u + δ − r_v`, memory is the resource,
+the snapshot choice is the mode. The three results are its tractable special cases solved
+exactly. For the NP-hard capped case, a textbook branch and bound plans each cold arrival
+exactly in milliseconds for workflows of up to about 10 stages, and the guard executes the plan.
+
 Supporting results:
 - Corollaries 1.1–1.3: chains, restore contention β, random restore times.
 - Theorem 3: the trigger under uncertainty (the newsvendor quantile).
@@ -34,6 +42,8 @@ Supporting results:
 - Lemma 5: do nothing when the workflow is warm.
 - Theorem 6: why keep-alive cannot replace look-ahead.
 - Proposition 8: when to stop warming up.
+- Proposition 9 (`ALGORITHM.md` §7): under look-ahead, keep-alive is all-or-nothing per
+  workflow; a warm sandbox is worth far less than its own cold start.
 
 **Evidence.** On the Azure 2021 trace (simulated, `ideas/sim` e4/e4b), cold workflows go from
 2.34 s to **0.82 s** mean and from 6.2 s to **1.36 s** p99, at equal memory. `verify_dag.py`
@@ -69,6 +79,8 @@ checks every result.
      **κ = b/(a+b)**, with `a` the latency price and `b` the memory price (Theorem 3).
    - **Every restore goes through the memory guard** (Theorem 8(c)). Stages whose input has
      arrived go first, and may preempt look-ahead sandboxes not yet needed.
+   - If the JIT schedule's peak exceeds the memory the workflow may use, **plan the triggers
+     exactly** (`ALGORITHM.md`, Algorithm 2) and let the guard execute the plan.
 3. If/else branches: if the branch is decided at least `r_s` before the stage would start,
    restore after the decision. Otherwise **restore speculatively iff P(branch) ≥ κ**
    (Theorem 4). One price ratio governs both the trigger and the speculation.
@@ -83,15 +95,18 @@ checks every result.
 |---|---|---|
 | Pronghorn (EuroSys '24) | when to *checkpoint* one function, from live requests (user data in the image); which snapshot to use | restore *timing* across a DAG |
 | Fireworks (EuroSys '22), SnapStart | post-JIT / post-init snapshot of one function | restore timing across a DAG |
-| Xanadu (Middleware '20), ORION (OSDI '22) | DAG-aware *cold* prewarming | snapshots; optimality; memory neutrality (a cold boot cannot fit in the DAG's own lead time) |
+| Xanadu (Middleware '20) | DAG-aware *cold* prewarming, **already just in time**: its planner starts each container its start-up time before the expected invocation; it also saw that starting everything at once is slower (contention) | snapshots (a 2.5 s cold boot rarely fits in the DAG's own lead time, a restore often does); proofs of optimality and memory-time; which stages get snapshots (Thm 7); the memory cap (Thm 8, `ALGORITHM.md`); contention as a model parameter |
+| ORION (OSDI '22) | pre-warm delays found by best-first search; latency distributions by convolution/max | the same, plus: for known durations the optimum needs no search (Thm 2); with ORION's distributions, Thm 3's quantile is the exact per-stage trigger |
+| Żuk & Rzadca (SBAC-PAD '20) | FaaS as scheduling with setup times; a "start" policy that sets up the successor's environment in advance (eager look-ahead) | JIT instead of eager (same latency, least memory-time: Thm 2); snapshot modes |
 | REAP, FaaSnap, Snapipeline, Faast, Spice | make *one* restore faster (working set, pipelining, OS support) | cross-stage timing. They shrink `r_v` and **compose** with look-ahead |
 | RainbowCake (ASPLOS '24), FaasCache (ASPLOS '21) | which containers or layers to keep alive | restores; the DAG |
 | Mitosis (OSDI '23) | remote fork of a live instance, incl. inside workflows | a snapshot restored ahead of need |
 
 The novelty is small and well-defined: **using the workflow DAG to schedule snapshot
 restores**, plus the decisions that follow from it (which stages get snapshots, and memory).
+*Timing* downstream provisioning along the DAG is Xanadu's idea and must be credited as such.
 Every snapshot system we found works on one function at a time. Every DAG-aware cold-start
-system we found uses cold boots or keep-alive.
+system we found uses cold boots or keep-alive (`../ideas/PAPER_NOTES.md` has the 28 papers).
 
 ---
 
@@ -453,6 +468,8 @@ after, so:
   cost**.
 
   8-stage Java chain: `k` = 1, 2, 3, 4, 8 gives 5.80, 2.98, 2.25, 1.68, 1.26 s (on-demand 5.81 s).
+- **This schedule is optimal**: no schedule with `k` slots does better (checked against the
+  exact solver of `ALGORITHM.md` §3, check A3).
 
 (c) *(The guard, any DAG, hard cap `C ≥ max m`.)* Memory requests queue: stages whose input has
 arrived come first, then by trigger time, with strict head-of-line admission. A stage whose
@@ -494,6 +511,10 @@ on-demand the intervals are disjoint.
   median 6%. Critical-path priority does not remove it (89/750). It is the classical anomaly of
   scheduling under a resource limit: speeding tasks up can lengthen the schedule (Graham,
   *SIAM J. Appl. Math.* 1969).
+- *Against the true optimum* (`ALGORITHM.md` §5, exact branch and bound): the guard is optimal
+  on 67–77% of capped instances with 3–8 stages, 3–5% slower on average, but up to 87% slower
+  in the worst case, and the gap grows with the DAG. Planning the triggers exactly at arrival
+  and executing them through the guard reaches the optimum with no preemption (A5).
 
 **In the simulator** (`ideas/sim` e7, policy `…/guard`: demand starts preempt unclaimed
 look-ahead sandboxes):
@@ -560,6 +581,8 @@ this workload.
 | joint depth + timing on series-parallel DAGs (Thm 7): composition rules, exact DP, reduction to `MODEL.md`, hidden cold starts, longest-tail-first | **proved**; verified against brute force and the expanded-DAG evaluator |
 | which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
 | peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
+| the capped problem is RCPSP/max; exact branch and bound; Thm 8(b) optimal; restore channels; the guard's gap; planned triggers (`ALGORITHM.md`) | reduction **proved** (Lemma A1); solver **verified** against brute force; gaps **measured** on random DAGs |
+| keep-alive under look-ahead is a threshold decision (Prop 9) | **proved**; verified against brute force; not yet simulated on the trace |
 | the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
 | A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
 | A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |
@@ -579,7 +602,7 @@ Theorem 5 and its refutations (submodularity, parallel convexity) stand unchange
 statements about the DAG, not about the timing policy. The thesis's measurements (the vCPU
 cliff, `B ≈ 0.185·W`, exp12's `L(K)`) are the calibration of `p_v(K)` and `w_v(K)`.
 
-Run: `./verify_dag.py` (≈ 30 s; P7 needs Java and the generated inputs, otherwise it is skipped).
+Run: `./verify_dag.py` (≈ 1 min; P7 needs Java and the generated inputs, otherwise it is skipped).
 
 ---
 

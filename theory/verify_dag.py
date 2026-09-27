@@ -20,6 +20,11 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
   T7   UNIFIED: joint snapshot depth + look-ahead timing on series-parallel DAGs -- composition
        rules, exact (storage, W, P) Pareto DP vs brute force, hidden-restore reduction to
        MODEL.md's DP, cold-start-hidden stages, and what the unification buys
+  C7.3 prices and SLOs: the cost-latency front; cold-invocation rate bound 1/(eT)
+  T8   memory: look-ahead peak, k slots on a chain, the memory guard under a cap
+  A1-4 the ALGORITHM as a known problem (RCPSP/max): lag network = JIT/on-demand, exact branch
+       and bound vs brute force, optimality of T8(b), restore channels, the guard's gap
+  P9   keep-alive under look-ahead is a threshold decision (top-k by r_v + l(v))
 
 usage: ./verify_dag.py [--quick]
 """
@@ -996,7 +1001,7 @@ def chain_slots_rec(d, r, w, delta, k):
     return S[-1] + w
 
 
-def capped(g, C, lookahead=True, preempt=True, prio="tau"):
+def capped(g, C, lookahead=True, preempt=True, prio="tau", tau=None):
     """Event-driven single-workflow schedule under a hard memory cap C (C >= max m).
     Look-ahead: stage v asks for memory at its JIT trigger tau_v (on demand: at its input time).
     Queue order: stages whose input has arrived (demand) first, then by trigger time; strict
@@ -1006,9 +1011,10 @@ def capped(g, C, lookahead=True, preempt=True, prio="tau"):
     can fill with look-ahead sandboxes that all wait on a stage that cannot get memory.
     prio="cp": among waiting stages, the one with the longest restore + remaining path
     (r_v + l(v)) goes first instead of the earliest trigger.
+    tau: planned triggers to use instead of the JIT ones (e.g. from exact_capped).
     Returns (L, peak, preemptions); L is None on deadlock."""
     import heapq
-    _, _, tau_jit, _, _ = jit(g)
+    tau_jit = list(tau) if tau is not None else jit(g)[2]
     ell = g.ell()
     rank = (lambda v: -(g.r[v] + ell[v])) if prio == "cp" else (lambda v: tau_jit[v] if lookahead else 0.0)
     ev, seq = [], 0
@@ -1016,7 +1022,9 @@ def capped(g, C, lookahead=True, preempt=True, prio="tau"):
     def push(t, pri, kind, v, ver=0):
         nonlocal seq
         seq += 1
-        heapq.heappush(ev, (t, pri, seq, kind, v, ver))
+        # order by time snapped to 1e-6 ms, so float noise cannot put a trigger before the
+        # finish that frees its memory at the same instant (planned triggers, A5)
+        heapq.heappush(ev, (round(t, 6), pri, seq, kind, v, ver, t))
     npred = [len(g.preds[v]) for v in range(g.n)]
     I, ready, F = [None] * g.n, [None] * g.n, [None] * g.n
     admitted, ver = [False] * g.n, [0] * g.n
@@ -1057,7 +1065,7 @@ def capped(g, C, lookahead=True, preempt=True, prio="tau"):
             F[v] = max(ready[v], I[v]) + g.w[v]
             push(F[v], 0, "finish", v)
     while ev:
-        t, _, _, kind, v, vv = heapq.heappop(ev)
+        _, _, _, kind, v, vv, t = heapq.heappop(ev)
         if kind == "finish":
             used -= g.m[v]
             admitted[v] = False
@@ -1085,6 +1093,91 @@ def capped(g, C, lookahead=True, preempt=True, prio="tau"):
     if any(f is None for f in F):
         return None, peak, npre
     return max(F[v] for v in range(g.n) if not g.succ[v]), peak, npre
+
+
+def lag_network(g, lookahead=True):
+    """Stage v as ONE activity [tau_v, tau_v + r_v + w_v) holding m_v (Lemma A1: an optimal
+    schedule never lets a restored sandbox idle). Edge u->v becomes a start-to-start time lag
+    tau_v >= tau_u + (r_u + w_u) + delta - r_v; on demand the lag is r_u + w_u + delta.
+    Look-ahead = every precedence lag shortened by the successor's restore time."""
+    p = [g.r[v] + g.w[v] for v in range(g.n)]
+    return p, [(u, v, p[u] + g.delta - (g.r[v] if lookahead else 0.0)) for v in range(g.n) for u in g.preds[v]]
+
+
+def earliest_start(n, edges):
+    """Longest paths from time 0 in a time-lag network (Bellman-Ford); None on a positive cycle."""
+    t = [0.0] * n
+    for _ in range(n + 1):
+        changed = False
+        for u, v, lag in edges:
+            if t[u] + lag > t[v] + 1e-9:
+                t[v] = t[u] + lag
+                changed = True
+        if not changed:
+            return t
+    return None
+
+
+def exact_capped(g, C, chan=None, ub=math.inf, limit=None):
+    """EXACT minimum latency of one workflow under a memory cap C (and, optionally, at most
+    `chan` restores running at once). The problem is RCPSP/max with one renewable resource
+    (memory) [+ one for restore channels]. Branch and bound on minimal forbidden sets
+    (Bartusch, Moehring and Radermacher 1988): take the earliest-start schedule of the lag
+    network; if some set F of simultaneously active stages exceeds the cap, any feasible
+    schedule must order some pair of F (u ends before v starts, else by the Helly property all
+    of F overlap at one instant), so branch on every ordered pair; the earliest-start makespan
+    of each branch is a valid lower bound. Returns (L, tau, nodes); L = ub if nothing beats ub.
+    limit: stop after that many search nodes (anytime use); nodes > limit then means L is the
+    best found so far, not proven optimal."""
+    n = g.n
+    p, base = lag_network(g)
+    best, seen, nodes = [ub, None], set(), [0]
+
+    def violated(t):
+        for s in sorted(set(t)):
+            A = [v for v in range(n) if t[v] <= s + 1e-9 < t[v] + p[v]]
+            if sum(g.m[v] for v in A) > C + 1e-9:
+                F = list(A)
+                for x in sorted(A, key=lambda v: g.m[v]):
+                    if sum(g.m[y] for y in F) - g.m[x] > C + 1e-9:
+                        F.remove(x)                  # minimal forbidden set
+                return F, p
+            if chan is not None:
+                R = [v for v in range(n) if t[v] <= s + 1e-9 < t[v] + g.r[v]]
+                if len(R) > chan:
+                    return R[:chan + 1], g.r
+        return None
+
+    def rec(extra):
+        nodes[0] += 1
+        if limit is not None and nodes[0] > limit:
+            return
+        if extra in seen:
+            return
+        seen.add(extra)
+        t = earliest_start(n, base + sorted(extra))
+        if t is None or max(t[v] + p[v] for v in range(n)) >= best[0] - 1e-9:
+            return
+        hit = violated(t)
+        if hit is None:
+            best[0], best[1] = max(t[v] + p[v] for v in range(n)), t
+            return
+        F, dur = hit
+        kids = []
+        for u in F:
+            for v in F:
+                if u != v:
+                    e = extra | {(u, v, dur[u])}
+                    t2 = earliest_start(n, base + sorted(e))
+                    if t2 is not None:
+                        kids.append((max(t2[x] + p[x] for x in range(n)), e))
+        for lb, e in sorted(kids, key=lambda k: k[0]):
+            if lb >= best[0] - 1e-9:
+                break
+            rec(e)
+
+    rec(frozenset())
+    return best[0], best[1], nodes[0]
 
 
 def t8(quick):
@@ -1208,6 +1301,187 @@ def t8(quick):
 T8_STATS = {}
 
 
+def warm_latency(g, W):
+    """Look-ahead latency of a cold arrival when the stages in W have an idle warm sandbox
+    (no provisioning; same warm work): L* of the DAG with r_v = 0 on W."""
+    h = DAG(g.n, g.preds, [0.0 if v in W else g.r[v] for v in range(g.n)], g.w, g.m, g.delta)
+    return L_star(h)
+
+
+def a9(quick):
+    hdr("ALGORITHM -- the capped problem is RCPSP/max: exact branch and bound vs the memory guard;"
+        " restore channels; keep-alive under look-ahead (Proposition 9)")
+    rnd = random.Random(9)
+    N = 300 if quick else 1000
+    # A1: the lag network. Its earliest-start schedule IS the JIT schedule (Theorem 2), and with
+    # un-shortened lags it is on-demand.
+    ok_jit = ok_od = 0
+    for _ in range(N):
+        g = random_dag(rnd)
+        p, E = lag_network(g)
+        t = earliest_start(g.n, E)
+        L, _, tj, _, _ = jit(g)
+        ok_jit += all(abs(t[v] - tj[v]) < 1e-6 for v in range(g.n)) and \
+            abs(max(t[v] + p[v] for v in range(g.n)) - L) < 1e-6
+        p, E = lag_network(g, lookahead=False)
+        t = earliest_start(g.n, E)
+        Lo, _, to, _, _ = on_demand(g)
+        ok_od += all(abs(t[v] - to[v]) < 1e-6 for v in range(g.n)) and \
+            abs(max(t[v] + p[v] for v in range(g.n)) - Lo) < 1e-6
+    check(f"A1 earliest start of the lag network (lag = r_u+w_u+delta-r_v) = the JIT schedule, tau and L  [{N}]",
+          ok_jit == N, f"{ok_jit}/{N}")
+    check("A1 the same network with lag r_u+w_u+delta (not shortened by r_v) = on-demand, tau and L",
+          ok_od == N, f"{ok_od}/{N}")
+
+    # A2: the exact solver, checked against an independent brute force over integer trigger
+    # times (any tau, idle sandboxes allowed, peak from the simulated schedule).
+    M = 60 if quick else 200
+    ok_bf = 0
+    for _ in range(M):
+        n = rnd.randint(2, 4)
+        preds = [[]] + [sorted(rnd.sample(range(v), rnd.randint(1, min(2, v)))) for v in range(1, n)]
+        g = DAG(n, preds, [float(rnd.randint(1, 6)) for _ in range(n)], [float(rnd.randint(1, 3)) for _ in range(n)],
+                [float(rnd.choice([1, 2, 4])) for _ in range(n)], float(rnd.choice([0, 1])))
+        C = max(g.m) * rnd.choice([1, 1.5, 2, 3])
+        Lub = min(capped(g, C)[0], capped(g, C, lookahead=False)[0])
+        bf = Lub
+        for tau in itertools.product(*[range(int(Lub - g.r[v] - g.w[v]) + 1) for v in range(n)]):
+            L, _, tv, _, F = evaluate(g, lambda v, I: float(tau[v]))
+            if L < bf - 1e-9 and peak_mem(g, tv, F) <= C + 1e-9:
+                bf = L
+        Lx, tx, _ = exact_capped(g, C)
+        if tx is not None:           # its own schedule respects the cap and the lags
+            _, E = lag_network(g)
+            assert all(tx[v] >= tx[u] + lag - 1e-6 for u, v, lag in E) and min(tx) >= -1e-9
+            F = [tx[v] + g.r[v] + g.w[v] for v in range(n)]
+            assert peak_mem(g, tx, F) <= C + 1e-9
+        ok_bf += abs(min(Lx, Lub) - bf) < 1e-6
+    check(f"A2 exact branch and bound = brute force over all integer trigger vectors  [{M} small DAGs]",
+          ok_bf == M, f"{ok_bf}/{M}")
+
+    # A3: Theorem 8(b)'s chain schedule is OPTIMAL, and restore channels (contention) have the
+    # same structure: tau_v = max(tau_{v-1} + w + delta, tau_{v-c} + r).
+    ok_opt = ok_ch = ok_chrate = 0
+    for _ in range(M):
+        d = rnd.randint(2, 9)
+        r, w, delta = rnd.uniform(50, 3000), rnd.uniform(5, 500), rnd.choice([0.0, 2.0, 10.0])
+        g = DAG(d, [[]] + [[v - 1] for v in range(1, d)], [r] * d, [w] * d, [512.0] * d, delta)
+        k = rnd.randint(1, d)
+        ok_opt += abs(exact_capped(g, 512.0 * k)[0] - chain_slots_rec(d, r, w, delta, k)) < 1e-6
+        c = rnd.randint(1, d)
+        tau = []
+        for v in range(d):
+            tau.append(max(0.0, tau[v - 1] + w + delta if v else 0.0, tau[v - c] + r if v >= c else 0.0))
+        ok_ch += abs(exact_capped(g, math.inf, chan=c)[0] - (tau[-1] + r + w)) < 1e-6
+        dd = 20 * c + 20
+        tau = []
+        for v in range(dd):
+            tau.append(max(0.0, tau[v - 1] + w + delta if v else 0.0, tau[v - c] + r if v >= c else 0.0))
+        per = (tau[-1] - tau[-1 - 12 * c]) / (12 * c)
+        ok_chrate += abs(per - max(w + delta, r / c)) < 1e-6 * max(w + delta, r / c)
+    check("A3 Theorem 8(b)'s k-slot chain schedule is optimal: exact optimum = the recurrence", ok_opt == M, f"{ok_opt}/{M}")
+    check("A3 c restore channels on a chain: exact optimum = tau_v = max(tau_(v-1)+w+delta, tau_(v-c)+r)",
+          ok_ch == M, f"{ok_ch}/{M}")
+    check("A3 ... per-stage cost on long chains = max(w+delta, r/c)", ok_chrate == M, f"{ok_chrate}/{M}")
+    r, w, delta = 650.0, 75.0, 2.0
+    row = []
+    for c in (1, 2, 4, 9):
+        tau = []
+        for v in range(5):
+            tau.append(max(0.0, tau[v - 1] + w + delta if v else 0.0, tau[v - c] + r if v >= c else 0.0))
+        row.append(f"c={c}: {(tau[-1] + r + w) / 1000:.2f}s")
+    print(f"      5-stage Java chain (r 650, w 75): {'  '.join(row)}  (on-demand {(5 * 725 + 8) / 1000:.2f}s)")
+
+    # A4: how far is the memory guard (online list scheduling) from the optimum?
+    stats = {}
+    worse_od = 0
+    for trial in range(M if quick else 3 * M):
+        chain = trial % 2 == 0
+        g = random_dag(rnd, n=rnd.randint(3, 8), chain=chain)
+        g.m = [rnd.choice([256.0, 512.0, 1024.0]) for _ in range(g.n)]
+        for f in (1, 1.5, 2, 3, 4):
+            C = max(g.m) * f
+            Lh, Lo, Lc = capped(g, C)[0], capped(g, C, lookahead=False)[0], capped(g, C, prio="cp")[0]
+            Lx = min(exact_capped(g, C, ub=min(Lh, Lo, Lc) + 1e-6)[0], Lh, Lo, Lc)
+            st = stats.setdefault(chain, dict(g=[], b=[], o=[]))
+            st["g"].append(Lh / Lx - 1)
+            st["b"].append(min(Lh, Lo, Lc) / Lx - 1)
+            st["o"].append(Lo / Lx - 1)
+            worse_od += Lx > min(Lh, Lo) + 1e-6
+    check("A4 the exact optimum is never above the guard or capped on-demand (sanity)", worse_od == 0,
+          f"{worse_od} violations")
+    allg = stats[True]["g"] + stats[False]["g"]
+    check("CONTROL: the guard is NOT optimal on every capped instance (so A4's gaps are real)",
+          any(x > 1e-6 for x in allg), f"suboptimal on {sum(x > 1e-6 for x in allg)}/{len(allg)}")
+    for chain in (True, False):
+        st = stats[chain]
+        q = sorted(st["g"])
+        print(f"      {'chains' if chain else 'DAGs  '} (3-8 stages, caps 1-4x max m): guard optimal on "
+              f"{sum(x < 1e-6 for x in q) / len(q):.0%}, gap mean {statistics.mean(q):.1%}, "
+              f"p95 {q[int(0.95 * (len(q) - 1))]:.1%}, max {q[-1]:.1%}; best of 3 rules mean "
+              f"{statistics.mean(st['b']):.1%} max {max(st['b']):.1%}; capped on-demand mean "
+              f"{statistics.mean(st['o']):.0%}")
+
+    # A5: plan at arrival, execute through the guard: the guard, fed the exact plan's triggers
+    # instead of the JIT ones, reproduces the optimum and still never exceeds the cap.
+    ok_plan = over5 = tot5 = 0
+    for trial in range(M):
+        g = random_dag(rnd, n=rnd.randint(3, 8), chain=trial % 2 == 0)
+        g.m = [rnd.choice([256.0, 512.0, 1024.0]) for _ in range(g.n)]
+        for f in (1, 1.5, 2, 3):
+            C = max(g.m) * f
+            Lx, tx, _ = exact_capped(g, C)
+            Lp, pk, npre = capped(g, C, tau=tx)
+            tot5 += 1
+            ok_plan += Lp is not None and abs(Lp - Lx) < 1e-6 and npre == 0
+            over5 += pk > C + 1e-6
+    check("A5 the guard executing the exact plan's triggers = the optimum, no preemption, cap never exceeded",
+          ok_plan == tot5 and over5 == 0, f"{ok_plan}/{tot5}, {over5} over the cap")
+    J, P_, ML = (650.0, 75.0, 512.0), (60.0, 20.0, 256.0), (180.0, 300.0, 1024.0)
+    g = DAG(4, [[], [0], [1], [0]], [P_[0], J[0], J[0], ML[0]], [P_[1], J[1], J[1], ML[1]],
+            [P_[2], J[2], J[2], ML[2]], 2.0)
+    Lx, tx, _ = exact_capped(g, 1024.0)
+    print(f"      example (Python entry -> Java -> Java, and entry -> ML stage; cap 1 GB): no cap {L_star(g):.0f} ms; "
+          f"guard {capped(g, 1024.0)[0]:.0f} ms; capped on-demand {capped(g, 1024.0, lookahead=False)[0]:.0f} ms; "
+          f"optimum {Lx:.0f} ms (triggers {', '.join(f'{t:.0f}' for t in tx)})")
+
+    # Proposition 9: keep-alive under look-ahead is a threshold decision.
+    ok_f = ok_top = ok_ch9 = over = tot9 = 0
+    for _ in range(N):
+        g = random_dag(rnd, n=rnd.randint(2, 8))
+        ell = g.ell()
+        W = {v for v in range(g.n) if rnd.random() < 0.4}
+        form = max(ell[0], max((g.r[v] + ell[v] for v in range(g.n) if v not in W), default=0.0))
+        ok_f += abs(warm_latency(g, W) - form) < 1e-6
+        k = rnd.randint(1, g.n)
+        brute = min(warm_latency(g, set(S)) for S in itertools.combinations(range(g.n), k))
+        top = set(sorted(range(g.n), key=lambda v: -(g.r[v] + ell[v]))[:k])
+        ok_top += abs(warm_latency(g, top) - brute) < 1e-6
+        L0 = L_star(g)
+        for v in range(g.n):                     # per-function valuation: a warm v saves r_v
+            tot9 += 1
+            over += g.r[v] > L0 - warm_latency(g, {v}) + 1e-6
+    for _ in range(N):
+        d = rnd.randint(2, 10)
+        r, w, delta = rnd.uniform(50, 3000), rnd.uniform(5, 500), rnd.choice([0.0, 2.0, 10.0])
+        g = DAG(d, [[]] + [[v - 1] for v in range(1, d)], [r] * d, [w] * d, [512.0] * d, delta)
+        L0 = L_star(g)
+        ok_ch9 += all(abs((L0 - warm_latency(g, set(range(j)))) - (min(r, j * (w + delta)) if j < d else r)) < 1e-6
+                      for j in range(d + 1))
+    check("P9 look-ahead latency with warm set W = max(l(entry), max over v not in W of r_v + l(v))",
+          ok_f == N, f"{ok_f}/{N}")
+    check("P9 the best k stages to keep warm = the top k by r_v + l(v) (vs brute force over all k-sets)",
+          ok_top == N, f"{ok_top}/{N}")
+    check("P9 equal chain: keeping the first j stages warm saves min(r, j(w+delta)), all d save r",
+          ok_ch9 == N, f"{ok_ch9}/{N}")
+    check("CONTROL: valuing a warm sandbox at its own restore time r_v (per-function keep-alive) "
+          "overstates what it saves under look-ahead", over > tot9 // 2, f"overstated for {over}/{tot9} stages")
+    r, w, delta = 650.0, 75.0, 2.0
+    g = DAG(5, [[]] + [[v - 1] for v in range(1, 5)], [r] * 5, [w] * 5, [512.0] * 5, delta)
+    row = "  ".join(f"{j}: {L_star(g) - warm_latency(g, set(range(j))):.0f}ms" for j in range(1, 6))
+    print(f"      5-stage Java chain, first j stages warm, saving vs all-restored ({L_star(g):.0f} ms): {row}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
@@ -1224,6 +1498,7 @@ def main():
     t7(a.quick)
     c73(a.quick)
     t8(a.quick)
+    a9(a.quick)
     hdr("SUMMARY")
     bad = [n for n, ok in results if ok is False]
     skipped = [n for n, ok in results if ok is None]

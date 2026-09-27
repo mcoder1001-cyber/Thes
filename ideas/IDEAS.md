@@ -375,7 +375,15 @@ exp12 found a real checkpoint **loses** part of the captured warm-up (`MODEL.md`
 `L_v(K)`, up to 29 pp at low CPU). With restore-ahead, a restored stage often waits idle
 before its input arrives: behind long stages (an ML inference step), behind the entry
 stage's restore, or on a speculative branch. The idea: spend that idle time running
-**scrubbed** (Idea 2) requests to burn down the residual and `L(K)` off the critical path.
+the **developer's test requests** (the same ones used for warm-up at build time; Idea 2's
+scrubbed requests are dropped) to burn down the residual and `L(K)` off the critical path.
+
+*In the algorithm* (`../theory/ALGORITHM.md`), re-warm is one more **mode** of a stage:
+"restore, then re-warm for `q_v`", with provisioning `r_v + q_v` and warm work `w_v` instead of
+the slower first-request work. Under just-in-time timing there is no idle time to use, so
+re-warming means starting the restore `q_v` earlier. That is free in latency whenever the
+restore is hidden anyway, and costs `m_v · q_v` of memory·time. Theorem 7's DP decides per
+stage whether it pays.
 
 **[simulated]** With a conservative geometric warm-up model the gain is small: −3% at depth
 3, −5% at depth 8, `sim/e1`. It grows with `L(K)`, which the model cannot know.

@@ -27,7 +27,9 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 | **`REPORT.md`** (this file) | the whole story in simple English | first |
 | `ROADMAP.md` | tools, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs (§0 is a one-page summary) | you need exact statements and proofs |
-| `theory/verify_dag.py` | a program that checks every theorem (62/62 pass) | you want the proofs checked by computer |
+| `theory/ALGORITHM.md` | **the algorithm**, and the known OR problem it solves (project scheduling) | you need the algorithm, or the "which known problem is it" answer |
+| `theory/verify_dag.py` | a program that checks every theorem (75/75 pass) | you want the proofs checked by computer |
+| `ideas/PAPER_NOTES.md` | notes on the 28 papers: what each gives us, numbers to reuse | you write related work, or need a parameter |
 | `ideas/sim/` | the workflow simulator and the Azure trace study | you want to rerun the simulations |
 | `ideas/criu-box/` | scripts for the machine with working CRIU (`run_x2.sh`) | you run the real snapshot tests |
 | `ideas/IDEAS.md` | the evidence, including ideas tried and dropped | you need a number or a source |
@@ -60,6 +62,32 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 3. **Restoring ahead uses memory earlier.** Restores overlap with stages still running, so the
    memory peak is higher, and a platform's memory budget can overflow.
 
+### 2.2b The two effects that make it matter: the cascade and the vCPU cliff
+- **The linear cascade.** On demand, each stage adds its restore and its run: a `d`-stage
+  chain takes `d·(r + w)`, a straight line in `d` with slope `r + w` per stage. Others have
+  measured this line on public clouds: Xanadu fits it with R² = 0.993 on AWS Step Functions;
+  Kulkarni et al. 2025 find cold starts cascading in sequential workflows on Azure (252 s, 74%,
+  on their image workflow).
+- **The vCPU cliff.** Small containers make every term bigger. Your exp14: the JVM's warm-up
+  `B` grows **13–35×** from 4 to 0.25 vCPU (CFS quota throttling freezes the JIT's compile
+  bursts). A restore is CPU work too (0.64–9 s under CPU limits).
+- **Together they multiply:** the slope of the line is `r(c) + w(c)`, and both grow as the
+  vCPU `c` shrinks. The worst case is a deep workflow in small containers, which is exactly
+  what FaaS runs.
+- **What the thesis does to each:**
+  - **look-ahead** removes `r` from the slope: `r + d·w` instead of `d·(r + w)`
+    (Theorem 1). The slope drops from `r + w + δ` to `w + δ`: 727 → 77 ms per Java stage;
+  - **snapshot depth** shrinks `w`, because the warm-up is inside the image (Theorem 7,
+    `MODEL.md`).
+
+  So the cascade is the reason for look-ahead, and the cliff is the reason for depth.
+- **How the thesis shows it** (ROADMAP Stage 4): one figure, latency against depth at 0.25 and
+  1 vCPU, on demand and with look-ahead, with a fitted line for each. The predicted slopes are
+  `r(c) + w(c) + δ` and `w(c) + δ`. The two effects also enter the model as its inputs: `r`
+  and `w` are profiled at the serving vCPU (step A1). The cliff raises the memory peak too
+  (Theorem 8(a): `⌈(r+w)/(w+δ)⌉` grows with `r`), so small containers need the memory guard
+  most.
+
 ### 2.3 The problem statement
 > **Given** a workflow DAG and the measured timings of its functions, **decide**
 > (1) *when* to restore each stage,
@@ -70,7 +98,9 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 ### 2.4 What is new
 Every snapshot system we found works on **one function at a time**. Every system that uses the
 workflow DAG against cold starts uses **cold boots or keep-alive**, not snapshots. **Nobody uses
-the DAG to schedule snapshot restores.** The workflow knows what a single function cannot:
+the DAG to schedule snapshot restores.** (Credit where due: *timing* cold containers just in
+time along the DAG is Xanadu's idea, 2020. Ours is doing it with snapshots, with proofs, plus
+the snapshot choice and memory.) The workflow knows what a single function cannot:
 which stages will run and roughly when. The workflow's own execution then hides the restores
 (**look-ahead restore**). Deciding which stages get snapshots, and keeping memory safe, follow
 from the same idea.
@@ -182,13 +212,19 @@ done.
   early enough, just wait (Theorem 4).
 
 **B5. Execute, through the memory guard**
+- If memory is short for this workflow (the JIT schedule's peak exceeds what it may use),
+  first **plan** the restore times exactly: the problem is a known scheduling problem, and a
+  standard branch and bound solves workflows of up to about 10 stages in milliseconds
+  (`theory/ALGORITHM.md`). The guard then executes that plan.
 - Every restore asks the **memory guard** first (Theorem 8(c)). Stages whose input has arrived
   go first. If one does not fit, it evicts look-ahead sandboxes that are not needed yet. The
   budget is never exceeded, and the workflow cannot deadlock.
 - Fire the restore for each stage at τ, run each stage when its input arrives, and release the
   sandboxes of branches not taken.
 
-**B6. Keep-alive as usual afterwards.**
+**B6. Keep-alive afterwards.** Under look-ahead, keeping *one* stage of a workflow warm is worth
+little: the next stage's restore becomes the long pole (Proposition 9: in a 5-stage Java chain,
+the entry alone saves 77 ms, all five save 650 ms). So keep whole workflows warm, or none.
 
 ---
 
@@ -272,7 +308,9 @@ Written and tested with fake restores, **not yet run for real**.
 | latency with 1 / 2 / 4 / 8 memory slots, same chain | 5.80 / 2.98 / 1.68 / 1.26 s (on demand 5.81 s) | Theorem 8(b) |
 | burst of 16 cold 8-stage chains at 8 GB: starts over the budget per run | look-ahead 32.6 → **0 with the guard**, still faster than on demand | `ideas/sim` e7a |
 | cold invocations/day for a Java image to pay for itself in money | 6–13 (Azure median workflow: 1) | `ideas/sim` e6 |
-| theorems checked by computer | 62/62 | `theory/verify_dag.py` |
+| memory guard vs the exact optimum, 3–8-stage DAGs under a cap | optimal on 67%, 4.8% slower on average; exact planning closes the gap | `theory/ALGORITHM.md` §5 |
+| look-ahead with 1 / 2 / 4 / 9 parallel restores, 5-stage Java chain | 3.33 / 2.02 / 1.38 / 1.03 s (on demand 3.63 s) | `theory/ALGORITHM.md` §6 |
+| theorems checked by computer | 75/75 | `theory/verify_dag.py` |
 
 ---
 
@@ -286,8 +324,11 @@ Written and tested with fake restores, **not yet run for real**.
 5. **Theory gaps:**
    - nested if/else branches (Theorem 4 treats one branch at a time);
    - DAGs that are not series-parallel have no exact algorithm yet;
-   - under a hard memory cap, on general DAGs look-ahead is occasionally slower than on-demand
-     (12% of random DAGs at some cap, by up to 1.37×), a known scheduling anomaly.
+   - under a hard memory cap, on general DAGs the guard alone is occasionally slower than
+     on-demand (12% of random DAGs at some cap, by up to 1.37×), a known scheduling anomaly.
+     Exact planning at arrival fixes this for small workflows; large ones (> ~10 stages) rely
+     on the guard or a node-limited search.
+   - Proposition 9's workflow-level keep-alive is proved but not yet simulated on the trace.
 6. **Read Pronghorn's full paper** before writing the novelty chapter.
 
 ---
