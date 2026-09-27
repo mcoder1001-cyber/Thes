@@ -4,7 +4,7 @@ Written 2026-09-26, cleaned up the same day: the approach reads **no user data**
 input-derived priming is dropped; Appendix A keeps its record). Companion to `MODEL.md` and to
 `../ideas/IDEAS.md` (the evidence). **The algorithm that puts the results together, and
 the known OR problem it solves, is in `ALGORITHM.md`.** Every claim is
-checked by `verify_dag.py`: **75/75 checks pass, 14 of them controls designed to fail**,
+checked by `verify_dag.py`: **76/76 checks pass, 14 of them controls designed to fail**,
 which do. Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or randomised computation),
 **[measured]** (real runs), **[assumption]** (a model input that the S0 box must confirm).
 
@@ -582,7 +582,7 @@ this workload.
 | joint depth + timing on series-parallel DAGs (Thm 7): composition rules, exact DP, reduction to `MODEL.md`, hidden cold starts, longest-tail-first | **proved**; verified against brute force and the expanded-DAG evaluator |
 | which stages are worth a snapshot under prices or an SLO (Cor 7.3), cold-invocation rate `λe^{−λT}` | **proved**; verified; money break-even **computed** with list prices and assumed image sizes (e6) |
 | peak memory of look-ahead; memory slots on chains; the preemption guard (Thm 8) | **proved** for chains and for the guard's safety; on general DAGs capped look-ahead is occasionally slower than capped on-demand (**measured**, not fixed) |
-| the capped problem is RCPSP/max; exact branch and bound; Thm 8(b) optimal; restore channels; the guard's gap; planned triggers (`ALGORITHM.md`) | reduction **proved** (Lemma A1); solver **verified** against brute force; gaps **measured** on random DAGs |
+| the capped problem is RCPSP/max; exact branch and bound; Thm 8(b) optimal; restore channels; the guard's gap; planned triggers (`ALGORITHM.md`) | reduction **proved** (Lemma A1); solver **verified** against brute force; gaps **measured** on random DAGs; the planner **simulated** with jitter, bursts and the Azure trace (e9) |
 | keep-alive under look-ahead is a threshold decision (Prop 9) | **proved**; verified against brute force; **simulated (e8): whole-workflow eviction loses to per-function GDSF**, so it is not used as a policy |
 | the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
 | A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |

@@ -30,7 +30,7 @@ ours:    restore1..5 start together, each ready just in time          = 1 restor
 | `ROADMAP.md` | tools, the math behind each proof, the stages from here | you plan the next months |
 | `theory/DAG_SNAPSHOT_THEORY.md` | the mathematics: model, theorems, proofs (§0 is a one-page summary) | you need exact statements and proofs |
 | `theory/ALGORITHM.md` | **the algorithm**, and the known OR problem it solves (project scheduling) | you need the algorithm, or the "which known problem is it" answer |
-| `theory/verify_dag.py` | a program that checks every theorem (75/75 pass) | you want the proofs checked by computer |
+| `theory/verify_dag.py` | a program that checks every theorem (76/76 pass) | you want the proofs checked by computer |
 | `ideas/PAPER_NOTES.md` | notes on the 28 papers: what each gives us, numbers to reuse | you write related work, or need a parameter |
 | `ideas/sim/` | the workflow simulator and the Azure trace study | you want to rerun the simulations |
 | `ideas/criu-box/` | scripts for the machine with working CRIU (`run_x2.sh`) | you run the real snapshot tests |
@@ -313,8 +313,9 @@ Written and tested with fake restores, **not yet run for real**.
 | burst of 16 cold 8-stage chains at 8 GB: starts over the budget per run | look-ahead 32.6 → **0 with the guard**, still faster than on demand | `ideas/sim` e7a |
 | cold invocations/day for a Java image to pay for itself in money | 6–13 (Azure median workflow: 1) | `ideas/sim` e6 |
 | memory guard vs the exact optimum, 3–8-stage DAGs under a cap | optimal on 67%, 4.8% slower on average; exact planning closes the gap | `theory/ALGORITHM.md` §5 |
+| the planner in the simulator (jitter, other workflows) | single workflows under a budget: never slower than the guard, up to 48% faster; burst of 16 workflows: 3–11% faster; Azure trace: rarely needed (cold-workflow p99 −4 to −12% at 24 GB) | `ideas/sim` e9 |
 | look-ahead with 1 / 2 / 4 / 9 parallel restores, 5-stage Java chain | 3.33 / 2.02 / 1.38 / 1.03 s (on demand 3.63 s) | `theory/ALGORITHM.md` §6 |
-| theorems checked by computer | 75/75 | `theory/verify_dag.py` |
+| theorems checked by computer | 76/76 | `theory/verify_dag.py` |
 
 ---
 
@@ -331,7 +332,10 @@ Written and tested with fake restores, **not yet run for real**.
    - under a hard memory cap, on general DAGs the guard alone is occasionally slower than
      on-demand (12% of random DAGs at some cap, by up to 1.37×), a known scheduling anomaly.
      Exact planning at arrival fixes this for small workflows; large ones (> ~10 stages) rely
-     on the guard or a node-limited search.
+     on the guard or a node-limited search. In the simulator (e9) the planner needed four
+     extra rules to be safe: likely path only, a wait queue, re-planning, and no planning
+     on a thrashing platform. At a budget far below the working set it can still hit a rare
+     collapse episode (1 of 3 trace seeds at 16 GB).
    - Proposition 9's workflow-level keep-alive was simulated (e8) and lost to per-function
      GDSF, which the approach now uses; nothing left open there.
 6. **Read Pronghorn's full paper** before writing the novelty chapter.

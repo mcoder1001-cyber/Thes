@@ -22,8 +22,9 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
        MODEL.md's DP, cold-start-hidden stages, and what the unification buys
   C7.3 prices and SLOs: the cost-latency front; cold-invocation rate bound 1/(eT)
   T8   memory: look-ahead peak, k slots on a chain, the memory guard under a cap
-  A1-4 the ALGORITHM as a known problem (RCPSP/max): lag network = JIT/on-demand, exact branch
-       and bound vs brute force, optimality of T8(b), restore channels, the guard's gap
+  A1-6 the ALGORITHM as a known problem (RCPSP/max): lag network = JIT/on-demand, exact branch
+       and bound vs brute force, optimality of T8(b), restore channels, the guard's gap, planned
+       triggers through the guard, and the simulator's planner = the exact solver
   P9   keep-alive under look-ahead is a threshold decision (top-k by r_v + l(v))
 
 usage: ./verify_dag.py [--quick]
@@ -1444,6 +1445,21 @@ def a9(quick):
     print(f"      example (Python entry -> Java -> Java, and entry -> ML stage; cap 1 GB): no cap {L_star(g):.0f} ms; "
           f"guard {capped(g, 1024.0)[0]:.0f} ms; capped on-demand {capped(g, 1024.0, lookahead=False)[0]:.0f} ms; "
           f"optimum {Lx:.0f} ms (triggers {', '.join(f'{t:.0f}' for t in tx)})")
+
+    # A6: the simulator's planner (ideas/sim/planner.py, standard library, used by dagsim) is the
+    # same algorithm: same optimum as exact_capped on random capped instances.
+    sys.path.insert(0, SIM)
+    import planner as sim_planner
+    ok_sp = tot_sp = 0
+    for trial in range(M):
+        g = random_dag(rnd, n=rnd.randint(3, 7), chain=trial % 2 == 0)
+        g.m = [rnd.choice([256.0, 512.0, 1024.0]) for _ in range(g.n)]
+        C = max(g.m) * rnd.choice([1, 1.5, 2, 3])
+        Lx = exact_capped(g, C)[0]
+        tau, Lp, _, exact = sim_planner.plan(g.preds, g.r, g.w, g.m, g.delta, C, limit=10 ** 6)
+        tot_sp += 1
+        ok_sp += exact and tau is not None and abs(Lp - Lx) < 1e-6
+    check("A6 the simulator's planner (ideas/sim/planner.py) = exact_capped", ok_sp == tot_sp, f"{ok_sp}/{tot_sp}")
 
     # Proposition 9: keep-alive under look-ahead is a threshold decision.
     ok_f = ok_top = ok_ch9 = over = tot9 = 0

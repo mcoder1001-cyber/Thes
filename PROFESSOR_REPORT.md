@@ -75,7 +75,7 @@ least-recently-used eviction; evicting whole workflows at once was tested and wa
 
 ## 4. Why it is sound (theory, in plain words)
 
-Each result is proved and checked by a verification program (75 automated checks, including
+Each result is proved and checked by a verification program (76 automated checks, including
 "control" checks designed to fail when a claim is false):
 
 - **Timing:** just-in-time look-ahead reaches the **lowest latency any policy can reach**, and
@@ -98,7 +98,8 @@ Each result is proved and checked by a verification program (75 automated checks
 |---|---|
 | **measured** (real JVM runs) | cold 12.1 s vs 35 ms warm; deeper snapshots cut the 3-stage workflow to 0.23 s; the vCPU cliff (13–35×) |
 | **simulated** (Azure 2021 trace, 68 workflows, 433 k invocations) | cold workflows: mean **2.34 s → 0.82 s**, p99 **6.2 s → 1.36 s**, at the same memory |
-| **verified** (theory) | 75/75 checks pass |
+| **simulated** (memory planner) | under a tight memory budget, planning the restore order exactly: up to **48% faster** than a simple memory guard for one workflow, 3–11% for bursts |
+| **verified** (theory) | 76/76 checks pass |
 
 ## 6. What is new
 

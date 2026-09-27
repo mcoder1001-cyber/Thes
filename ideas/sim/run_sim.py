@@ -13,6 +13,8 @@
       e7a a burst of cold workflows under a hard budget, e7b the Azure trace at tight budgets
   e8  keep-alive under look-ahead (theory/ALGORITHM.md Proposition 9): per-function LRU and
       GDSF eviction vs evicting whole workflows, on the Azure trace at tight budgets
+  e9  the exact planner (theory/ALGORITHM.md, Algorithm 2) vs the guard alone: e9a single
+      workflows under a budget, e9b a burst of mixed workflows, e9c the Azure trace
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
 """
@@ -27,7 +29,7 @@ from dataclasses import replace
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dagsim import (JAVA, PY, PYML, POLICIES, EDGE_MS, Profile, Sim, chain, fanout, ml_pipeline,
-                    pct, router, trip_booking, ttl0)
+                    mixed, pct, router, trip_booking, ttl0)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "results")
@@ -328,6 +330,10 @@ def _policy(pn):
             kw["keep"] = part[5:]
         elif part == "gateall":
             kw["gate_all"] = True
+        elif part == "plan":
+            kw["plan"] = True
+        elif part == "queue":               # the planner's wait queue with just-in-time triggers
+            kw["plan"], kw["plan_exact"] = True, False
         else:
             raise ValueError(part)
     return replace(POLICIES[base], **kw)
@@ -379,7 +385,8 @@ def e7b(days=3, budgets_gb=(16, 24, 32)):
 
 
 def _e8_row(args):
-    M, pn, days = args
+    M, pn, days = args[:3]
+    seed = args[3] if len(args) > 3 else 1
     pol = _policy(pn)
     arr = load_arrivals(days)
     apps = sorted({a for _, a in arr})
@@ -389,7 +396,7 @@ def _e8_row(args):
         gap.append(t - last[a] if a in last else math.inf)
         last[a] = t
     t0 = time.time()
-    sim = Sim(pol, mem_budget_mb=M * 1024, seed=1)
+    sim = Sim(pol, mem_budget_mb=M * 1024, seed=seed)
     for t, a in arr:
         sim.invoke(t, dags[a], a)
     sim.run()
@@ -401,7 +408,8 @@ def _e8_row(args):
     return (M, pn, len(lats), statistics.mean(lats), pct(lats, .5), pct(lats, .99),
             len(miss), statistics.mean(miss), pct(miss, .99), statistics.mean(hot), pct(hot, .99),
             sim.stats["partial_warm"], sim.stats["evictions"], sim.stats["restores"],
-            sim.stats["overflow"], sim.over_memtime / 1024 / 1000, time.time() - t0)
+            sim.stats["overflow"], sim.over_memtime / 1024 / 1000, sim.stats["plans"],
+            sim.stats["plan_timeouts"], time.time() - t0)
 
 
 def e8(days=3, budgets_gb=(16, 24, 32, 48), pols=None):
@@ -420,12 +428,115 @@ def e8(days=3, budgets_gb=(16, 24, 32, 48), pols=None):
     for r in rows:
         print(f"   M={r[0]:>3}GB {r[1]:40s} mean {r[3]:5.0f} p99 {r[5]:5.0f} | after-idle n={r[6]} mean {r[7]:5.0f} "
               f"p99 {r[8]:5.0f} | hot mean {r[9]:5.0f} p99 {r[10]:5.0f} | partial-warm {r[11]:5d} | "
-              f"evictions {r[12]:6d} restores {r[13]:6d} overflow {r[14]:5d} ({r[16]:.0f}s)", flush=True)
-    write_csv("e8_keepalive.csv", [r[:-1] for r in rows],
+              f"evictions {r[12]:6d} restores {r[13]:6d} overflow {r[14]:5d} ({r[-1]:.0f}s)", flush=True)
+    write_csv("e8_keepalive.csv", [r[:-3] for r in rows],
               ["budget_GB", "policy", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
                "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "partial_warm_arrivals",
                "evictions", "restores", "overflow", "over_budget_GBs"])
     return rows
+
+
+E9_DAGS = [("mixed", mixed), ("trip", trip_booking), ("fanout4", lambda t: fanout(4, t)),
+           ("ml", ml_pipeline), ("router", router), ("chain5", lambda t: chain(5, JAVA, t)),
+           ("chain8", lambda t: chain(8, JAVA, t))]
+E9_POLS = ["snap", "ahead+rw/gated/jit/guard", "ahead+rw/gated/jit/guard|queue",
+           "ahead+rw/gated/jit/guard|plan"]
+
+
+def e9a(seeds=50, factors=(1.0, 1.5, 2.0, 3.0, None)):
+    """One cold workflow alone, with a memory budget of f x its largest stage (None: no budget),
+    restore-time and run-time jitter on. The planner plans with the profiled means."""
+    print("e9a: single cold workflows under a memory budget (planner vs guard)")
+    rows = []
+    for name, mk in E9_DAGS:
+        dag = mk(name)
+        mmax = max(nd.prof.m for nd in dag.nodes.values())
+        for f in factors:
+            M = mmax * f if f else 1e9
+            for pn in E9_POLS:
+                pol = _policy(pn)
+                lats, over, pre, plans, tmo = [], 0, 0, 0, 0
+                for k in range(seeds):
+                    sim = Sim(ttl0(pol), mem_budget_mb=M, seed=k)
+                    sim.invoke(0.0, dag, "w")
+                    sim.run()
+                    lats.append(sim.results[0][3])
+                    over += sim.stats["overflow"]
+                    pre += sim.stats["preempted"]
+                    plans += sim.stats["plans"]
+                    tmo += sim.stats["plan_timeouts"]
+                rows.append((name, f if f else "inf", pn, statistics.mean(lats), pct(lats, .99), over / seeds,
+                             pre / seeds, plans / seeds, tmo / seeds))
+            best = {r[2]: r for r in rows[-len(E9_POLS):]}
+            print(f"   {name:8s} budget {('%.1fx' % f) if f else ' inf':>5}: " + " | ".join(
+                f"{pn.split('/')[-1] if '/' in pn else pn:11s} {r[3]:5.0f} (over {r[5]:.1f})"
+                for pn, r in best.items()), flush=True)
+    write_csv("e9a_planner_single.csv", rows, ["dag", "budget_x_max_m", "policy", "mean_ms", "p99_ms",
+                                               "overflow_per_run", "preempted_per_run", "plans_per_run",
+                                               "plan_timeouts_per_run"])
+    return rows
+
+
+def e9b(W=16, seeds=10, budgets_gb=(4, 6, 8, 12, 16, 32)):
+    """W cold workflows of the E9 shapes arrive within one second into an empty platform with a
+    hard budget (as e7a, but mixed shapes, where the order of restores matters)."""
+    print(f"e9b: burst of {W} cold mixed workflows within 1 s, hard memory budget")
+    rows = []
+    for M in budgets_gb:
+        for pn in E9_POLS:
+            pol = _policy(pn)
+            lats, over, pre, plans, tmo, ptime = [], 0, 0, 0, 0, 0.0
+            for seed in range(seeds):
+                sim = Sim(pol, mem_budget_mb=M * 1024, seed=seed)
+                for i in range(W):
+                    name, mk = E9_DAGS[i % len(E9_DAGS)]
+                    sim.invoke(i * 1000.0 / W, mk(f"{name}{i}"), f"w{i}")
+                sim.run()
+                lats += [r[3] for r in sim.results]
+                over += sim.stats["overflow"]
+                pre += sim.stats["preempted"]
+                plans += sim.stats["plans"]
+                tmo += sim.stats["plan_timeouts"]
+                ptime += sim.plan_time
+            row = (M, pn, len(lats), statistics.mean(lats), pct(lats, .99), over / seeds, pre / seeds,
+                   plans / seeds, tmo / seeds, ptime / max(1, plans) * 1000)
+            rows.append(row)
+            print(f"   M={M:>3}GB {pn:32s} mean {row[3]:6.0f} p99 {row[4]:6.0f} ms | overflow {row[5]:5.1f}/run | "
+                  f"preempted {row[6]:5.1f} | plans {row[7]:4.1f} timeouts {row[8]:4.1f} | "
+                  f"{row[9]:.1f} ms/plan", flush=True)
+    write_csv("e9b_planner_burst.csv", rows, ["budget_GB", "policy", "n", "mean_ms", "p99_ms", "overflow_per_run",
+                                              "preempted_per_run", "plans_per_run", "plan_timeouts_per_run",
+                                              "ms_per_plan"])
+    return rows
+
+
+def e9c(days=3, budgets_gb=(16, 24, 32), seeds=(1, 2, 3)):
+    """The Azure trace (as e8) with and without the planner, keep-alive GDSF (e8's best), three
+    seeds (restore-time and run-time jitter): below the working set the platform thrashes and
+    a single seed can swing (e9c found one collapse episode at 16 GB on seed 1)."""
+    from multiprocessing import Pool
+    print(f"e9c: planner on the Azure 2021 trace, first {days} days")
+    R = "ahead+rw/gated/jit/guard"
+    pols = [R + "|keep=gdsf", R + "|keep=gdsf,plan"]
+    jobs = [(M, pn, days, sd) for M in budgets_gb for sd in seeds for pn in pols]
+    with Pool(int(os.environ.get("SIM_PROCS", "3"))) as pool:
+        rows = pool.map(_e8_row, jobs)
+    rows = [(j[3],) + r for j, r in zip(jobs, rows)]
+    for r in rows:
+        print(f"   M={r[1]:>3}GB seed {r[0]} {r[2]:40s} mean {r[4]:5.0f} p99 {r[6]:5.0f} | after-idle mean "
+              f"{r[8]:5.0f} p99 {r[9]:5.0f} | restores {r[14]:6d} overflow {r[15]:5d} | plans {r[17]} "
+              f"timeouts {r[18]} ({r[-1]:.0f}s)", flush=True)
+    write_csv("e9c_planner_trace.csv", [r[:-1] for r in rows],
+              ["seed", "budget_GB", "policy", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
+               "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "partial_warm_arrivals",
+               "evictions", "restores", "overflow", "over_budget_GBs", "plans", "plan_timeouts"])
+    return rows
+
+
+def e9():
+    e9a()
+    e9b()
+    e9c()
 
 
 def e6():
@@ -453,6 +564,6 @@ def e5():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b", "e8"]
+    which = sys.argv[1:] or ["e0", "e1", "e2", "e3", "e5", "e6", "e7a", "e4", "e4b", "e7b", "e8", "e9"]
     for w in which:
         globals()[w]()

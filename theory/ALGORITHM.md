@@ -3,7 +3,7 @@
 Written 2026-09-27, answering "somewhere there must be an algorithm for the approach, and it
 should be solved using one of the known problems". Companion to `DAG_SNAPSHOT_THEORY.md` (the
 theorems) and `../ideas/PAPER_NOTES.md` (what the 28 papers give us). Every claim here is
-checked in `verify_dag.py`, sections **A1–A5** and **P9**.
+checked in `verify_dag.py`, sections **A1–A6** and **P9**.
 
 ---
 
@@ -175,29 +175,36 @@ is existing work (FaasCache/CIDRE), chosen by experiment e8.
 **Algorithm 2: PLAN (per cold workflow arrival)**
 ```
 1  W ← stages that have an idle warm sandbox;  set r_v ← 0 for v in W
-2  build the lag network (Lemma A1); τ ← its earliest-start schedule (= JIT, Theorem 2)
-3  C_w ← memory this workflow may use now (free memory, or the operator's share)
-4  if peak(τ) ≤ C_w: return τ                              # optimal (Theorems 1–2)
-5  τ ← EXACT(G, C_w) with a node budget (§3), seeded with the guard's schedule
-6  return τ                                                # the planned triggers
+2  keep only the likely path: stages reached with probability ≥ 1/2
+3  build the lag network (Lemma A1); τ ← its earliest-start schedule (= JIT, Theorem 2)
+4  C_w ← memory this workflow may use now (free, plus idle sandboxes it may evict)
+5  if peak(τ) ≤ C_w: return τ                              # optimal (Theorems 1–2)
+6  if the platform is over budget, or was within the last minute: return τ   # thrashing
+7  τ' ← EXACT(G, C_w) with a node budget (§3)
+8  if latency(τ') is not below the on-demand latency: return τ   # holding back cannot pay
+9  return τ'   (and no speculative restores off the likely path)  # the planned triggers
 ```
-Under uncertainty, use each stage's κ-quantile durations (Theorem 3) in step 2.
+Under uncertainty, use each stage's κ-quantile durations (Theorem 3) in step 3.
 
 **Algorithm 3: RUN (event-driven, shared by all workflows on an invoker)**
 ```
-on trigger τ_v:     queue v's restore          (never before its planned trigger)
-on input of v:      if v is queued, it becomes a demand stage (moves to the front)
-admission:          strict head-of-line; demand stages first, then by planned trigger
-if a demand stage does not fit:
-                    preempt admitted look-ahead sandboxes whose input has not arrived
-                    (latest trigger first); they re-queue
-on a stage finishing much earlier or later than planned (optional):
-                    re-plan the remaining stages (receding horizon, as in the MPC paper)
+on trigger τ_v:     restore v; if it does not fit, v WAITS in a queue (planned order)
+                    until memory frees; it is not dropped
+on input of v:      v starts on its restored sandbox; a planned stage whose input comes
+                    before its trigger waits for the trigger (the plan holds it back)
+after a deadline (planned trigger + r_v) a waiting stage falls back to the guard:
+                    a demand start that may preempt unclaimed look-ahead sandboxes
+on every stage finish: re-plan (receding horizon): if the rest of a planned workflow now fits
+                    in the memory it can get, drop its plan and use just-in-time triggers
 ```
 This is Theorem 8(c)'s guard, now fed the *planned* triggers instead of the JIT ones. A5
 checks that with exact durations it executes the plan exactly: latency = the optimum, no
 preemption, cap never exceeded (800/800). With wrong durations the guard still keeps its
 Theorem 8(c) guarantees: never over the cap, and no deadlock.
+
+The simulator (e9, §5b) showed that each of these is needed: the likely-path rule, the
+queue, the re-plan step, and the two "don't plan" rules (steps 6 and 8). Without them the
+planner loses to the guard in some setting (see §5b).
 
 **Algorithm 4: KEEP-ALIVE (between invocations)**
 ```
@@ -239,6 +246,86 @@ Java → Java chain (650 + 75 ms, 512 MB each) and an ML stage (180 + 300 ms, 1 
 
 The guard reacts to whoever is ready. The plan knows which stage is the long pole. This is
 the classical reason list scheduling is not optimal (Graham 1969).
+
+### 5b. The planner in the simulator (e9)
+
+`ideas/sim` now runs Algorithm 2 at each cold arrival (`planner.py`, the same branch and
+bound; check A6) and Algorithm 3 as the executor. This adds restore-time jitter, other
+workflows and keep-alive, which the exact solver above does not have. Four policies:
+- on demand;
+- the guard alone (a restore that does not fit is dropped);
+- **queue**: just-in-time triggers, but a restore that does not fit waits;
+- **plan**: exact triggers plus the queue.
+
+**e9a: one cold workflow, budget = f × its largest stage** (mean latency, ms; 50 runs with jitter):
+
+| workflow, budget | on demand | guard | queue | **plan** |
+|---|---|---|---|---|
+| mixed (§5's example), 1.5× | 1521 | 1521 | 1243 | **1233** |
+| mixed, 2× | 1521 | 1433 | 849 | **804** |
+| ML pipeline, 1× | 2123 | 2060 | 2101 | **1432** |
+| ML pipeline, 2× | 2123 | 1484 | 880 | **859** |
+| router (if/else), 1× | 3077 | 2988 | 2234 | **2182** |
+| trip booking (if/else), 2× | 3108 | 2413 | 1879 | **1804** |
+| 8-stage Java chain, 2× | 5878 | 5249 | 4520 | **3147** |
+| 8-stage Java chain, 3× | 5878 | 4582 | 3151 | **2371** |
+| fan-out ×4, 1× | 1764 (budget exceeded 3×/run) | 1764 (3×) | 2294 (3×) | 1764 (3×) |
+| fan-out ×4, 3× | 1764 | 1711 | 1956 | **1541** |
+
+- Where the budget binds, the planner is the fastest or tied, by up to 48% against the
+  guard (8-stage chain at 3×). **It is never slower than the guard in any of the 35 cells.**
+- The queue alone gets part of the gain. The **exact order** adds the rest where the order
+  matters: 8-stage chain 4520 → 3147 ms; ML pipeline at 1×, 2101 → 1432 ms.
+- *Fan-out at a tight budget:* no plan beats restoring on demand there, so the planner does
+  not plan (rule 8) and behaves like the guard. All three exceed the budget, because in the
+  simulator a stage whose input has arrived always starts.
+- With no budget, all look-ahead policies are identical, as they should be.
+
+**e9b: 16 cold workflows of these shapes arriving within 1 s** (shared budget):
+
+| budget | guard: mean / p99 | queue | **plan** | ms per plan |
+|---|---|---|---|---|
+| 12 GB | 2696 / 5977 | **2573** / 5977 | 2605 / 5977 | 0.5 |
+| 16 GB | 2303 / 5977 | 2062 / **4097** | **2055** / 4773 | 0.5 |
+| 32 GB | 1316 / 3274 | 1249 / 3769 | **1228 / 3150** | 0.4 |
+
+The planner is 3–11% faster than the guard on average. The queue alone is about as good at
+12–16 GB, but it has a worse tail at 32 GB. At 4–8 GB the budget is below what on-demand
+itself needs, so every policy overflows and none helps (the planner switches itself off,
+rule 6).
+
+**e9c: the Azure trace** (433k invocations, keep-alive GDSF, 3 seeds each):
+
+| budget | plans made | mean latency, guard → plan | cold-workflow p99, guard → plan |
+|---|---|---|---|
+| 32 GB | 0–1 | 230 → 230 ms (identical) | identical |
+| 24 GB | 22–32 | 258 → 258 ms | 1489 → 1317, 1445 → 1314, 1500 → 1439 ms (−4 to −12%) |
+| 16 GB | 311–722 | 351 → 350 and 352 → 353 ms (seeds 2–3); **351 → 394 ms (seed 1)** | 3092 → 2553 and 3035 → 2934 ms (seeds 2–3) |
+
+- **On real traffic the planner is rarely needed.** Most cold workflows fit their
+  just-in-time schedule in the memory they can get. Where it does act (24 GB), it trims the
+  cold-workflow tail and leaves everything else unchanged.
+- **At 16 GB** (a third of the trace's working set, where even on-demand exceeds the budget
+  20k times) it is neutral on two seeds. On the third it hit one collapse episode in the
+  busiest hours: +12% mean, +27% restores. Near the budget the platform is chaotic: small
+  changes in which sandboxes stay warm snowball through keep-alive. Rules 6 and 8 reduced
+  this but did not remove it.
+
+**What the simulator taught, all now in Algorithms 2–3:**
+1. **Plan only the likely path.** Treating every if/else branch as taken wasted memory on
+   paths that rarely run. The planner then lost to the guard on the trip and router workflows,
+   by up to 2 s.
+2. **A restore that does not fit must wait, not be dropped.** A dropped restore later becomes
+   a demand start that preempts another stage's planned restore. This undid the plan on the
+   §5 example: 1452 instead of the plan's 1225 ms.
+3. **Re-plan when memory frees.** A plan made with the memory free at arrival is too cautious
+   in a burst: a late arrival that saw 256 MB free ran its 8 stages one at a time. Without
+   re-planning, the burst's p99 at 32 GB was 4.75 s (guard 3.27 s).
+4. **Do not plan on a thrashing platform, and do not follow a plan slower than on-demand.**
+   On the trace at 16 GB, planning without these rules raised the mean latency from 351 to
+   629 ms and doubled the restores. The cause was the same keep-alive feedback as above.
+   (These two rules cost part of the burst gain: at 32 GB, 1122 ms before them and 1228 ms
+   after.)
 
 ---
 

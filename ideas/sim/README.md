@@ -14,11 +14,12 @@
 | e6 | which stages are worth a snapshot, in latency **and money** (exact model, `e6_cost.py`): per-function break-even, per-workflow choices, the trace's cold invocations per day | `e6a_cost_functions.csv`, `e6b_cost_workflows.csv`, `e6c_cost_trace.csv` |
 | e7a / e7b | **memory overload**: a burst of cold workflows under a hard budget; the Azure trace at 16/24/32 GB; with and without the memory guard (Theorem 8) | `e7a_burst.csv`, `e7b_trace_budget.csv` |
 | e8 | **keep-alive under look-ahead** (Proposition 9): per-function LRU and GDSF eviction vs whole-workflow eviction, and the all-stages gate; Azure trace at 16/24/32/48 GB | `e8_keepalive.csv` |
+| e9 | **the exact planner** (`theory/ALGORITHM.md` Algorithms 2–3, `planner.py`) vs the guard alone and vs the guard with a wait queue: e9a single workflows under a budget, e9b a burst of 16 mixed workflows, e9c the Azure trace | `e9a_planner_single.csv`, `e9b_planner_burst.csv`, `e9c_planner_trace.csv` |
 | `predict_gaps.py` | can the platform predict when a cold workflow will be called (to pre-restore its entry)? Azure 2021: 86% of cold arrivals fall in a histogram window, but the gaps are irregular (median CV 1.28) and the entry would be held ~56 min per cold call: **no** | printed |
 
 ```bash
 python3 prep_azure.py <AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt> 3   # -> data/
-python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores, e8 ~10 min on 4 cores (SIM_PROCS sets the pool size)
+python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores, e8 ~10 min on 4 cores (SIM_PROCS sets the pool size), e9 ~25 min
 python3 plot_e4.py
 ```
 
@@ -29,7 +30,12 @@ of `theory/DAG_SNAPSHOT_THEORY.md`), `/guard` or `|guard` (a demand start that d
 preempts unclaimed look-ahead sandboxes, Theorem 8; options `noevict`, where look-ahead may not
 evict other workflows' idle sandboxes, and `h=<fraction>`, a headroom look-ahead may not use), `|keep=gdsf` or `|keep=wf` (evict idle
 sandboxes by per-function GreedyDual-Size-Frequency, or whole workflows at a time, Proposition 9)
-and `|gateall` (skip planning only when every stage has a live sandbox). `theory/verify_dag.py` checks that the JIT policy reproduces
+and `|gateall` (skip planning only when every stage has a live sandbox).
+`|plan` runs the exact planner at each cold arrival when the just-in-time schedule would not
+fit in the memory the workflow can get (likely path only; restores that do not fit wait in a
+queue; re-planning when memory frees; no planning while the platform is over budget or was
+in the last minute, nor when the plan would not beat restoring on demand); `|queue` is the same machinery with just-in-time
+triggers, to separate the value of the exact order from the queueing. `theory/verify_dag.py` checks that the JIT policy reproduces
 the theorem's optimal latency and minimum memory exactly.
 
 **Parameters** are the thesis's own measurements (`dagsim.py`: `JAVA`, `PY`, `PYML`, each

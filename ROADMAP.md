@@ -8,7 +8,7 @@ need to build it, what math you need to prove and defend it, and in which order 
 ## 0. Where we are
 
 - **Done:** the approach (`REPORT.md`), 8 theorems with proofs checked by computer
-  (`theory/DAG_SNAPSHOT_THEORY.md`, 75/75), the algorithm as a known OR problem with an exact
+  (`theory/DAG_SNAPSHOT_THEORY.md`, 76/76), the algorithm as a known OR problem with an exact
   solver (`theory/ALGORITHM.md`), notes on 28 papers (`ideas/PAPER_NOTES.md`), real JVM warm-up experiments (1,600 runs), a
   workflow simulator on the Azure trace.
 - **Not done:** nothing has been measured with **real** snapshot restores for this approach, and
@@ -230,6 +230,7 @@ next stage until it passes). Times are rough estimates for one person, full time
   - the memory guard under a burst of cold workflows (sim e7a predicts no over-budget starts, still faster than on-demand);
   - the planner under a tight budget on a DAG like `ALGORITHM.md` §5's example (predicted: guard 1.93 s, planned 1.29 s).
 - **In the simulator (done, e8):** per-function GDSF keep-alive beats LRU; whole-workflow eviction (Proposition 9) loses. Use GDSF in the orchestrator's keep-alive.
+- **In the simulator (done, e9):** the planner with its four safety rules (`theory/ALGORITHM.md` §5b). Port `ideas/sim/planner.py` and the queue/re-plan logic into the orchestrator.
 - **Output:** one experiment per theorem, each with its control.
 - **Exit:** each theorem's prediction matches the measurement within its confidence interval, or the difference is explained.
 
