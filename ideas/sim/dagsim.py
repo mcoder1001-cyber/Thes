@@ -29,10 +29,16 @@ Model simplifications (stated, not hidden):
 """
 import heapq
 import math
+import os
 import random
+import sys
+import time
 import zlib
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import planner  # noqa: E402
 
 EDGE_MS = 2.0          # orchestrator overhead per DAG edge
 
@@ -207,6 +213,17 @@ def ml_pipeline(tag="ml"):
     return DAG("ml", n, "pre")
 
 
+def mixed(tag="mixed"):
+    """theory/ALGORITHM.md §5's example: a Python entry feeds a Java -> Java chain and an ML stage.
+    Under a tight budget the guard serves the ML stage first (its input arrives first) while
+    the Java chain is the long pole; the planner makes the ML stage wait."""
+    n = {"pre": Node("pre", f"{tag}.pre", PY, succ=["a", "ml"]),
+         "a": Node("a", f"{tag}.a", JAVA, succ=["b"]),
+         "b": Node("b", f"{tag}.b", JAVA),
+         "ml": Node("ml", f"{tag}.ml", PYML)}
+    return DAG("mixed", n, "pre")
+
+
 # ============================================================ policy
 @dataclass
 class Policy:
@@ -238,6 +255,16 @@ class Policy:
     #          stage with the smallest r_v + l(v) first (the top-set order of Proposition 9)
     keep: str = "lru"
     gate_all: bool = False          # gate: skip planning only if EVERY stage has a live sandbox
+    # exact planner (theory/ALGORITHM.md, Algorithm 2): if the just-in-time schedule would hold more
+    # memory than this workflow can get now, plan the restore triggers exactly (branch and bound,
+    # planner.py) and make each stage wait for its planned trigger; the guard still enforces the cap
+    plan: bool = False
+    plan_limit: int = 2000          # search nodes per plan; the best schedule found is used
+    plan_exact: bool = True         # False: keep the just-in-time triggers, only add the wait queue
+                                    # (separates the value of the exact order from the queueing)
+    plan_quiet: float = 60_000.0    # no planning within this long (ms) after an over-budget start
+    plan_p: float = 0.5             # plan the stages reached with at least this probability; when
+                                    # memory is short, the others get no speculative restore
 
 
 POLICIES = {
@@ -358,7 +385,12 @@ class Sim:
         self.restoring = 0
         self.stats = dict(cold_boots=0, restores=0, ahead_started=0, ahead_unused=0,
                           warm_hits=0, overflow=0, rewarm_ms=0.0, ctx_miss=0, evictions=0,
-                          preempted=0)
+                          preempted=0, plans=0, plan_fallback=0, plan_capped=0, plan_nodes=0,
+                          plan_timeouts=0, replans=0, plan_skipped=0)
+        self.plan_time = 0.0
+        self.ahead_q = []           # planned restores waiting for memory (plan mode)
+        self.planned = set()        # invocations still following a plan
+        self.last_overflow = -math.inf
         self.stats["partial_warm"] = 0  # arrivals whose entry is live but some stage has no sandbox
         self.peak_mem = 0.0
         self.over_memtime = 0.0     # MB*ms spent above the budget (demand overflow)
@@ -404,6 +436,7 @@ class Sim:
             if not demand:
                 return None
             self.stats["overflow"] += 1
+            self.last_overflow = self.now
         self._acct()
         self.nsid += 1
         s = Sandbox(self.nsid, fn, prof, RESTORE if origin == "snap" else BOOT,
@@ -506,7 +539,8 @@ class Sim:
                          a=rng.lognormvariate(0, j * 0.1), r=rng.lognormvariate(0, j * 0.15),
                          u=rng.random()) for n in dag.nodes}
         st = dict(dag=dag, wid=wid, t0=self.now, done=set(), skipped=set(), started=set(),
-                  draws=draws, ctx={}, preds=dag.preds(), fin={})
+                  draws=draws, ctx={}, preds=dag.preds(), fin={}, defer={}, deadline={},
+                  pending=set(), held=set(), released=set(), jit_abs={}, ahead_args={})
         self.inv[iid] = st
         self._touch(dag, wid)
         entry_live = bool(self.sb.get(dag.nodes[dag.entry].fn))
@@ -553,9 +587,12 @@ class Sim:
             else:
                 dur = node.prof.C + (node.prof.RK if self.p.ahead == "restore" else node.prof.B)
             est_fin[n] = est_start[n] + dur
+        planned = self._plan_exact(iid) if (self.p.plan and self.p.jit and self.p.ahead == "restore") else {}
         for n in dag.topo():
             if n == dag.entry or pr[n] < self.p.theta:
                 continue
+            if planned and n not in st["plan_live"]:
+                continue            # memory is short: no speculation off the likely path
             node = dag.nodes[n]
             variants = [None]
             if self.p.ctx and node.ctx_from:
@@ -566,7 +603,77 @@ class Sim:
                 need[(node.fn, var)] = k + 1
                 lead = node.prof.r if self.p.ahead == "restore" else node.prof.A
                 t = max(0.0, est_start[n] - lead * (1 + self.p.margin))
+                if n in planned:
+                    st["jit_abs"][n] = self.now + t     # where just-in-time would have put it
+                    st["ahead_args"][n] = (var, k)
+                    t = max(0.0, planned[n] - lead * self.p.margin)
+                    st["defer"][n] = self.now + t
+                    st["deadline"][n] = self.now + planned[n] + lead
+                    self.planned.add(iid)
                 self.push(self.now + t, "ahead", iid, n, var, k)
+
+    def _plan_exact(self, iid):
+        """Algorithm 2: the workflow as a lag network (stages with an idle sandbox need no restore
+        and hold memory already); if its just-in-time peak exceeds the memory this workflow can
+        get now (budget minus sandboxes that cannot be evicted), plan the triggers exactly.
+        Only the likely path is planned (stages reached with probability >= plan_p); branch
+        alternatives below it get no restore ahead when memory is short. Returns {node: planned
+        trigger, ms after arrival} for restored stages, or {} when just-in-time fits or no plan
+        was found."""
+        st = self.inv[iid]
+        dag, pr, preds = st["dag"], st["dag"].reach_prob(), st["preds"]
+        live = [n for n in dag.topo() if pr[n] >= self.p.plan_p]
+        st["plan_live"] = set(live)
+        idx = {n: i for i, n in enumerate(live)}
+        idle = {}
+        for n in live:
+            fn = dag.nodes[n].fn
+            if fn not in idle:
+                idle[fn] = self._idle_count(fn)
+        r, w, m, warm = [], [], [], set()
+        for n in live:
+            prof = dag.nodes[n].prof
+            if idle[dag.nodes[n].fn] > 0:
+                idle[dag.nodes[n].fn] -= 1
+                warm.add(n)
+                r.append(0.0), w.append(prof.C), m.append(0.0)
+            else:
+                r.append(prof.r), w.append(prof.RK + prof.C), m.append(prof.m)
+        pl = [[idx[q] for q in preds[n] if q in idx] for n in live]
+        evictable = sum(s.prof.m for lst in self.sb.values() for s in lst
+                        if s.state == IDLE and s.reserved is None) if self.p.ahead_evicts else 0.0
+        held_warm = sum(dag.nodes[n].prof.m for n in warm)
+        cap = self.M - (self.mem - evictable) - held_warm
+        p, E = planner.lag_network(pl, r, w, EDGE_MS)
+        t = planner.earliest_start(len(live), E)
+        if planner.peak(t, p, m) <= cap + 1e-9 or cap < max(m, default=0.0):
+            return {}               # just-in-time fits (or not even one stage fits: guard only)
+        if self.mem > self.M or self.now - self.last_overflow < self.p.plan_quiet:
+            # the platform is over budget, or was very recently (demand starts overflow): it is
+            # thrashing, and holding stages back to respect the budget only lengthens workflows,
+            # adds concurrency and, through keep-alive, more cold arrivals (e9c at 16 GB)
+            self.stats["plan_skipped"] += 1
+            return {}
+        # the plan must beat simply restoring on demand, or it is not worth holding stages back
+        p_od, E_od = planner.lag_network(pl, [0.0] * len(r), [a + b for a, b in zip(r, w)], EDGE_MS)
+        t_od = planner.earliest_start(len(live), E_od)
+        L_od = max(t_od[i] + p_od[i] for i in range(len(live)))
+        if not self.p.plan_exact:
+            self.stats["plans"] += 1
+            return {n: t[idx[n]] for n in live if n != dag.entry and n not in warm}
+        t0 = time.time()
+        tau, L_plan, nodes, exact = planner.plan(pl, r, w, m, EDGE_MS, cap, limit=self.p.plan_limit)
+        self.plan_time += time.time() - t0
+        self.stats["plan_nodes"] += nodes
+        self.stats["plan_capped"] += not exact
+        if tau is None:
+            self.stats["plan_fallback"] += 1
+            return {}
+        if L_plan >= 0.99 * L_od:
+            self.stats["plan_skipped"] += 1
+            return {}
+        self.stats["plans"] += 1
+        return {n: tau[idx[n]] for n in live if n != dag.entry and n not in warm}
 
     def _fits(self, s, var):
         """Can idle sandbox s serve context var without a mis-primed first request?"""
@@ -600,9 +707,98 @@ class Sim:
             s = self._new(node.fn, node.prof, "cold", node.prof.A * d["a"], ahead=True, demand=False)
         if s is not None:
             s.reserved = (iid, n)
+            if n in st["pending"]:          # its input came while it waited for memory
+                st["pending"].discard(n)
+                self.push(self.now, "start", iid, n)
+        elif n in st["defer"]:
+            # plan mode: a planned restore that does not fit waits for memory instead of being
+            # dropped (so the stage does not later preempt other stages' restores); after its
+            # deadline (planned trigger + its own restore time) it falls back to the guard
+            if not any(q[1] == iid and q[2] == n for q in self.ahead_q):
+                self.ahead_q.append((st["defer"][n], iid, n, var, k))
+                self.push(max(self.now, st["deadline"][n]), "plan_timeout", iid, n)
+
+    def _drain_ahead_q(self):
+        """Admit waiting planned restores in planned order while memory allows (head of line)."""
+        self.ahead_q.sort(key=lambda q: q[0])
+        while self.ahead_q:
+            t, iid, n, var, k = self.ahead_q[0]
+            st = self.inv.get(iid)
+            if st is None or n in st["started"] or n in st["skipped"] or n not in st["defer"]:
+                self.ahead_q.pop(0)
+                continue
+            need = st["dag"].nodes[n].prof.m
+            room = self.M - self.mem + (self.idle_mem if self.p.ahead_evicts else 0.0)
+            if room + 1e-9 < need:
+                return
+            self.ahead_q.pop(0)
+            self._ahead(iid, n, var, k)
+            if any(q[1] == iid and q[2] == n for q in self.ahead_q):
+                return                      # still does not fit: keep the order
+
+    def _plan_timeout(self, iid, n):
+        st = self.inv.get(iid)
+        if st is None or not any(q[1] == iid and q[2] == n for q in self.ahead_q):
+            return
+        self.ahead_q = [q for q in self.ahead_q if not (q[1] == iid and q[2] == n)]
+        st["defer"].pop(n, None)            # from now on: the guard's demand start
+        self.stats["plan_timeouts"] += 1
+        if n in st["pending"]:
+            st["pending"].discard(n)
+            self.push(self.now, "start", iid, n)
+
+    def _replan(self):
+        """Receding horizon (Algorithm 3): the plan was made with the memory free at arrival.
+        Once the rest of a planned workflow fits in the memory it can get now (free, plus idle
+        sandboxes a restore may evict), drop its plan: its remaining stages go back to their
+        just-in-time triggers."""
+        free = self.M - self.mem
+        if self.p.ahead_evicts:
+            free += sum(s.prof.m for lst in self.sb.values() for s in lst
+                        if s.state == IDLE and s.reserved is None)
+        for iid in sorted(self.planned):
+            st = self.inv.get(iid)
+            if st is None:
+                self.planned.discard(iid)
+                continue
+            dag = st["dag"]
+            rest = [n for n in st["defer"] if n not in st["started"] and n not in st["skipped"]
+                    and not any(s.reserved == (iid, n) for s in self.sb.get(dag.nodes[n].fn, []))]
+            need = sum(dag.nodes[n].prof.m for n in rest)
+            if rest and need > free + 1e-9:
+                continue
+            self.planned.discard(iid)
+            free -= need
+            for n in rest:
+                st["defer"].pop(n, None)
+                self.ahead_q = [q for q in self.ahead_q if not (q[1] == iid and q[2] == n)]
+                var, k = st["ahead_args"][n]
+                self.push(max(self.now, st["jit_abs"][n]), "ahead", iid, n, var, k)
+                if n in st["pending"] or n in st["held"]:
+                    st["pending"].discard(n)
+                    st["held"].discard(n)
+                    st["released"].add(n)
+                    self.push(self.now, "start", iid, n)
+            self.stats["replans"] += 1
 
     def _start_node(self, iid, n):
-        st = self.inv[iid]
+        st = self.inv.get(iid)
+        if st is None or (n in st["released"] and n in st["started"]):
+            return                          # a held start released early by _replan
+        node = st["dag"].nodes[n]
+        if n in st["defer"] and self.mem > self.M:
+            st["defer"].pop(n)              # over budget anyway: holding it back cannot help
+            self.ahead_q = [q for q in self.ahead_q if not (q[1] == iid and q[2] == n)]
+        if n in st["defer"] and not any(s.reserved == (iid, n) for s in self.sb.get(node.fn, [])):
+            if self.now < st["defer"][n] - 1e-9:
+                # the plan wants this stage later than its input: wait for the planned trigger
+                # (the "ahead" event at that time is older, so it runs first)
+                self.push(st["defer"][n], "start", iid, n)
+                st["held"].add(n)
+                return
+            if any(q[1] == iid and q[2] == n for q in self.ahead_q):
+                st["pending"].add(n)        # its planned restore is waiting for memory
+                return
         st["started"].add(n)
         node = st["dag"].nodes[n]
         d = st["draws"][n]
@@ -801,12 +997,18 @@ class Sim:
                 self._start_node(*args)
             elif kind == "finish":
                 self._finish(*args)
+                if self.planned:
+                    self._replan()
             elif kind == "ready":
                 self._ready(*args)
             elif kind == "expire":
                 self._expire(*args)
             elif kind == "ahead":
                 self._ahead(*args)
+            elif kind == "plan_timeout":
+                self._plan_timeout(*args)
+            if self.ahead_q:
+                self._drain_ahead_q()
         self._acct()
         return self
 
