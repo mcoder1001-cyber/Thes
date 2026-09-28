@@ -739,27 +739,30 @@ def _e11_trace(args):
             sim.cpu_used / 1000 / 3600, sim.cpu_boost / 1000 / 3600, sim.stats["overflow"], time.time() - t0)
 
 
-def e11c(days=3, budgets_gb=(32,), cores=(32, 64), q=0.25, seed=1):
+def e11c(days=3, budgets_gb=(32,), cores=(64, 32), q=0.25, seed=1):
     """The Azure trace (as e10b) with functions at q vCPU on a node with K cores. The trace's CPU
     demand at 0.25 vCPU is very bursty (unlimited cores: mean 0.6 cores in use, p99 3-7.5,
     p99.9 34, peak 84), so a node of 1-8 cores collapses into queues at the peaks; 32 and 64
-    cores hold the p99.9."""
+    cores hold the p99.9. Snapshot policies only: without snapshots, cold starts are ~4x the CPU
+    work and overload even these nodes at the peaks (e11a/e11b cover the no-snapshot case).
+    Rows are printed and saved as each run finishes."""
     from multiprocessing import Pool
-    print(f"e11c: Azure 2021 trace, {days} days, functions at {q} vCPU, node {cores} cores")
-    pols = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan", "cold", "cold+uniform",
-            "prewarm", "prewarm+plan"]
+    print(f"e11c: Azure 2021 trace, {days} days, functions at {q} vCPU, node {cores} cores", flush=True)
+    pols = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan"]
     jobs = [(M, pn, K, q, days, seed) for M in budgets_gb for K in cores for pn in pols]
+    order = {(K, pn): i for i, (_, pn, K, *_rest) in enumerate(jobs)}
+    header = ["budget_GB", "policy", "cores", "quota_vcpu", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
+              "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "starts_per_1000",
+              "avg_mem_GB", "cpu_h", "boost_cpu_h", "overflow"]
+    rows = []
     with Pool(int(os.environ.get("SIM_PROCS", "4"))) as pool:
-        rows = pool.map(_e11_trace, jobs)
-    for r in rows:
-        print(f"   {r[0]}GB {r[2]} cores {r[1]:14s} mean {r[5]:6.0f} p99 {r[7]:6.0f} | cold workflows (n={r[8]}) "
-              f"mean {r[9]:6.0f} p99 {r[10]:6.0f} | hot mean {r[11]:5.0f} p99 {r[12]:6.0f} | starts/1000 {r[13]:5.1f} | "
-              f"mem {r[14]:5.1f} GB | CPU {r[15]:5.2f} h (boost {r[16]:5.2f} h) | overflow {r[17]} ({r[-1]:.0f}s)",
-              flush=True)
-    write_csv("e11c_cpu_trace.csv", [r[:-1] for r in rows],
-              ["budget_GB", "policy", "cores", "quota_vcpu", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
-               "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "starts_per_1000",
-               "avg_mem_GB", "cpu_h", "boost_cpu_h", "overflow"])
+        for r in pool.imap_unordered(_e11_trace, jobs):
+            rows.append(r)
+            print(f"   {r[0]}GB {r[2]} cores {r[1]:14s} mean {r[5]:6.0f} p99 {r[7]:6.0f} | cold workflows (n={r[8]}) "
+                  f"mean {r[9]:6.0f} p99 {r[10]:6.0f} | hot mean {r[11]:5.0f} p99 {r[12]:6.0f} | starts/1000 {r[13]:5.1f} | "
+                  f"mem {r[14]:5.1f} GB | CPU {r[15]:5.2f} h (boost {r[16]:5.2f} h) | overflow {r[17]} ({r[-1]:.0f}s)",
+                  flush=True)
+            write_csv("e11c_cpu_trace.csv", sorted((x[:-1] for x in rows), key=lambda x: order[(x[2], x[1])]), header)
     return rows
 
 
