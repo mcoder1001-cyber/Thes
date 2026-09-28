@@ -739,8 +739,11 @@ def _e11_trace(args):
             sim.cpu_used / 1000 / 3600, sim.cpu_boost / 1000 / 3600, sim.stats["overflow"], time.time() - t0)
 
 
-def e11c(days=3, budgets_gb=(32,), cores=(1, 2, 4), q=0.25, seed=1):
-    """The Azure trace (as e10b) with functions at q vCPU on a node with K cores."""
+def e11c(days=3, budgets_gb=(32,), cores=(32, 64), q=0.25, seed=1):
+    """The Azure trace (as e10b) with functions at q vCPU on a node with K cores. The trace's CPU
+    demand at 0.25 vCPU is very bursty (unlimited cores: mean 0.6 cores in use, p99 3-7.5,
+    p99.9 34, peak 84), so a node of 1-8 cores collapses into queues at the peaks; 32 and 64
+    cores hold the p99.9."""
     from multiprocessing import Pool
     print(f"e11c: Azure 2021 trace, {days} days, functions at {q} vCPU, node {cores} cores")
     pols = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan", "cold", "cold+uniform",
