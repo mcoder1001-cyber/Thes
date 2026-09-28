@@ -20,6 +20,7 @@
       keep-alive
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
+       DAGSIM_PROFILE=measured.json DAGSIM_OUT=out/ run_sim.py e10a   (measured parameters)
 """
 import csv
 import gzip
@@ -35,7 +36,8 @@ from dagsim import (JAVA, PY, PYML, POLICIES, EDGE_MS, Profile, Sim, chain, fano
                     mixed, pct, router, trip_booking, ttl0)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "results")
+# DAGSIM_OUT redirects the CSVs, e.g. for runs with measured parameters (DAGSIM_PROFILE in dagsim.py)
+OUT = os.environ.get("DAGSIM_OUT") or os.path.join(HERE, "results")
 os.makedirs(OUT, exist_ok=True)
 
 try:

@@ -1,0 +1,38 @@
+% Compiles the theory chapter on its own: pdflatex theory_standalone && bibtex theory_standalone
+% && pdflatex theory_standalone && pdflatex theory_standalone. In the thesis, \input{ch_theory}
+% from the department's template instead (thesis/README.md).
+\documentclass[11pt,a4paper]{report}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem,booktabs,graphicx,xcolor,tikz}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+\graphicspath{{../figures/}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\newcommand{\chapref}[2]{#2}
+
+\title{Scheduling snapshot restores along a workflow\\[4pt]\large Theory chapter, draft}
+\author{MSc thesis, Amirkabir University of Technology}
+\date{\today}
+
+\begin{document}
+\maketitle
+\setcounter{chapter}{3}
+\input{ch_theory}
+\bibliographystyle{plain}
+\bibliography{theory}
+\end{document}

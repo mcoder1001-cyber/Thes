@@ -1,0 +1,11 @@
+{
+  "_note": "Thesis defaults at 1 vCPU (ideas/sim/dagsim.py JAVA/PY/PYML). Times in ms, memory in MB. w = RK + C. Replace with measured values: MACHINE_TEST_PLAN.md, T2-T3.",
+  "vcpu": 1.0,
+  "delta_ms": 2.0,
+  "beta": 0.0,
+  "functions": {
+    "java":   {"A": 2510, "B": 370, "C": 12,  "r": 650, "RK": 63, "m": 512},
+    "python": {"A": 400,  "B": 15,  "C": 20,  "r": 60,  "RK": 5,  "m": 256},
+    "py-ml":  {"A": 1800, "B": 40,  "C": 300, "r": 180, "RK": 20, "m": 1024}
+  }
+}

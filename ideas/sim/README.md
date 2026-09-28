@@ -22,7 +22,12 @@
 python3 prep_azure.py <AzureFunctionsInvocationTraceForTwoWeeksJan2021.txt> 3   # -> data/
 python3 run_sim.py            # all; e4 takes ~45 min (single core), e7b ~6 min on 3 cores, e8 ~10 min on 4 cores (SIM_PROCS sets the pool size), e9 ~25 min
 python3 plot_e4.py
+
+# with measured parameters from the test machine (MACHINE_TEST_PLAN.md), into a separate folder:
+DAGSIM_PROFILE=../../results/box/profile_vcpu1.0.json DAGSIM_OUT=../../results/box/sim python3 run_sim.py e10a e9a
 ```
+`DAGSIM_PROFILE` replaces the `JAVA`, `PY` and `PYML` profiles and the edge delay with the values in a JSON file
+(format: `../criu-box/profile_thesis.json`, which holds the defaults and reproduces the committed results).
 
 **Policies** (`dagsim.POLICIES`): `cold`, `keepalive`, `snap` (restore on demand), `prewarm`
 (DAG-aware cold prewarm), `ahead` (look-ahead restore), `+rw` (re-warm while waiting),

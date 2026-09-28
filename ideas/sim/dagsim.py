@@ -28,6 +28,7 @@ Model simplifications (stated, not hidden):
   * inter-stage data transfer is a constant per-edge overhead.
 """
 import heapq
+import json
 import math
 import os
 import random
@@ -71,6 +72,17 @@ JAVA = Profile("java", A=2510, B=370, C=12, r=650, RK=63, m=512)
 PY = Profile("python", A=400, B=15, C=20, r=60, RK=5, m=256)
 # ML-ish stage: long steady execution (gives downstream stages real slack)
 PYML = Profile("py-ml", A=1800, B=40, C=300, r=180, RK=20, m=1024)
+
+# Measured values replace these defaults when DAGSIM_PROFILE names a JSON file in the format of
+# ideas/criu-box/profile_thesis.json (MACHINE_TEST_PLAN.md, "Feeding results back").
+if os.environ.get("DAGSIM_PROFILE"):
+    with open(os.environ["DAGSIM_PROFILE"]) as _f:
+        _meas = json.load(_f)
+    for _prof in (JAVA, PY, PYML):
+        for _k, _v in _meas.get("functions", {}).get(_prof.name, {}).items():
+            setattr(_prof, _k, float(_v))
+        _prof.R_mis = _prof.RK
+    EDGE_MS = float(_meas.get("delta_ms", EDGE_MS))
 
 
 # ============================================================ DAGs
