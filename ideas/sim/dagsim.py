@@ -277,6 +277,18 @@ class Policy:
     plan_quiet: float = 60_000.0    # no planning within this long (ms) after an over-budget start
     plan_p: float = 0.5             # plan the stages reached with at least this probability; when
                                     # memory is short, the others get no speculative restore
+    # CPU layer (Sim(cpu_cores=...)): how the node's spare CPU is shared among start-ups
+    # (provisioning plus the first request's warm-up). None: every sandbox runs at its quota.
+    #   "uniform" equal shares (Cloud Run's startup CPU boost, idealised: all spare CPU)
+    #   "cp"      earliest deadline first: critical path first
+    #   "slack"   constant rates that minimise the largest lateness of the start-ups, leftover
+    #             spare shared equally (the online form of the exact plan in cpuplan.py)
+    # With a boost, look-ahead starts every restore at the workflow's arrival: the CPU shares,
+    # not the trigger times, decide when each start-up finishes.
+    boost: Optional[str] = None
+    spec_p: float = 0.5             # CPU plan: stages reached with a lower probability are speculative
+    nosnap: frozenset = frozenset()     # stages (function name after the '.') that get no snapshot:
+                                        # they cold-start, ahead or on demand, even when snap is on
 
 
 POLICIES = {
@@ -334,6 +346,7 @@ class Sandbox:
     claimed: bool = False                        # taken by a started node (not just reserved)
     waiting: list = field(default_factory=list)  # requests queued on a not-yet-ready sandbox
     ver: int = 0
+    cjob: Optional[int] = None                   # its CPU job (CPU layer only)
 
 
 def rewarm_residual(R, C, slack, rho):
@@ -383,8 +396,17 @@ def wf_saving(dag: DAG, p: Policy):
 # ============================================================ simulator
 class Sim:
     def __init__(self, policy: Policy, mem_budget_mb: float = 64_000, restore_beta: float = 0.0,
-                 seed: int = 0, jitter: bool = True):
+                 seed: int = 0, jitter: bool = True, cpu_cores: Optional[float] = None,
+                 cpu_quota: float = 1.0, cpu_cap: float = 1.0):
         self.p = policy
+        # CPU layer (off unless cpu_cores is given). Profile times are ms at 1 vCPU, i.e. CPU work;
+        # a job runs at the CPU rate it is given: its sandbox's quota (scaled down in proportion
+        # when the quotas exceed the node), plus, for start-ups, a share of the spare CPU per
+        # policy.boost, at most cpu_cap cores (a JVM pinned to one CPU: 1).
+        self.cpu = cpu_cores is not None
+        self.K, self.q, self.cap = cpu_cores, cpu_quota, cpu_cap
+        self.cjobs, self.njob, self.cpu_t, self.cpu_ver, self.cpu_dirty = {}, 0, 0.0, 0, False
+        self.cpu_used = self.cpu_boost = self.cpu_start = 0.0      # CPU-ms: all, boost, start-ups
         self.M = mem_budget_mb
         self.beta = restore_beta
         self.seed = seed
@@ -468,10 +490,18 @@ class Sim:
             self.stats["cold_boots"] += 1
         if ahead:
             self.stats["ahead_started"] += 1
-        self.push(s.ready_at, "ready", s, s.ver)
+        if self.cpu:
+            s.ready_at = self.now + dur / self.q            # estimate; the CPU layer updates it
+            self._cpu_add("prov", s, dur, True)
+        else:
+            self.push(s.ready_at, "ready", s, s.ver)
         return s
 
     def _kill(self, s: Sandbox):
+        if self.cpu and s.cjob is not None:
+            self.cjobs.pop(s.cjob, None)
+            s.cjob = None
+            self.cpu_dirty = True
         self._set_state(s, "dead")
         self._acct()
         self.mem -= s.prof.m
@@ -503,7 +533,7 @@ class Sim:
             return
         if self.p.keep == "gdsf":
             def H(s):
-                cost = (s.prof.r + s.prof.RK) if self.p.snap else (s.prof.A + s.prof.B)
+                cost = (s.prof.r + s.prof.RK) if self._snap(s.fn) else (s.prof.A + s.prof.B)
                 return self.base.get(s.fn, 0.0) + self.freq.get(s.fn, 0) * cost / s.prof.m
             idle.sort(key=lambda s: (H(s), s.last_used))
         else:
@@ -559,6 +589,8 @@ class Sim:
                   draws=draws, ctx={}, preds=dag.preds(), fin={}, defer={}, deadline={},
                   pending=set(), held=set(), released=set(), jit_abs={}, ahead_args={})
         self.inv[iid] = st
+        if self.cpu and self.p.boost in ("cp", "slack"):
+            self._cpu_deadlines(st)
         self._touch(dag, wid)
         entry_live = bool(self.sb.get(dag.nodes[dag.entry].fn))
         pr = dag.reach_prob()
@@ -590,20 +622,21 @@ class Sim:
         preds = st["preds"]
         need = {}           # fn -> count of sandboxes this invocation will need
         est_start, est_fin = {}, {}
+        f = 1.0 / self.q if self.cpu else 1.0       # CPU layer: estimates at the sandbox's quota
         for n in dag.topo():
             node = dag.nodes[n]
             ps = preds[n]
             est_start[n] = 0.0 if not ps else max(est_fin[p] for p in ps) + EDGE_MS
+            sn = self.p.ahead == "restore" and self._snap(node.fn)
             if self.p.jit and n != dag.entry and self.p.ahead == "restore":
-                # eager-schedule start S*_v = max(input time, own restore completion)
-                est_start[n] = max(est_start[n], node.prof.r)
+                # eager-schedule start S*_v = max(input time, own restore (or cold boot) completion)
+                est_start[n] = max(est_start[n], (node.prof.r if sn else node.prof.A) * f)
             if n == dag.entry:
                 dur = node.prof.C + (0 if self._idle_count(node.fn) else
-                                     (node.prof.r + node.prof.RK if self.p.ahead == "restore"
-                                      else node.prof.A + node.prof.B))
+                                     (node.prof.r + node.prof.RK if sn else node.prof.A + node.prof.B))
             else:
-                dur = node.prof.C + (node.prof.RK if self.p.ahead == "restore" else node.prof.B)
-            est_fin[n] = est_start[n] + dur
+                dur = node.prof.C + (node.prof.RK if sn else node.prof.B)
+            est_fin[n] = est_start[n] + dur * f
         planned = self._plan_exact(iid) if (self.p.plan and self.p.jit and self.p.ahead == "restore") else {}
         for n in dag.topo():
             if n == dag.entry or pr[n] < self.p.theta:
@@ -618,8 +651,11 @@ class Sim:
             for var in variants:
                 k = need.get((node.fn, var), 0)
                 need[(node.fn, var)] = k + 1
-                lead = node.prof.r if self.p.ahead == "restore" else node.prof.A
+                sn = self.p.ahead == "restore" and self._snap(node.fn)
+                lead = (node.prof.r if sn else node.prof.A) * f
                 t = max(0.0, est_start[n] - lead * (1 + self.p.margin))
+                if self.cpu and self.p.boost:
+                    t = 0.0         # the CPU shares, not the trigger, decide when it is ready
                 if n in planned:
                     st["jit_abs"][n] = self.now + t     # where just-in-time would have put it
                     st["ahead_args"][n] = (var, k)
@@ -698,6 +734,10 @@ class Sim:
             return True
         return var in s.ctxs if s.served else s.variant == var
 
+    def _snap(self, fn):
+        """Does this function start from a snapshot? (policy.snap, minus policy.nosnap stages)"""
+        return self.p.snap and fn.split(".", 1)[-1] not in self.p.nosnap
+
     def _idle_count(self, fn):
         return sum(1 for s in self.sb.get(fn, []) if s.state == IDLE and s.reserved is None)
 
@@ -717,7 +757,7 @@ class Sim:
             free[0].reserved = (iid, n)
             return
         d = st["draws"][n]
-        if self.p.ahead == "restore":
+        if self.p.ahead == "restore" and self._snap(node.fn):
             dur = self._restore_time(node.prof, _Fixed(d["r"]))
             s = self._new(node.fn, node.prof, "snap", dur, ahead=True, variant=var, demand=False)
         else:
@@ -840,7 +880,7 @@ class Sim:
                 s = idle[0]
         # 3) demand start
         if s is None:
-            if self.p.snap:
+            if self._snap(node.fn):
                 s = self._new(node.fn, node.prof, "snap", self._restore_time(node.prof, _Fixed(d["r"])),
                               variant=ctx if self.p.ctx else None)
             else:
@@ -879,13 +919,17 @@ class Sim:
         elif ctx is not None and node.ctx_from and ctx not in s.ctxs and s.ctxs:
             # warm sandbox meeting a new edge for the first time
             dur += prof.R_mis - prof.RK if prof.R_mis > prof.RK else 0.0
+        first = s.served == 0
         if s.served > 0:
             self.stats["warm_hits"] += 1
         self._set_state(s, BUSY)
         s.served += 1
         if ctx is not None:
             s.ctxs = s.ctxs | {ctx}
-        self.push(self.now + dur, "finish", s, req)
+        if self.cpu:
+            self._cpu_add("serve", s, dur, first, req)
+        else:
+            self.push(self.now + dur, "finish", s, req)
 
     @staticmethod
     def _dominant_ctx(node):
@@ -985,7 +1029,12 @@ class Sim:
             self.push(self.now + self.p.ttl, "expire", s, s.ver)
 
     def _ready(self, s: Sandbox, ver):
-        if s.ver != ver or s.state not in (BOOT, RESTORE):
+        if s.ver != ver:
+            return
+        self._became_ready(s)
+
+    def _became_ready(self, s: Sandbox):
+        if s.state not in (BOOT, RESTORE):
             return
         if s.state == RESTORE:
             self.restoring -= 1
@@ -1001,12 +1050,148 @@ class Sim:
         if s.ver == ver and s.state == IDLE and s.reserved is None:
             self._kill(s)
 
+    # ---------------------------------------------------------------- CPU layer
+    def _cpu_add(self, kind, s, work, boostable, req=None):
+        self.njob += 1
+        self.cjobs[self.njob] = dict(kind=kind, s=s, req=req, rem=max(work, 0.0), boost=boostable,
+                                     rate=0.0, base=0.0)
+        s.cjob = self.njob
+        self.cpu_dirty = True
+
+    def _cpu_advance(self, t):
+        dt = t - self.cpu_t
+        if dt > 0:
+            for j in self.cjobs.values():
+                j["rem"] -= j["rate"] * dt
+                self.cpu_used += j["rate"] * dt
+                if j["boost"]:
+                    self.cpu_start += j["rate"] * dt
+                    self.cpu_boost += (j["rate"] - j["base"]) * dt
+        self.cpu_t = t
+
+    def _cpu_deadlines(self, st):
+        """When each stage must be ready (Dp) and done with its first request's warm-up (Ds) for the
+        workflow to reach its ideal latency: every start-up at cpu_cap from the arrival. Under
+        look-ahead the workflow finishes by L iff every stage is ready by L - T(v) (Theorem 1),
+        so these are the deadlines of the start-ups; a common offset does not change the order."""
+        dag = st["dag"]
+        T, first = {}, {}
+        for n in reversed(dag.topo()):
+            node, prof = dag.nodes[n], dag.nodes[n].prof
+            outs = list(node.succ) + [x for _, alt in (node.choice or []) for x in alt]
+            first[n] = ((prof.RK if self._snap(node.fn) else prof.B) + prof.C) / self.cap
+            T[n] = first[n] + max((EDGE_MS + T[x] for x in outs), default=0.0)
+        U = {n: (dag.nodes[n].prof.r if self._snap(dag.nodes[n].fn) else dag.nodes[n].prof.A) / self.cap
+             for n in T}
+        Tw = max(U[n] + T[n] for n in T)
+        st["Dp"] = {n: self.now + Tw - T[n] for n in T}
+        st["Ds"] = {n: st["Dp"][n] + first[n] for n in T}
+
+    def _cpu_deadline(self, j):
+        key = j["s"].reserved if j["kind"] == "prov" else j["req"][:2]
+        st = self.inv.get(key[0]) if key else None
+        if st is None or "Dp" not in st:
+            return math.inf
+        return (st["Dp"] if j["kind"] == "prov" else st["Ds"]).get(key[1], math.inf)
+
+    def _cpu_spec(self, j, thr):
+        """A speculative start-up: a restore for a stage that may not run (reached with probability
+        below thr and behind an if/else not yet decided), or one no invocation holds any more."""
+        if j["kind"] != "prov":
+            return False
+        key = j["s"].reserved
+        st = self.inv.get(key[0]) if key else None
+        if st is None or key[1] in st["skipped"]:
+            return True
+        n = key[1]
+        if any(p in st["done"] for p in st["preds"][n]):
+            return False                    # its branch was taken
+        return st["dag"].reach_prob()[n] < thr
+
+    def _cpu_plan(self, jobs):
+        """The CPU plan (boost = "cp" or "slack"). Requests run at their quota. The platform sets
+        every starting sandbox's CPU limit, so a start-up is guaranteed nothing and a restore that
+        is not urgent cannot hold CPU the critical one needs. Certain start-ups share the CPU the
+        requests leave, by deadline; speculative ones (branches not yet decided) get only what is
+        left. With no more than one core to spare, parallel start-ups cannot beat sequential
+        ones, so only stages certain to run count as certain; otherwise the likely path does
+        (reached with probability >= spec_p)."""
+        run = [j for j in jobs if not j["boost"]]
+        starts = [j for j in jobs if j["boost"]]
+        nr = len(run)
+        br = self.q * min(1.0, self.K / (self.q * nr)) if nr else 0.0
+        for j in run:
+            j["base"] = j["rate"] = br
+        for j in starts:
+            j["base"] = j["rate"] = 0.0
+        spare = max(0.0, self.K - br * nr)
+        thr = self.p.spec_p if spare > self.cap + 1e-9 else 1.0 - 1e-9
+        main = [j for j in starts if not self._cpu_spec(j, thr)]
+        spec = [j for j in starts if self._cpu_spec(j, thr)]
+        if main and spare > 1e-12:
+            if self.p.boost == "cp":
+                for j in sorted(main, key=self._cpu_deadline):
+                    add = min(spare, self.cap - j["rate"])
+                    if add > 0:
+                        j["rate"] += add
+                        spare -= add
+            else:
+                _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
+                spare -= sum(j["rate"] for j in main)
+        if spec and spare > 1e-12:
+            _water_fill(spec, spare, self.cap)
+
+    def _cpu_alloc(self):
+        jobs = list(self.cjobs.values())
+        if self.p.boost in ("cp", "slack"):
+            self._cpu_plan(jobs)
+        else:
+            # every sandbox runs at its quota (scaled down in proportion when the quotas exceed the
+            # node); "uniform" shares the rest equally among start-ups (Cloud Run's startup boost)
+            n = len(jobs)
+            base = self.q * min(1.0, self.K / (self.q * n)) if n else 0.0
+            for j in jobs:
+                j["base"] = j["rate"] = base
+            spare = max(0.0, self.K - base * n)
+            boost = [j for j in jobs if j["boost"]]
+            if self.p.boost == "uniform" and boost and spare > 1e-12:
+                _water_fill(boost, spare, self.cap)
+            elif self.p.boost not in (None, "uniform"):
+                raise ValueError(self.p.boost)
+        self.cpu_ver += 1
+        nxt = math.inf
+        for j in jobs:
+            if j["rate"] > 0:
+                tj = self.now + max(0.0, j["rem"]) / j["rate"]
+                nxt = min(nxt, tj)
+                if j["kind"] == "prov":
+                    j["s"].ready_at = tj
+        if nxt < math.inf:
+            self.push(nxt, "cpu", self.cpu_ver)
+        self.cpu_dirty = False
+
+    def _cpu_event(self, ver):
+        if ver != self.cpu_ver:
+            return
+        for jid in [jid for jid, j in self.cjobs.items() if j["rem"] <= 1e-6]:
+            j = self.cjobs.pop(jid)
+            j["s"].cjob = None
+            if j["kind"] == "prov":
+                self._became_ready(j["s"])
+            else:
+                self._finish(j["s"], j["req"])
+                if self.planned:
+                    self._replan()
+        self.cpu_dirty = True
+
     # ---------------------------------------------------------------- run
     def run(self, until=math.inf):
         while self.ev:
             t, _, kind, args = heapq.heappop(self.ev)
             if t > until:
                 break
+            if self.cpu:
+                self._cpu_advance(t)
             self.now = t
             if kind == "arrive":
                 self._arrive(*args)
@@ -1024,10 +1209,64 @@ class Sim:
                 self._ahead(*args)
             elif kind == "plan_timeout":
                 self._plan_timeout(*args)
+            elif kind == "cpu":
+                self._cpu_event(*args)
             if self.ahead_q:
                 self._drain_ahead_q()
+            if self.cpu and self.cpu_dirty:
+                self._cpu_alloc()
         self._acct()
         return self
+
+
+def _water_fill(jobs, spare, cap):
+    """Share spare CPU equally among jobs, none above cap; returns what is left."""
+    free = [j for j in jobs if j["rate"] < cap - 1e-12]
+    while spare > 1e-12 and free:
+        share = spare / len(free)
+        nxt = []
+        for j in free:
+            add = min(share, cap - j["rate"])
+            j["rate"] += add
+            spare -= add
+            if j["rate"] < cap - 1e-12:
+                nxt.append(j)
+        if len(nxt) == len(free):
+            break
+        free = nxt
+    return spare
+
+
+def _slack_rates(jobs, spare, cap, now, deadline):
+    """Constant rates that minimise the largest lateness (finish - deadline) of the start-ups:
+    the smallest Lam such that every job can finish by its deadline + Lam, found by bisection
+    (the extra CPU needed is non-increasing in Lam); then any spare left is shared equally."""
+    D = [deadline(j) for j in jobs]
+
+    def rates(Lam):
+        out = []
+        for j, d in zip(jobs, D):
+            T = d + Lam - now
+            out.append(cap if T <= 1e-9 else min(cap, max(j["base"], max(j["rem"], 0.0) / T)))
+        return out
+
+    def extra(Lam):
+        return sum(r - j["base"] for r, j in zip(rates(Lam), jobs))
+    lo, hi = -1e7, 1e7
+    if extra(lo) <= spare:
+        Lam = lo
+    else:
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if extra(mid) <= spare:
+                hi = mid
+            else:
+                lo = mid
+        Lam = hi
+    for j, r in zip(jobs, rates(Lam)):
+        j["rate"] = r
+    left = spare - sum(j["rate"] - j["base"] for j in jobs)
+    _water_fill(jobs, max(0.0, left), cap)
 
 
 class _Fixed:

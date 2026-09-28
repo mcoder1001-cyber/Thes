@@ -104,6 +104,7 @@ thesis defaults it prints the numbers quoted below.
 | **T4** | warm-up lost to the checkpoint `L(K)`, and what re-warming recovers | 2 | 1–2 | keep or drop re-warm (Idea 4) |
 | **T5** | do copies restored from one image repeat random numbers and secrets? | 5 | 2 | the builder's reset hooks |
 | **T6** | the vCPU cliff, cold vs restored | 2 | 2 | the missing figure; S4's headline |
+| **T6b** | how start-up speeds up with CPU, at what CPU cost; boosting only the start-up | 2 | 2 | **whether the CPU plan (`ideas/sim/cpuplan.py`, e11) is real** |
 | **T7** | one snapshot action inside OpenWhisk, the wake call, the edge delay δ | 3 | 10 | the platform works; `delta_ms` |
 | **T8** | look-ahead on chains of 1–8 stages at 0.25 and 1 vCPU | 4 | 10 | **the headline result** |
 | **T9** | peak memory; latency with k sandboxes allowed; the guard | 4 | 3 | Theorem 8 on the real system |
@@ -422,6 +423,61 @@ Restored deep: **flatter**. The theory gives no number here; register a guess be
 `summary.csv`. Then add figure 9 to `figures/make_figures.py` in the same style (the
 `figures/README.md` note asks for it). **Decision:** if confirmed, S4's headline stands: deep
 snapshots matter most exactly where FaaS runs.
+
+---
+
+## T6b. CPU during start-up: the speed-up curve, its CPU cost, and a boost only while starting
+
+**Question.** The CPU plan (`ideas/sim/cpuplan.py`, simulator experiment e11) assumes three things:
+- a start-up (restore plus the first request's residual warm-up, or a cold boot plus warm-up)
+  is CPU work that finishes about in proportion to the CPU it gets, up to about one core;
+- extra CPU does the same work sooner without adding CPU-seconds;
+- the quota can be raised for the start-up only and lowered again, without harm.
+
+Are these true for CRaC restores and JVM cold starts on this machine?
+
+**Run.** For the T3 function, 20 repetitions per cell:
+- restore at K = 0 and at the chosen K, and a cold start, at a fixed quota of `{0.25, 0.5, 1, 2, 4}`
+  vCPU (cgroup `cpu.max`);
+- the same with the JVM's view pinned to one CPU (`-XX:ActiveProcessorCount=1`) and not pinned;
+- **boost:** start at 1 vCPU (and at 2), and lower the quota to 0.25 vCPU as soon as the first
+  request has been answered; then serve 200 requests at 0.25 vCPU;
+- **contention:** 2 and 4 restores at once on 1 spare core, each with a 0.25 quota, the spare split
+  equally, and then split by the rule of e11 (one restore at the full core first).
+
+**Measure.**
+- Wall time of each phase: restore or boot, first response, and the residual over 200 requests.
+- CPU-seconds actually used (`cpu.stat` `usage_usec`, before and after).
+- The number of throttled periods (`cpu.stat` `nr_throttled`).
+- For the boost runs, latency of requests 2–200, to check that lowering the quota afterwards
+  does not hurt steady serving.
+
+**Control.** At 1 vCPU, the fixed-quota run and the boost run are identical up to the first
+response, because the boost is 1 vCPU there.
+
+**Expected** (exp-b measured warm-up; this repeats it for restores and cold starts):
+- from 0.25 to 1 vCPU, **about 4× faster at about the same CPU-seconds** (exp-b: 3.59 → 0.86 s,
+  0.90 vs 0.86 CPU-s);
+- from 1 to 4 vCPU, less (exp-b: 2.4×), and more CPU-seconds;
+- CRIU restore is CPU work (system-call replay, per Spice), so the restore should scale like
+  warm-up. A disk-bound restore would not. If the restore scales by less than 2× from 0.25 to
+  1 vCPU, the model's linear speed-up is wrong for restores; report the measured curve.
+- The boost runs serve requests 2–200 as fast as a run that stayed at 0.25 vCPU after warming.
+
+**Output.**
+- `raw/speedup.csv`: `mode (restore_K0|restore_K|cold), vcpu, pinned, rep, phase_ms..., cpu_s,
+  nr_throttled`.
+- `raw/boost.csv`: `boost_vcpu, rep, first_ms, residual_ms, steady_p50_ms, cpu_s`.
+- `raw/contention.csv`.
+- `summary.csv`: speed-up and CPU-seconds relative to 0.25 vCPU.
+
+**Feed back.** Put the measured speed-up curve into `cpuplan.py` and the simulator's CPU layer
+(`cpu_cap`, and a non-linear rate if the curve is not linear). Rerun e11 with
+`DAGSIM_PROFILE` and report the change.
+
+**Decision.** If a start-up does not get faster with CPU, or gets faster only by using many more
+CPU-seconds, the CPU plan has nothing to allocate. The thesis then keeps look-ahead restore and
+snapshot selection only.
 
 ---
 
