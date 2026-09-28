@@ -18,10 +18,14 @@ L?" is preemptive deadline scheduling with rate caps: a max-flow (Horn 1974). So
 and the flow gives each start-up's CPU rate in each slice. For several workflows the same is
 done with a common extra delay lam over each workflow's ideal latency (the fairest schedule).
 
-The online rule ("slack", dagsim's boost="slack") recomputes at every event the constant rates
-that minimise the largest lateness of the active start-ups, and shares any spare left equally.
-main() compares it with the exact plan, an equal split (Cloud Run's startup boost, idealised)
-and critical-path-first (earliest deadline first) on six cases; `python3 run_sim.py e11o`.
+The online rules. "slack" recomputes at every event the constant rates that minimise the
+largest lateness of all active start-ups (fair across workflows). "wfplan" (dagsim's
+boost="plan", THE CPU PLAN) is "slack" while one workflow is starting and earliest deadline
+first while several are (best in the simulator's mixed bursts, e11b; in this model's bursts of
+identical chains "slack" is better, so the burst rule is not settled). main() compares them with
+the exact plan (which minimises the largest lateness, i.e. the slowest workflow), an equal
+split (Cloud Run's startup boost, idealised) and critical-path-first (earliest deadline first)
+on six cases; `python3 run_sim.py e11o`.
 """
 import sys
 
@@ -79,7 +83,7 @@ def _water_fill(items, rate, spare):
     return spare
 
 
-def _slack(items, rate, spare, now):
+def _slack(items, rate, spare, now, fill=True):
     def rates(Lam):
         out = {}
         for it in items:
@@ -91,7 +95,8 @@ def _slack(items, rate, spare, now):
     def extra(Lam):
         r = rates(Lam)
         return sum(r[it["id"]] - it["s"].q for it in items)
-    lo, hi = -1e4, 1e4
+    lo = max((now + it["rem"] / it["s"].c - it["D"] for it in items), default=0.0)
+    hi = 1e4
     if extra(lo) <= spare:
         hi = lo
     else:
@@ -101,11 +106,12 @@ def _slack(items, rate, spare, now):
     r = rates(hi)
     for it in items:
         rate[it["id"]] = r[it["id"]]
-    _water_fill(items, rate, max(0.0, spare - sum(r[it["id"]] - it["s"].q for it in items)))
+    left = max(0.0, spare - sum(r[it["id"]] - it["s"].q for it in items))
+    return _water_fill(items, rate, left) if fill else left
 
 
 def simulate(workflows, P, policy, plan_rates=None):
-    """workflows: [(arrival, wf)]. policy: fixed | uniform | cp | slack | plan. All start-ups
+    """workflows: [(arrival, wf)]. policy: fixed | uniform | cp | slack | wfplan | plan. All start-ups
     begin at their workflow's arrival (look-ahead). Returns (latencies, boost CPU-seconds)."""
     jobs = []
     for k, (t0, wf) in enumerate(workflows):
@@ -137,6 +143,16 @@ def simulate(workflows, P, policy, plan_rates=None):
                 spare -= add
         elif policy == "slack":
             _slack(active, rate, P, t)
+        elif policy == "wfplan":
+            # dagsim's boost="plan": one workflow starting -> "slack"; several -> earliest deadline
+            if len({j["wf"] for j in active}) <= 1:
+                _slack(active, rate, P, t)
+            else:
+                spare = P
+                for j in sorted(active, key=lambda j: (j["D"], j["id"])):
+                    add = min(spare, j["s"].c - j["s"].q)
+                    rate[j["id"]] += add
+                    spare -= add
         elif policy == "plan":
             I, R = plan_rates
             k = next((i for i, (a, b) in enumerate(I) if a - 1e-12 <= t < b), None)
@@ -277,17 +293,20 @@ def main():
     print("e11o: the online rule vs the exact plan (fluid model, functions at 0.25 vCPU)")
     print(f"   controls (one start-up alone): {'PASS' if controls() else 'FAIL'}")
     rows = []
+    pols = ("fixed", "uniform", "cp", "slack", "wfplan", "plan")
     for name, wfs, P in cases():
         out = {}
-        for pol in ("fixed", "uniform", "cp", "slack"):
+        for pol in pols[:-1]:
             out[pol] = simulate(wfs, P, pol)
         out["plan"] = simulate(wfs, P, "plan", plan(wfs, P))
         worst = {k: max(v[0]) for k, v in out.items()}
-        print(f"   {name:28s} (spare {P}) slowest workflow, s: no boost {worst['fixed']:5.2f} | equal split "
-              f"{worst['uniform']:5.2f} | critical first {worst['cp']:5.2f} | online rule {worst['slack']:5.2f} | "
-              f"exact plan {worst['plan']:5.2f}   (online/exact {worst['slack'] / worst['plan']:.3f})")
-        rows.append((name, P) + tuple(worst[k] for k in ("fixed", "uniform", "cp", "slack", "plan"))
-                    + tuple(out[k][1] for k in ("uniform", "cp", "slack", "plan")))
+        mean = {k: sum(v[0]) / len(v[0]) for k, v in out.items()}
+        print(f"   {name:28s} (spare {P}) slowest / mean workflow, s: no boost {worst['fixed']:5.2f} | equal "
+              f"{worst['uniform']:5.2f}/{mean['uniform']:5.2f} | critical first {worst['cp']:5.2f}/{mean['cp']:5.2f} | "
+              f"fair {worst['slack']:5.2f}/{mean['slack']:5.2f} | CPU plan {worst['wfplan']:5.2f}/{mean['wfplan']:5.2f} | "
+              f"exact (min slowest) {worst['plan']:5.2f}")
+        rows.append((name, P) + tuple(worst[k] for k in pols) + tuple(mean[k] for k in pols)
+                    + tuple(out[k][1] for k in pols[1:]))
     return rows
 
 

@@ -636,11 +636,12 @@ E11_POLS = {
     "la": _LA,                                                         # look-ahead restore, no boost
     "la+uniform": replace(_LA, name="la+uniform", boost="uniform"),
     "la+cp": replace(_LA, name="la+cp", boost="cp"),
-    "la+slack": replace(_LA, name="la+slack", boost="slack"),          # the CPU plan (this proposal)
+    "la+slack": replace(_LA, name="la+slack", boost="slack"),          # fair: smallest largest lateness
+    "la+plan": replace(_LA, name="la+plan", boost="plan"),             # THE CPU PLAN (this proposal)
     "cold": Policy("cold", keep="gdsf"),                               # no snapshots: cold start on demand
     "cold+uniform": Policy("cold+uniform", keep="gdsf", boost="uniform"),
     "prewarm": _PW,                                                    # Xanadu-style just-in-time cold prewarm
-    "prewarm+slack": replace(_PW, name="prewarm+slack", boost="slack"),
+    "prewarm+plan": replace(_PW, name="prewarm+plan", boost="plan"),
 }
 E11_DAGS = [("chain3", lambda t: chain(3, JAVA, t)), ("chain5", lambda t: chain(5, JAVA, t)),
             ("chain8", lambda t: chain(8, JAVA, t)), ("fanout4", lambda t: fanout(4, t)),
@@ -678,11 +679,11 @@ def e11a(seeds=50, quotas=(0.25, 0.5), cores=(1, 2, 4)):
     for q in quotas:
         for K in cores:
             print(f"   q={q} vCPU, {K} cores: mean latency, s (od | od+uniform | la | la+uniform | la+cp | "
-                  f"la+slack || cold | cold+uniform | prewarm | prewarm+slack)")
+                  f"la+slack | la+plan || cold | cold+uniform | prewarm | prewarm+plan)")
             for d, _ in E11_DAGS:
                 v = [res[(q, K, d, pn)] / 1000 for pn in E11_POLS]
-                print(f"      {d:8s} " + " ".join(f"{x:6.2f}" for x in v[:6]) + "  ||" +
-                      " ".join(f"{x:6.2f}" for x in v[6:]), flush=True)
+                print(f"      {d:8s} " + " ".join(f"{x:6.2f}" for x in v[:7]) + "  ||" +
+                      " ".join(f"{x:6.2f}" for x in v[7:]), flush=True)
     return rows
 
 
@@ -742,7 +743,8 @@ def e11c(days=3, budgets_gb=(32,), cores=(1, 2, 4), q=0.25, seed=1):
     """The Azure trace (as e10b) with functions at q vCPU on a node with K cores."""
     from multiprocessing import Pool
     print(f"e11c: Azure 2021 trace, {days} days, functions at {q} vCPU, node {cores} cores")
-    pols = ["od", "od+uniform", "la", "la+uniform", "la+slack", "cold", "cold+uniform", "prewarm", "prewarm+slack"]
+    pols = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan", "cold", "cold+uniform",
+            "prewarm", "prewarm+plan"]
     jobs = [(M, pn, K, q, days, seed) for M in budgets_gb for K in cores for pn in pols]
     with Pool(int(os.environ.get("SIM_PROCS", "4"))) as pool:
         rows = pool.map(_e11_trace, jobs)
@@ -784,7 +786,7 @@ def e11d(seeds=20, q=0.25, K=2, tol=0.05):
         if dname in ("chain8", "router"):
             continue                        # 2^8+ subsets; chain5 and trip cover the shapes
         fns[dname] = sorted({n.fn.split(".", 1)[1] for n in mk(dname).nodes.values()})
-        for pn in ("la", "la+slack"):
+        for pn in ("la", "la+plan"):
             for k in range(len(fns[dname]) + 1):
                 for sub in itertools.combinations(fns[dname], k):
                     jobs.append((dname, pn, sub, q, K, seeds))
@@ -792,7 +794,7 @@ def e11d(seeds=20, q=0.25, K=2, tol=0.05):
         res = pool.map(_e11_sel, jobs)
     rows = []
     for dname in fns:
-        for pn in ("la", "la+slack"):
+        for pn in ("la", "la+plan"):
             mine = [r for r in res if r[0] == dname and r[1] == pn]
             full = next(r[3] for r in mine if not r[2])
             none = next(r[3] for r in mine if len(r[2]) == len(fns[dname]))
@@ -811,9 +813,9 @@ def e11o():
     """The online rule (dagsim's boost="slack") against the exact plan, in cpuplan.py's fluid model."""
     import cpuplan
     rows = cpuplan.main()
-    write_csv("e11o_cpu_plan.csv", rows, ["case", "spare_cores", "no_boost_s", "equal_split_s", "critical_first_s",
-                                          "online_rule_s", "exact_plan_s", "boost_equal_cpu_s",
-                                          "boost_critical_cpu_s", "boost_online_cpu_s", "boost_exact_cpu_s"])
+    pols = ["no_boost", "equal", "critical_first", "fair", "cpu_plan", "exact"]
+    write_csv("e11o_cpu_plan.csv", rows, ["case", "spare_cores"] + [f"slowest_{p}_s" for p in pols]
+              + [f"mean_{p}_s" for p in pols] + [f"boost_{p}_cpu_s" for p in pols[1:]])
 
 
 def e11():

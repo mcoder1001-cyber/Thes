@@ -281,8 +281,9 @@ class Policy:
     # (provisioning plus the first request's warm-up). None: every sandbox runs at its quota.
     #   "uniform" equal shares (Cloud Run's startup CPU boost, idealised: all spare CPU)
     #   "cp"      earliest deadline first: critical path first
-    #   "slack"   constant rates that minimise the largest lateness of the start-ups, leftover
-    #             spare shared equally (the online form of the exact plan in cpuplan.py)
+    #   "slack"   constant rates that minimise the largest lateness of all start-ups (fair)
+    #   "plan"    THE CPU PLAN: with one workflow starting, "slack" (within 0-9% of the exact
+    #             plan, cpuplan.py); with several, earliest deadline first across all (e11b)
     # With a boost, look-ahead starts every restore at the workflow's arrival: the CPU shares,
     # not the trigger times, decide when each start-up finishes.
     boost: Optional[str] = None
@@ -589,7 +590,7 @@ class Sim:
                   draws=draws, ctx={}, preds=dag.preds(), fin={}, defer={}, deadline={},
                   pending=set(), held=set(), released=set(), jit_abs={}, ahead_args={})
         self.inv[iid] = st
-        if self.cpu and self.p.boost in ("cp", "slack"):
+        if self.cpu and self.p.boost in ("cp", "slack", "plan"):
             self._cpu_deadlines(st)
         self._touch(dag, wid)
         entry_live = bool(self.sb.get(dag.nodes[dag.entry].fn))
@@ -1066,7 +1067,7 @@ class Sim:
                 self.cpu_used += j["rate"] * dt
                 if j["boost"]:
                     self.cpu_start += j["rate"] * dt
-                    self.cpu_boost += (j["rate"] - j["base"]) * dt
+                    self.cpu_boost += max(0.0, j["rate"] - self.q) * dt     # CPU above the quota
         self.cpu_t = t
 
     def _cpu_deadlines(self, st):
@@ -1086,6 +1087,10 @@ class Sim:
         Tw = max(U[n] + T[n] for n in T)
         st["Dp"] = {n: self.now + Tw - T[n] for n in T}
         st["Ds"] = {n: st["Dp"][n] + first[n] for n in T}
+
+    @staticmethod
+    def _cpu_owner(j):
+        return j["s"].reserved[0] if j["kind"] == "prov" else j["req"][0]
 
     def _cpu_deadline(self, j):
         key = j["s"].reserved if j["kind"] == "prov" else j["req"][:2]
@@ -1135,6 +1140,19 @@ class Sim:
                     if add > 0:
                         j["rate"] += add
                         spare -= add
+            elif self.p.boost == "plan":
+                # one workflow starting: balanced rates (smallest largest lateness, within 0-9% of
+                # the exact plan); several at once: earliest deadline first across all of them,
+                # which finishes the urgent start-ups of every workflow first (e11b)
+                if len({self._cpu_owner(j) for j in main}) <= 1:
+                    _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
+                    spare -= sum(j["rate"] for j in main)
+                else:
+                    for j in sorted(main, key=self._cpu_deadline):
+                        add = min(spare, self.cap - j["rate"])
+                        if add > 0:
+                            j["rate"] += add
+                            spare -= add
             else:
                 _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
                 spare -= sum(j["rate"] for j in main)
@@ -1143,7 +1161,7 @@ class Sim:
 
     def _cpu_alloc(self):
         jobs = list(self.cjobs.values())
-        if self.p.boost in ("cp", "slack"):
+        if self.p.boost in ("cp", "slack", "plan"):
             self._cpu_plan(jobs)
         else:
             # every sandbox runs at its quota (scaled down in proportion when the quotas exceed the
@@ -1237,10 +1255,12 @@ def _water_fill(jobs, spare, cap):
     return spare
 
 
-def _slack_rates(jobs, spare, cap, now, deadline):
+def _slack_rates(jobs, spare, cap, now, deadline, fill=True):
     """Constant rates that minimise the largest lateness (finish - deadline) of the start-ups:
-    the smallest Lam such that every job can finish by its deadline + Lam, found by bisection
-    (the extra CPU needed is non-increasing in Lam); then any spare left is shared equally."""
+    the smallest Lam such that every job can finish by its deadline + Lam (bisection; the extra
+    CPU needed is non-increasing in Lam), never below the lateness with every job at cap. Each
+    job gets just the rate that reaches Lam, so a start-up with slack gets less than cap. With
+    fill, the spare left is then shared equally. Returns the spare left."""
     D = [deadline(j) for j in jobs]
 
     def rates(Lam):
@@ -1252,7 +1272,9 @@ def _slack_rates(jobs, spare, cap, now, deadline):
 
     def extra(Lam):
         return sum(r - j["base"] for r, j in zip(rates(Lam), jobs))
-    lo, hi = -1e7, 1e7
+    lo = max((now + max(j["rem"], 0.0) / cap - d for j, d in zip(jobs, D)), default=0.0)
+    lo = max(lo, -1e7)
+    hi = 1e7
     if extra(lo) <= spare:
         Lam = lo
     else:
@@ -1265,8 +1287,8 @@ def _slack_rates(jobs, spare, cap, now, deadline):
         Lam = hi
     for j, r in zip(jobs, rates(Lam)):
         j["rate"] = r
-    left = spare - sum(j["rate"] - j["base"] for j in jobs)
-    _water_fill(jobs, max(0.0, left), cap)
+    left = max(0.0, spare - sum(j["rate"] - j["base"] for j in jobs))
+    return _water_fill(jobs, left, cap) if fill else left
 
 
 class _Fixed:
