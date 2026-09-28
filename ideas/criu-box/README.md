@@ -18,6 +18,12 @@ the restore-based numbers can match but not beat.
 | **x3-rewarm** | `L(K)` = warm-up lost to the checkpoint, and how much of it re-warming recovers (synthetic `fps_bulk` requests stand in for the developer's test requests) | Idea 4 | `L(K)` ≈ 0 at the target vCPU, or re-warming recovers < ~30% of it |
 | **x4-mispriming** (optional, record only) | exp-a's comparison (right edge / scrubbed / wrong edge / mixed) with **real restores** instead of process continuation | only the dropped Ideas 2 and 3; not needed for the approach | scrubbed priming ≥ 1.2× the real-traffic residual once `L(K)` is included |
 
+**The full test plan**, with expected results and output formats for these protocols and
+everything after them (OpenWhisk, chains, memory, evaluation), is `../../MACHINE_TEST_PLAN.md`.
+`predict.py` computes every closed-form prediction from a measured profile
+(`profile_thesis.json` holds the thesis's current values):
+`python3 ideas/criu-box/predict.py --profile <profile.json>`.
+
 ## Setup
 
 ```bash
