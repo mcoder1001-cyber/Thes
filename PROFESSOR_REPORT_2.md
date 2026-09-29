@@ -68,6 +68,10 @@ ends:
 - **stages that may not run** (an if/else not yet decided) get only CPU that nothing certain can
   use. With at most one spare core they are not started early at all: without parallelism,
   starting them early only takes CPU from stages that will run.
+- **just in time:** each start-up waits, holding no memory, until its latest start from the
+  exact plan, and then runs at full speed. It gives up no reachable deadline. With one spare
+  core it reaches the best latency and the least memory together, as report 1's just-in-time
+  restore did for fixed restore times.
 
 **Step 3: which stages get a snapshot.** A snapshot is built at deployment only for functions
 where it is safe (random-number state and secrets can be reset) and affordable. At run time, each
@@ -111,6 +115,8 @@ mean end-to-end latency in seconds, 50 runs with timing noise):
 - **Against SnapStart-style restore at the function's normal CPU share**, it is 3.6–14× faster
   with 2–4 free cores.
 - **Against the exact optimum** (fluid model), the online rule is within 0–9%.
+- **Just in time** (section 4) changes these latencies by −8% to +1.3% (if/else router:
+  2.06 → 1.89 s) and cuts memory (section 7).
 
 **A burst:** 16 cold workflows of these shapes arrive within one second (mean / 99th percentile,
 seconds):
@@ -123,7 +129,9 @@ seconds):
 
 Report 1's look-ahead is *slower* than restoring on demand in a burst: all restores start at once
 and compete for the CPU. The CPU plan fixes this. Its mean is 16–24% below the Cloud Run-style
-baseline, and its 99th percentile 2–24% below.
+baseline, and its 99th percentile 2–24% below. Just in time, it also holds **10–30% less memory
+than the Cloud Run-style baseline** (2 cores: 142 vs 204 GB·s per burst; 8 cores: 45 vs 50), and
+76–82% less than without it.
 
 **Without any snapshot:** cold prewarm along the workflow with the CPU plan beats SnapStart-style
 snapshot restores for 7 of 8 workflow shapes on 2 free cores (3-stage chain: 4.65 s vs 8.64 s),
@@ -181,10 +189,14 @@ them are started to serve the same calls.)
   snapshots do not pay for themselves.
 - **The burst rule depends on the mix.** "Most urgent first" is best for mixed bursts. For
   bursts of identical workflows, the balanced rule was better in the fluid model.
-- **Memory.** The plan starts restores when the workflow arrives, so sandboxes wait longer. Per
-  cold invocation it holds 1.3–3.8× the memory-time of on-demand restore. That is less than
-  report 1's look-ahead at small CPU shares. Triggering restores later, when their deadline
-  requires it, would reduce it.
+- **Memory.** Starting every restore when the workflow arrives made sandboxes wait: up to 11× the
+  memory-time of the Cloud Run-style baseline. Holding each start-up back to its latest start
+  (just in time) fixes most of it at the same latency:
+    - one workflow: 49–88% less on one spare core, where chains then hold exactly the baseline's
+      memory-time, and up to 73% less on two;
+    - a burst: 76–82% less, below the baseline;
+    - plenty of spare CPU (four idle cores for one workflow): up to 33% less. There the plan
+      still holds up to 2.6× the baseline's memory-time.
 - **It needs spare CPU, and contention.** With one free core or less there is nothing to plan: the
   result equals the Cloud Run-style boost. With plenty of spare CPU, as on the Azure trace with a
   32–64 core server, an equal split does as well. The CPU plan's own gains appear in between: small

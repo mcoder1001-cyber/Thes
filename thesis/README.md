@@ -5,7 +5,7 @@
 | `ch_theory.tex` | **Chapter 4, theory** (draft, English): the model, the theorems with proofs, the problem as RCPSP/max, the algorithm, the CPU plan, and how everything was verified |
 | `theory.bib` | the references the chapter cites |
 | `theory_standalone.tex` | a wrapper that compiles the chapter on its own |
-| `theory_standalone.pdf` | the compiled draft (23 pages) |
+| `theory_standalone.pdf` | the compiled draft (24 pages) |
 
 **Build** (pdflatex, as installed here):
 ```bash
@@ -57,7 +57,8 @@ the repository's documents):
 | Proposition 4.29 | Proposition CP4 | one spare core: earliest deadline first; look-ahead's gain bounded |
 | Propositions 4.30, 4.31 | Propositions CP5, CP6 | speculation on leftover CPU; the cost of a wrong guess |
 | Proposition 4.32 | Proposition CP7 | bursts on one spare core |
-| Algorithm 5 | `CPU_PLAN_THEORY.md` §7 | Boost: the online CPU rule (`dagsim`, `Policy.boost = "plan"`) |
+| Proposition 4.33 | Proposition CP8 | just in time: latest starts; least memory on one spare core |
+| Algorithm 5 | `CPU_PLAN_THEORY.md` §7–8 | Boost: the online CPU rule (`dagsim`, `Policy.boost = "plan"`, `Policy.lazy`) |
 
 Left out on purpose: `MODEL.md`'s on-demand depth model belongs to the measurement chapter,
 and Proposition 7 (scrubbed priming) belongs to a dropped idea. Simulation results appear

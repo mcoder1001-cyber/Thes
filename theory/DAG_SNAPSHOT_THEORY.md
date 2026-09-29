@@ -4,7 +4,7 @@ Written 2026-09-26, cleaned up the same day: the approach reads **no user data**
 input-derived priming is dropped; Appendix A keeps its record). Companion to `MODEL.md` and to
 `../ideas/IDEAS.md` (the evidence). **The algorithm that puts the results together, and
 the known OR problem it solves, is in `ALGORITHM.md`.** Every claim is
-checked by `verify_dag.py`: **93/93 checks pass, 18 of them controls designed to fail**,
+checked by `verify_dag.py`: **97/97 checks pass, 19 of them controls designed to fail**,
 which do (76 and 14 for this file; section CP checks `CPU_PLAN_THEORY.md`, the CPU plan that
 extends it). Tags as in `MODEL.md`: **[proved]**, **[verified]** (exhaustive or randomised computation),
 **[measured]** (real runs), **[assumption]** (a model input that the S0 box must confirm).

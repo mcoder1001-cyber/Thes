@@ -13,10 +13,13 @@ prompt.*
 
 > You are working in the `Thes` repository on the thesis's test machine (8 × Xeon Gold 6248R,
 > 31 GB RAM, Ubuntu 24.04, CRIU 4.2.1, Azul Zulu CRaC JDK 21, OpenWhisk built from `master`).
-> The thesis claims that restoring snapshots **ahead of need along a workflow DAG** hides all
-> but one restore (`REPORT.md`, `theory/DAG_SNAPSHOT_THEORY.md`, `theory/ALGORITHM.md`).
-> Everything so far is proved or simulated. Your job is to **measure** it. Read
-> `MACHINE_TEST_PLAN.md` and do the tests in order, starting at T0. Work on a branch, commit
+> The thesis claims two things. Restoring snapshots **ahead of need along a workflow DAG**
+> hides all but one restore (`REPORT.md`, `theory/DAG_SNAPSHOT_THEORY.md`,
+> `theory/ALGORITHM.md`). And **planning the spare CPU given to sandboxes while they start**,
+> along the workflow, makes cold workflows faster than an equal startup boost
+> (`ideas/CPU_PLAN.md`, `theory/CPU_PLAN_THEORY.md`). Everything so far is proved or simulated.
+> Your job is to **measure** it. Read `MACHINE_TEST_PLAN.md` and do the tests in the order of
+> its overview: T0, then T6b, then T1 onwards. Work on a branch, commit
 > after each test, and open a draft pull request. Follow the rules in the next section. Stop
 > and report when a control fails, when a decision rule says stop, or when the plan's
 > instructions do not fit what you find on the machine. Do not guess numbers. Do not change
@@ -104,7 +107,7 @@ thesis defaults it prints the numbers quoted below.
 | **T4** | warm-up lost to the checkpoint `L(K)`, and what re-warming recovers | 2 | 1–2 | keep or drop re-warm (Idea 4) |
 | **T5** | do copies restored from one image repeat random numbers and secrets? | 5 | 2 | the builder's reset hooks |
 | **T6** | the vCPU cliff, cold vs restored | 2 | 2 | the missing figure; S4's headline |
-| **T6b** | how start-up speeds up with CPU, at what CPU cost; boosting only the start-up | 2 | 2 | **whether the CPU plan (`ideas/sim/cpuplan.py`, e11) is real** |
+| **T6b** | how start-up speeds up with CPU, at what CPU cost; boosting only the start-up | 1 | 2 | **go / no-go for the CPU plan** (`ideas/sim/cpuplan.py`, e11) |
 | **T7** | one snapshot action inside OpenWhisk, the wake call, the edge delay δ | 3 | 10 | the platform works; `delta_ms` |
 | **T8** | look-ahead on chains of 1–8 stages at 0.25 and 1 vCPU | 4 | 10 | **the headline result** |
 | **T9** | peak memory; latency with k sandboxes allowed; the guard | 4 | 3 | Theorem 8 on the real system |
@@ -113,8 +116,10 @@ thesis defaults it prints the numbers quoted below.
 | **T12** | a burst of cold workflows under a shared budget | 6 | 2 | the guard under load |
 | **T13** | evaluation against the baselines, with trace replay | 7 | 20 | the thesis's comparison |
 
-T1 decides whether the rest is worth doing as planned. T2–T6 need only CRIU and the JDK.
-T7 onwards need OpenWhisk and the orchestrator (`ROADMAP.md` §1.3).
+**Order:** T0, **T6b**, T1, T1b, then the table's order. T6b and T1 decide whether the rest is
+worth doing as planned (`ROADMAP.md` §3): T6b for the CPU plan, the thesis's main contribution
+since the supervisor's review, and T1 for look-ahead. T2–T6b need only CRIU and the JDK. T7
+onwards need OpenWhisk and the orchestrator with its CPU allocator (`ROADMAP.md` §1.3).
 
 ---
 
@@ -436,9 +441,10 @@ snapshots matter most exactly where FaaS runs.
 
 Are these true for CRaC restores and JVM cold starts on this machine?
 
-**Run.** For the T3 function, 20 repetitions per cell:
-- restore at K = 0 and at the chosen K, and a cold start, at a fixed quota of `{0.25, 0.5, 1, 2, 4}`
-  vCPU (cgroup `cpu.max`);
+**Run.** It runs before T3, on the Spring Boot function of exp12 with its start-up snapshot
+(K = 0); repeat the restore rows at T3's chosen K once T3 is done. 20 repetitions per cell:
+- restore at K = 0 (and later at the chosen K), and a cold start, at a fixed quota of
+  `{0.25, 0.5, 1, 2, 4}` vCPU (cgroup `cpu.max`);
 - the same with the JVM's view pinned to one CPU (`-XX:ActiveProcessorCount=1`) and not pinned;
 - **boost:** start at 1 vCPU (and at 2), and lower the quota to 0.25 vCPU as soon as the first
   request has been answered; then serve 200 requests at 0.25 vCPU;
@@ -475,9 +481,9 @@ response, because the boost is 1 vCPU there.
 (`cpu_cap`, and a non-linear rate if the curve is not linear). Rerun e11 with
 `DAGSIM_PROFILE` and report the change.
 
-**Decision.** If a start-up does not get faster with CPU, or gets faster only by using many more
-CPU-seconds, the CPU plan has nothing to allocate. The thesis then keeps look-ahead restore and
-snapshot selection only.
+**Decision** (the table in `ROADMAP.md` §3). If a start-up does not get faster with CPU, or gets
+faster only by using many more CPU-seconds, the CPU plan has nothing to allocate. The thesis then
+keeps look-ahead restore and snapshot selection only.
 
 ---
 
@@ -532,8 +538,17 @@ API; three policies:
 
 Plus the gate: if the entry has a live container, no wake calls.
 
+**Then the CPU plan** (after the three policies pass their control). The orchestrator's CPU
+allocator (`ROADMAP.md` §1.3) sets each starting container's CPU limit and puts it back to
+0.25 vCPU after the first response. At 0.25 vCPU, with 1, 2 and 4 spare cores (restrict the
+invoker's containers to a cpuset of that size), four more policies: on demand with an equal
+boost (Cloud Run-style: the spare CPU split equally among starting containers), JIT look-ahead
+with an equal boost, look-ahead with the CPU plan, and look-ahead with the CPU plan just in
+time (each start-up held back until its latest start, `Policy.lazy`).
+
 **Run.** Chains of `d = 1…8` Java stages at 0.25 and 1 vCPU, three policies, **20 cold runs
-each** (960 runs). Before each run, make sure no container of the chain's actions is alive.
+each** (960 runs); the CPU-plan runs add chains of 3, 5 and 8 stages × 3 core counts × 4
+policies × 20 (720 runs). Before each run, make sure no container of the chain's actions is alive.
 Sample every action container's cgroup `memory.current` every 10 ms.
 
 **Measure.** End-to-end latency; per stage: wake sent (τ), ready, input arrived, start,
@@ -564,9 +579,13 @@ thesis's values (Java, 1 vCPU, β = 0) it gives:
   5.89 s → 0.88 / 0.99 / 1.19 s.
 - At 0.25 vCPU both slopes are steeper (`r` and `w` grow), and the gap between them grows.
   That is the **cascade × cliff figure**.
+- The CPU plan (simulator e11a, 0.25 vCPU; recompute with the T6b curve first): on 1 spare core
+  it ties with the equal boost (Proposition CP4); on 2 cores the 3 / 8-stage chains take
+  1.14 / 3.05 s against 2.16 / 5.88 s for on demand with the equal boost; on 4 cores 0.91 /
+  1.70 s.
 
 **Output.**
-- `raw/runs.csv`: `vcpu, d, policy, rep, e2e_ms, peak_MB, memtime_GBs`;
+- `raw/runs.csv`: `vcpu, cores, d, policy, rep, e2e_ms, peak_MB, memtime_GBs, cpu_s`;
 - `raw/stages.csv`: `run_id, stage, tau_ms, ready_ms, input_ms, start_ms, finish_ms`;
 - `raw/mem/`: the memory samples;
 - `fit.csv`: `vcpu, policy, slope_ms, slope_ci_lo, slope_ci_hi, intercept_ms, R2,
@@ -664,7 +683,10 @@ more.
 look-ahead still faster?
 
 **Run.** Budgets of 8 and 16 GB (the box has 31 GB). Policies: on demand; look-ahead without
-the guard; the guard; the plan. 10 bursts each.
+the guard; the guard; the plan. 10 bursts each. **Then CPU contention:** the e11b burst (16 cold
+workflows of the eight shapes within 1 s, functions at 0.25 vCPU) on 2, 4 and 8 spare cores,
+with on demand plus an equal boost, look-ahead plus an equal boost, and look-ahead with the CPU
+plan (and its just-in-time variant).
 
 **Measure.** Mean and p99 latency; starts over the budget (OpenWhisk refusing or queueing);
 restores.
@@ -673,7 +695,9 @@ restores.
 the thesis's values (`e7a`, `e9b`): look-ahead without the guard exceeds the budget
 (32.6 starts over it per run at 8 GB, on demand none); with the guard, **zero** at every
 budget that on demand itself fits in, and still faster (8 GB: 5.77 vs 5.91 s; 16 GB: 4.35 s);
-the plan 3–11% faster than the guard on average.
+the plan 3–11% faster than the guard on average. Under CPU contention (`e11b`): the CPU plan's
+mean 16–24% below on demand with the equal boost (2 cores: 16.7 vs 19.9 s; 8 cores: 3.9 vs
+5.1 s), while look-ahead with the equal boost is slower than on demand (28.7 s on 2 cores).
 
 **Output.** `raw/burst.csv`: `budget_GB, policy, burst, workflow, e2e_ms, over_budget_starts,
 restores`.
@@ -690,14 +714,18 @@ workflows and a time window whose working set fits the box (for example a 6–24
 replayed in real time, since keep-alive depends on real time). Record the choice.
 
 **Baselines.** Cold (no snapshot); OpenWhisk keep-alive (10 min); restore on demand (what
-SnapStart does); cold prewarm along the DAG (Xanadu-style, just in time); the JVM flag
-`-XX:TieredStopAtLevel=1` (`RESEARCH_PLAN.md` S6 names level 3; run 1, and 3 if time allows);
-JDK 25 ahead-of-time profiles (JEP 515). **Ours:** the recommended policy (gate + JIT
-look-ahead + guard + planner + GDSF keep-alive, re-warm only if T4 kept it).
+SnapStart does); restore on demand with an equal startup boost (what Cloud Run's startup CPU
+boost does); JIT look-ahead with an equal boost; cold prewarm along the DAG (Xanadu-style, just
+in time); one fixed CPU size per stage (1 vCPU, ORION/Aquatope-style right-sizing); the JVM
+flag `-XX:TieredStopAtLevel=1` (`RESEARCH_PLAN.md` S6 names level 3; run 1, and 3 if time
+allows); JDK 25 ahead-of-time profiles (JEP 515). **Ours:** look-ahead with the CPU plan
+(just in time if T8 confirms its memory saving), start mode per stage, the guard, the planner
+and GDSF keep-alive (re-warm only if T4 kept it). Functions at 0.25 vCPU; the node's spare CPU
+is what the replay leaves.
 
 **Measure.** For all calls and for calls that find their workflow cold: mean, p50, p99
-latency; memory·time and average memory held; restores per 1000 calls; starts over the budget;
-snapshot storage. CIs by a block bootstrap over workflows (calls of one workflow are
+latency; memory·time and average memory held; CPU-seconds; restores per 1000 calls; starts over
+the budget; snapshot storage. CIs by a block bootstrap over workflows (calls of one workflow are
 correlated).
 
 **Prediction.** Before the replay, run the simulator with the measured profile on the **same
@@ -705,7 +733,11 @@ workflows, window and budget** (add an experiment to `run_sim.py` that takes the
 commit its output. For scale, the thesis's simulation (`e10b`, full trace):
 - at a budget that does not bind: cold workflows **2.34 → 0.81 s** mean and **6.20 → 1.25 s**
   p99 against restore on demand, at the same memory (≈ 50 GB) and ≈ 21 starts per 1000 calls;
-- at a tight budget (32 GB): all calls' p99 **3.24 → 1.10 s**, with 29% more restores.
+- at a tight budget (32 GB): all calls' p99 **3.24 → 1.10 s**, with 29% more restores;
+- with CPU (`e11c`, functions at 0.25 vCPU, 64 cores, 32 GB): cold workflows **2.35 → 0.84 s**
+  mean and **6.20 → 1.53 s** p99 against on demand with Cloud Run's equal boost, all calls' p99
+  3.52 → 2.27 s, for 14% more CPU-hours. On a node this size the CPU plan equals the equal split;
+  its own gain needs contention (T8 on 2–4 cores, T12).
 
 **Output.** `raw/calls.csv`: `policy, workflow, invocation, t_arrival_s, cold, e2e_ms`;
 `raw/mem/`; `summary.csv`: `policy, population, metric, value, ci_lo, ci_hi`; the figures.
@@ -724,17 +756,21 @@ After each test that changes a number the thesis uses:
    `DAGSIM_PROFILE=results/box/profile_vcpu1.0.json DAGSIM_OUT=results/box/sim python3 ideas/sim/run_sim.py e10`.
 3. Update the documents, keeping the old number visible where it changes a claim:
    - `theory/DAG_SNAPSHOT_THEORY.md` §5: `[assumption]` → `[measured]` for A2 (β, T1) and
-     A3 (`L(K)`, T4);
+     A3 (`L(K)`, T4); `theory/CPU_PLAN_THEORY.md` §1 and the theory chapter's Table 4.4 for B1
+     (the speed-up curve, T6b);
    - `ideas/IDEAS.md` and `ROADMAP.md` §0;
-   - `REPORT.md`, `PROFESSOR_REPORT.md` and `figures/README.md` (captions quote numbers);
+   - `REPORT.md`, `PROFESSOR_REPORT.md`, `PROFESSOR_REPORT_2.md`, `ideas/CPU_PLAN.md` and
+     `figures/README.md` (captions quote numbers);
    - `figures/make_figures.py`: add the measured lines to figures 1, 3 and 5, and figure 9 (T6).
-4. `python3 theory/verify_dag.py` must still pass 76/76. The theorems do not depend on the
+4. `python3 theory/verify_dag.py` must still pass 97/97. The theorems do not depend on the
    measured values; the verification is a check that nothing else broke.
 
 ## What would change the plan
 
 | finding | consequence |
 |---|---|
+| a start-up is < 1.5× faster from 0.25 to 1 vCPU, or needs much more CPU-time (T6b) | the CPU plan has little to allocate: report it as a negative result; the thesis leads with look-ahead, snapshot selection and memory |
+| the CPU limit cannot be raised for the start-up only (slow to apply, or it slows later requests; T6b, T7) | plan the boost per container at start only, or keep the quota raised until the first response; measure what that costs |
 | β ≥ 0.7 (T1/T1b) and not fixable | look-ahead is weak here; the thesis leads with Theorem 7, the memory results and the measurement study; use T2's pre-restored tier as the timing fallback |
 | restore time `r` far below 650 ms (T3), for example < 100 ms | little to hide: the look-ahead gain `(d − 1)r` shrinks; lead with 0.25 vCPU, where `r` is largest |
 | `δ` ≫ `w` in OpenWhisk (T7) | the look-ahead slope is dominated by the platform, not the function; report it and compare with an orchestrator path that bypasses the controller |

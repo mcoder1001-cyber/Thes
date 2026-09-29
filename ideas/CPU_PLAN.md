@@ -68,6 +68,14 @@ work from `v`'s start to the end. So every start-up has its own deadline
   CPU the certain ones leave. With at most one spare core, only stages certain to run count as
   certain: without parallelism, early start-ups cannot beat sequential ones, and speculation only
   takes CPU.
+- **Just in time** (`Policy.lazy`, policy `la+plan+jit`; Proposition CP8):
+    - When a workflow arrives, the exact plan gives each look-ahead start-up its latest start
+      (`cpuplan.latest_starts`), on the stages likely to run.
+    - A start-up holds no memory and gets no CPU before then (less a margin). The exception is a
+      CPU-bound workflow, where the next start-up runs rather than leave the CPU idle.
+    - With at most one spare core, start-ups run one at a time (Proposition CP4). On a CPU-bound
+      chain this is optimal in latency and in memory together.
+    - A branch not taken cancels its start-ups.
 
 Ablations kept in the code:
 - `uniform`: equal shares (Cloud Run, idealised: all spare CPU);
@@ -80,7 +88,12 @@ demand, under the same CPU policy.
 **Controls:**
 - With the CPU layer off, or with `q = 1` and unlimited cores, `dagsim` reproduces its earlier
   results exactly: 980 isolated runs to 1e-12 ms, a day of the trace, e10a byte for byte, e0 26/26.
-- `theory/verify_dag.py` passes 93/93, including section CP, which checks the theory (CP1–CP7).
+- `theory/verify_dag.py` passes 97/97, including section CP, which checks the theory (CP1–CP8).
+- `run_sim.py e11x`, for just in time:
+    - without the CPU layer the flag changes nothing;
+    - every run gives all its memory back;
+    - on one spare core a chain holds exactly the memory·time of restoring on demand with the
+      boost, and finishes `(d − 1)δ` sooner.
 - `cpuplan.controls()`: a lone start-up runs at `min(c, q + P)`.
 
 ## 4. Results (functions at 0.25 vCPU unless stated)
@@ -106,8 +119,33 @@ Over the eight workflow shapes:
 - **vs look-ahead with an equal boost:** 0–37% faster.
 - **vs SnapStart-style:** 3.6–14× faster.
 - **At 0.5 vCPU:** the same picture (`e11a_cpu_isolated.csv`).
-- **Memory:** starting restores at arrival makes sandboxes wait. The plan holds 1.3–3.8× the
-  memory·time of on-demand restore per cold invocation, less than report 1's look-ahead at 0.25 vCPU.
+- **Memory:** starting every start-up at the arrival made the plan hold 1.04–11.5× the
+  memory·time of the Cloud Run-style baseline: its start-ups share the CPU and all run slowly
+  from the start. The plan just in time (`la+plan+jit`) fixes this.
+
+Memory·time per cold invocation (GB·s; 0.25 vCPU; latency in parentheses where it differs from
+the plan's by more than 2%):
+
+| cores | workflow | Cloud Run-style | la + CPU plan | **la + CPU plan, just in time** |
+|---|---|---|---|---|
+| 1 | chain of 8 | 3.00 | 22.75 | **3.00** |
+| 1 | router (if/else) | 1.56 | 17.88 | **2.66** |
+| 1 | trip (saga) | 1.56 | 13.01 | **1.56** |
+| 2 | chain of 8 | 3.00 | 11.39 | **6.48** (2.99 vs 3.05 s) |
+| 2 | router (if/else) | 1.56 | 10.61 | **2.88** (1.89 vs 2.06 s) |
+| 2 | trip (saga) | 1.56 | 7.09 | **2.47** |
+| 4 | chain of 8 | 3.00 | 5.85 | **4.54** (1.63 vs 1.70 s) |
+| 4 | router (if/else) | 1.56 | 6.15 | **4.11** |
+
+Over the eight shapes:
+- **1 spare core:** 49–88% less memory·time than the plan, at the same latency. Chains, the ML
+  pipeline and the saga hold exactly the Cloud Run-style memory·time (Proposition CP8(b)).
+- **2 spare cores:** 2–73% less, latency 8% lower to 0.7% higher.
+- **4 spare cores:** 0–33% less, latency 3.8% lower to 1.3% higher. Start-ups wait little
+  there anyway.
+- Against the Cloud Run-style baseline it now holds 0.68–2.64× the memory·time, for 19–71%
+  lower latency on 2–4 cores. Without snapshots, `prewarm+plan+jit` saves 1–87% against
+  `prewarm+plan`, latency 6.9% lower to 1.6% higher.
 
 **e11b: a burst** of 16 cold workflows within 1 s (mean / p99, s):
 
@@ -121,6 +159,21 @@ Over the eight workflow shapes:
 - The fair "slack" rule, applied across workflows, makes everyone late. It was the first version
   of the rule, and e11b is why the plan now switches to earliest deadline first when several
   workflows start.
+
+Memory·time per burst (GB·s; e11b runs without keep-alive, so it counts start-ups and runs, and
+the latencies are unchanged by that):
+
+| cores | SnapStart-style | Cloud Run-style | la (report 1) | la + CPU plan | **la + CPU plan, just in time** |
+|---|---|---|---|---|---|
+| 2 | 215 | 204 | 1317 | 804 | **142** (16.7 / 25.5 s) |
+| 4 | 125 | 101 | 645 | 389 | **74** (8.1 / 12.6 s) |
+| 8 | 109 | 50 | 318 | 187 | **45** (3.9 / 6.2 s) |
+
+- Just in time keeps the plan's latency (8 cores: p99 6.2 instead of 6.4 s) and cuts its memory
+  by 76–82%, **below the Cloud Run-style baseline**. There, start-ups share the CPU and all run
+  slowly at once; here few run at a time, at full speed.
+- Without snapshots (cold prewarm with the plan), just in time cuts memory by 68–72% at the same
+  latency (2 cores: 2640 → 728 GB·s).
 
 **e11d: which stages need a snapshot** (2 cores; the fewest snapshots within 5% of snapshotting all):
 - under the CPU plan, every stage of every workflow tested: a cold start is about 4× the CPU work
@@ -148,6 +201,15 @@ minutes, n = 794 of 432,945):
 | 32 | all calls | 1.75 / 22.88 | 0.87 / 3.61 | 1.58 / 17.47 | 0.82 / 2.31 | **0.81 / 2.33** |
 | 64 | CPU-hours, starts / 1000 calls | 44.7, 309 | 37.2, 211 | 53.5, 452 | 42.5, 289 | **42.5, 289** |
 
+The CPU plan just in time on the trace (`la+plan+jit`):
+- 64 cores: cold workflows 0.84 / 1.45 s, all calls 0.80 / 2.26 s; 42.0 CPU-hours, 282 starts per
+  1000 calls.
+- 32 cores: cold workflows 0.84 / 1.47 s, all calls 0.80 / 2.26 s.
+
+So it is the same or slightly better than the plan (cold workflows' p99 1.53 → 1.45 s at 64
+cores, 1.62 → 1.47 s at 32), with 1.3% fewer CPU-hours and 2% fewer starts. Its memory is the
+same, because keep-alive fills the 32 GB budget on this trace either way.
+
 - **Look-ahead with a startup boost against the Cloud Run-style boost:** cold workflows are 2.8×
   faster on average and 4× at p99; all calls' p99 is 36% lower. The cost is 14% more CPU-hours:
   37% more sandbox starts, from starting restores ahead.
@@ -165,8 +227,11 @@ minutes, n = 794 of 432,945):
    warm-up.
 2. **The burst rule.** Earliest deadline first wins in mixed bursts (e11b). In the fluid model's
    bursts of identical chains, "slack" wins.
-3. **Memory:** trigger restores just in time under the plan, rather than all at arrival.
+3. **Memory with more spare CPU:** just in time saves up to 88% for one workflow and 76–82% in a
+   burst, but less on four idle cores, where the plan's start-ups barely wait. No optimality is
+   proved there (CP8 covers one spare core).
 4. **Snapshot selection:** it saves snapshots only for long-stage workflows. Measure real stage
    lengths (SeBS-Flow).
 
-Run: `python3 ideas/sim/run_sim.py e11o e11a e11b e11d e11c` (e11c: about 30 minutes on 4 cores).
+Run: `python3 ideas/sim/run_sim.py e11o e11a e11b e11d e11c e11x` (e11c: about 30 minutes on 4
+cores).

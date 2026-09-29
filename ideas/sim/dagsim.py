@@ -40,6 +40,7 @@ from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import planner  # noqa: E402
+import cpuplan  # noqa: E402
 
 EDGE_MS = 2.0          # orchestrator overhead per DAG edge
 
@@ -290,6 +291,12 @@ class Policy:
     spec_p: float = 0.5             # CPU plan: stages reached with a lower probability are speculative
     nosnap: frozenset = frozenset()     # stages (function name after the '.') that get no snapshot:
                                         # they cold-start, ahead or on demand, even when snap is on
+    # CPU plan, just in time (boost = "plan"): a look-ahead start-up holds no memory until the plan
+    # gives it CPU, and a certain one gets none before its latest start (the exact plan at the
+    # arrival, Sim._lazy_starts, less the margin) unless its workflow is CPU-bound and the CPU
+    # would idle. It then runs short and fast instead of long and slow. With at most one spare
+    # core, one start-up at a time (Proposition CP4); a branch not taken cancels its start-ups
+    lazy: bool = False
 
 
 POLICIES = {
@@ -348,6 +355,7 @@ class Sandbox:
     waiting: list = field(default_factory=list)  # requests queued on a not-yet-ready sandbox
     ver: int = 0
     cjob: Optional[int] = None                   # its CPU job (CPU layer only)
+    virtual: bool = False                        # Policy.lazy: created, but holds no memory yet
 
 
 def rewarm_residual(R, C, slack, rho):
@@ -407,6 +415,7 @@ class Sim:
         self.cpu = cpu_cores is not None
         self.K, self.q, self.cap = cpu_cores, cpu_quota, cpu_cap
         self.cjobs, self.njob, self.cpu_t, self.cpu_ver, self.cpu_dirty = {}, 0, 0.0, 0, False
+        self.cpu_wake = math.inf    # Policy.lazy: when the next start-up reaches its latest start
         self.cpu_used = self.cpu_boost = self.cpu_start = 0.0      # CPU-ms: all, boost, start-ups
         self.M = mem_budget_mb
         self.beta = restore_beta
@@ -467,12 +476,13 @@ class Sim:
 
     def _new(self, fn, prof, origin, dur, ahead=False, variant=None, demand=True):
         need = prof.m
+        virtual = self.cpu and self.p.lazy and ahead     # takes its memory when it gets CPU
         limit = self.M if demand else self.M * (1.0 - self.p.headroom)
-        if self.mem + need > limit and (demand or self.p.ahead_evicts):
+        if self.mem + need > limit and (demand or self.p.ahead_evicts) and not virtual:
             self._evict(self.mem + need - limit)
         if self.mem + need > limit and demand and self.p.preempt:
             self._preempt(self.mem + need - limit)
-        if self.mem + need > limit:
+        if self.mem + need > limit and not virtual:
             if not demand:
                 return None
             self.stats["overflow"] += 1
@@ -480,9 +490,10 @@ class Sim:
         self._acct()
         self.nsid += 1
         s = Sandbox(self.nsid, fn, prof, RESTORE if origin == "snap" else BOOT,
-                    self.now + dur, origin, ahead=ahead, variant=variant)
-        self.mem += need
-        self.peak_mem = max(self.peak_mem, self.mem)
+                    self.now + dur, origin, ahead=ahead, variant=variant, virtual=virtual)
+        if not virtual:
+            self.mem += need
+            self.peak_mem = max(self.peak_mem, self.mem)
         self.sb.setdefault(fn, []).append(s)
         if origin == "snap":
             self.stats["restores"] += 1
@@ -505,7 +516,8 @@ class Sim:
             self.cpu_dirty = True
         self._set_state(s, "dead")
         self._acct()
-        self.mem -= s.prof.m
+        if not s.virtual:
+            self.mem -= s.prof.m
         self.sb[s.fn].remove(s)
 
     def _evict(self, amount):
@@ -554,7 +566,7 @@ class Sim:
         arrives (Theorem 8(c): this is what keeps capped look-ahead from deadlocking)."""
         cand = [s for lst in self.sb.values() for s in lst
                 if s.ahead and s.reserved is not None and not s.claimed and not s.waiting
-                and s.state in (IDLE, RESTORE, BOOT)]
+                and s.state in (IDLE, RESTORE, BOOT) and not s.virtual]
         cand.sort(key=lambda s: -s.sid)
         freed = 0.0
         for s in cand:
@@ -665,6 +677,59 @@ class Sim:
                     st["deadline"][n] = self.now + planned[n] + lead
                     self.planned.add(iid)
                 self.push(self.now + t, "ahead", iid, n, var, k)
+        if self.cpu and self.p.boost == "plan" and self.p.lazy:
+            self._lazy_starts(st)
+
+    def _lazy_starts(self, st):
+        """Policy.lazy: the latest start of each look-ahead start-up (st["ls"]). Each stage's
+        start-up and first request become one job of Horn's network (cpuplan.jobs_feasible,
+        Theorem CP2): CPU work U + W, from the arrival to the stage's deadline for its first
+        request + lam, with lam the smallest feasible (bisection). Then each look-ahead job's
+        release moves as late as the network stays feasible (cpuplan.latest_starts, Proposition
+        CP8). Stages that may not run are not held back (Sim._cpu_due). Estimates are the
+        profiles'; the trigger is margin x the job's time at cap earlier. st["lam"] is how far
+        the plan falls behind the ideal latency: above 0 the workflow is CPU-bound."""
+        dag = st["dag"]
+        pr = dag.reach_prob()
+        P = max(self.cap, self.K - self.q * sum(1 for j in self.cjobs.values() if not j["boost"]))
+        thr = self.p.spec_p if P > self.cap + 1e-9 else 1.0 - 1e-9
+        t0, cap = self.now, self.cap
+        U, W, T = {}, {}, {}
+        for n in reversed(dag.topo()):
+            node = dag.nodes[n]
+            if n != dag.entry and pr[n] < thr:
+                continue                    # may not run: not held back
+            sn = self._snap(node.fn)
+            W[n] = node.prof.C + (node.prof.RK if sn else node.prof.B)
+            outs = list(node.succ) + [x for _, alt in (node.choice or []) for x in alt]
+            T[n] = W[n] / cap + max((EDGE_MS + T[x] for x in outs if x in T), default=0.0)
+            if n == dag.entry or not self._idle_count(node.fn):
+                U[n] = node.prof.r if sn else node.prof.A
+        # deadlines as in _cpu_deadlines, but on the stages likely to run: along the longest
+        # branch a stage of a shorter, likelier one would be held back too long
+        Tw = max(U[n] / cap + T[n] for n in U)
+        Ds = {n: t0 + Tw - T[n] + W[n] / cap for n in U}
+
+        def ok(lam):
+            return cpuplan.jobs_feasible([(t0, Ds[n] + lam, U[n] + W[n], 0.0, cap) for n in U], P)
+        lo = max((t0 + (U[n] + W[n]) / cap - Ds[n] for n in U), default=0.0)
+        lo_ideal = lo
+        hi = lo + 100.0
+        for _ in range(40):
+            if ok(hi):
+                break
+            hi = lo + 2 * (hi - lo)
+        else:
+            return                          # no plan: every start-up may run at once
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            lo, hi = (lo, mid) if ok(mid) else (mid, hi)
+        lam, names = hi, list(U)
+        rel = cpuplan.latest_starts([(t0, Ds[n] + lam, U[n] + W[n], 0.0, cap) for n in names], P,
+                                    [i for i, n in enumerate(names) if n != dag.entry])
+        st["ls"] = {n: r - self.p.margin * (U[n] + W[n]) / cap
+                    for n, r in zip(names, rel) if n != dag.entry}
+        st["lam"] = lam - lo_ideal
 
     def _plan_exact(self, iid):
         """Algorithm 2: the workflow as a lag network (stages with an idle sandbox need no restore
@@ -959,6 +1024,8 @@ class Sim:
                 if alt is not chosen:
                     for x in alt:
                         self._skip(iid, x)
+            if self.p.lazy and self.cpu:
+                self._cancel_skipped(iid)
         for x in nxt:
             if dag.nodes[x].ctx_from and n in dag.nodes[x].ctx_from:
                 st["ctx"][x] = dag.nodes[x].ctx_from[n]
@@ -981,6 +1048,24 @@ class Sim:
             self._skip(iid, x)
             if x not in st["skipped"]:
                 self._maybe_start(iid, x)
+
+    def _cancel_skipped(self, iid):
+        """Policy.lazy: a branch not taken needs no start-up. Stop those still starting (their CPU
+        and memory go back to the stages that will run); a ready one goes to keep-alive."""
+        st = self.inv[iid]
+        for lst in list(self.sb.values()):
+            for s in list(lst):
+                if (s.reserved and s.reserved[0] == iid and s.reserved[1] in st["skipped"]
+                        and not s.claimed):
+                    self.stats["ahead_unused"] += 1
+                    s.reserved = None
+                    s.ahead = False
+                    if s.state in (RESTORE, BOOT):
+                        if s.state == RESTORE:
+                            self.restoring -= 1
+                        self._kill(s)
+                    elif s.state == IDLE:
+                        self._to_idle_or_die(s)
 
     def _maybe_start(self, iid, n):
         st = self.inv[iid]
@@ -1005,6 +1090,10 @@ class Sim:
                         s.ahead = False
                         if s.state == IDLE:
                             self._to_idle_or_die(s)
+                        elif s.virtual:         # Policy.lazy: never started; nothing to keep
+                            if s.state == RESTORE:
+                                self.restoring -= 1
+                            self._kill(s)
             del self.inv[iid]
 
     def _release(self, s: Sandbox):
@@ -1133,34 +1222,80 @@ class Sim:
         thr = self.p.spec_p if spare > self.cap + 1e-9 else 1.0 - 1e-9
         main = [j for j in starts if not self._cpu_spec(j, thr)]
         spec = [j for j in starts if self._cpu_spec(j, thr)]
+        wait = [j for j in main if not self._cpu_due(j)] if self.p.lazy else []
+        if wait:
+            main = [j for j in main if self._cpu_due(j)]
+        total = spare
         if main and spare > 1e-12:
-            if self.p.boost == "cp":
+            spare = self._cpu_main(main, total)
+        if wait:
+            # a workflow that cannot reach its ideal latency (lam > 0) is CPU-bound: rather than
+            # leave the CPU idle, the start-up with the earliest latest start runs now
+            wait.sort(key=self._cpu_ls)
+            while spare > 1e-9 and wait and self._cpu_bound(wait[0]):
+                main.append(wait.pop(0))
+                spare = self._cpu_main(main, total)
+            if wait:
+                self.cpu_wake = min(self.cpu_wake, self._cpu_ls(wait[0]))
+        if spec and spare > 1e-12:
+            _water_fill(spec, spare, self.cap)
+
+    def _cpu_main(self, main, spare):
+        """Share spare CPU among the certain start-ups by the policy's rule; returns what is left."""
+        for j in main:
+            j["rate"] = j["base"]
+        if self.p.boost == "cp":
+            for j in sorted(main, key=self._cpu_deadline):
+                add = min(spare, self.cap - j["rate"])
+                if add > 0:
+                    j["rate"] += add
+                    spare -= add
+        elif self.p.boost == "plan":
+            # one workflow starting: balanced rates (smallest largest lateness, within 0-9% of
+            # the exact plan); several at once: earliest deadline first across all of them,
+            # which finishes the urgent start-ups of every workflow first (e11b). Just in time
+            # (Policy.lazy) with at most one spare core: earliest deadline first also for one
+            # workflow, which is optimal there (Proposition CP4) and runs one start-up at a time
+            one = len({self._cpu_owner(j) for j in main}) <= 1
+            if one and not (self.p.lazy and spare <= self.cap + 1e-9):
+                _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
+                spare -= sum(j["rate"] for j in main)
+            else:
                 for j in sorted(main, key=self._cpu_deadline):
                     add = min(spare, self.cap - j["rate"])
                     if add > 0:
                         j["rate"] += add
                         spare -= add
-            elif self.p.boost == "plan":
-                # one workflow starting: balanced rates (smallest largest lateness, within 0-9% of
-                # the exact plan); several at once: earliest deadline first across all of them,
-                # which finishes the urgent start-ups of every workflow first (e11b)
-                if len({self._cpu_owner(j) for j in main}) <= 1:
-                    _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
-                    spare -= sum(j["rate"] for j in main)
-                else:
-                    for j in sorted(main, key=self._cpu_deadline):
-                        add = min(spare, self.cap - j["rate"])
-                        if add > 0:
-                            j["rate"] += add
-                            spare -= add
-            else:
-                _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
-                spare -= sum(j["rate"] for j in main)
-        if spec and spare > 1e-12:
-            _water_fill(spec, spare, self.cap)
+        else:
+            _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
+            spare -= sum(j["rate"] for j in main)
+        return spare
+
+    def _cpu_ls(self, j):
+        """Policy.lazy: the latest start of a look-ahead start-up (Sim._lazy_starts)."""
+        key = j["s"].reserved
+        st = self.inv.get(key[0]) if key else None
+        return st.get("ls", {}).get(key[1], -math.inf) if st is not None else -math.inf
+
+    def _cpu_bound(self, j):
+        """Policy.lazy: is this start-up's workflow CPU-bound (Sim._lazy_starts)?"""
+        key = j["s"].reserved
+        st = self.inv.get(key[0]) if key else None
+        return st is not None and st.get("lam", 0.0) > 1.0
+
+    def _cpu_due(self, j):
+        """Policy.lazy: may this certain start-up have CPU now? One that holds no memory yet, and
+        that no stage waits for, gets none before its latest start (Sim._lazy_starts). A stage
+        that may not run is not held back: it gets only leftover CPU anyway (Proposition CP5),
+        and a branch not taken cancels it."""
+        s = j["s"]
+        if j["kind"] != "prov" or not s.virtual or s.claimed or not s.reserved:
+            return True
+        return self._cpu_ls(j) <= self.now + 1e-6
 
     def _cpu_alloc(self):
         jobs = list(self.cjobs.values())
+        self.cpu_wake = math.inf
         if self.p.boost in ("cp", "slack", "plan"):
             self._cpu_plan(jobs)
         else:
@@ -1176,8 +1311,10 @@ class Sim:
                 _water_fill(boost, spare, self.cap)
             elif self.p.boost not in (None, "uniform"):
                 raise ValueError(self.p.boost)
+        if self.p.lazy and self._materialise(jobs):
+            return self._cpu_alloc()        # a start-up found no memory and was dropped: re-plan
         self.cpu_ver += 1
-        nxt = math.inf
+        nxt = self.cpu_wake if self.cpu_wake > self.now else math.inf
         for j in jobs:
             if j["rate"] > 0:
                 tj = self.now + max(0.0, j["rem"]) / j["rate"]
@@ -1187,6 +1324,34 @@ class Sim:
         if nxt < math.inf:
             self.push(nxt, "cpu", self.cpu_ver)
         self.cpu_dirty = False
+
+    def _materialise(self, jobs):
+        """Policy.lazy: a start-up takes its memory when it first gets CPU. One that does not fit
+        (after evicting idle sandboxes) is dropped, as a look-ahead that does not fit always is;
+        its stage then starts on demand. Returns whether any was dropped."""
+        dropped = False
+        for j in jobs:
+            s = j["s"]
+            if j["kind"] != "prov" or j["rate"] <= 0 or not s.virtual:
+                continue
+            limit = self.M * (1.0 - self.p.headroom)
+            if self.mem + s.prof.m > limit and self.p.ahead_evicts:
+                self._evict(self.mem + s.prof.m - limit)
+            if self.mem + s.prof.m > limit and not s.claimed:
+                if s.state == RESTORE:
+                    self.restoring -= 1
+                s.reserved = None
+                self._kill(s)
+                dropped = True
+                continue
+            if self.mem + s.prof.m > self.M:
+                self.stats["overflow"] += 1     # a stage waits for it: it starts over the budget
+                self.last_overflow = self.now
+            self._acct()
+            s.virtual = False
+            self.mem += s.prof.m
+            self.peak_mem = max(self.peak_mem, self.mem)
+        return dropped
 
     def _cpu_event(self, ver):
         if ver != self.cpu_ver:

@@ -21,7 +21,8 @@
   e11 CPU during start-up (the vCPU cliff): functions at 0.25 vCPU on a node with a few cores;
       who gets the spare CPU while sandboxes start. e11a isolated workflows, e11b a burst, e11c
       the Azure trace, e11d which stages still need a snapshot, e11o the online rule vs the
-      exact plan (cpuplan.py)
+      exact plan (cpuplan.py); la+plan+jit is the CPU plan just in time (Policy.lazy), whose
+      controls are e11x
 
 usage: run_sim.py [e0 e1 ...]   (default: all)
        DAGSIM_PROFILE=measured.json DAGSIM_OUT=out/ run_sim.py e10a   (measured parameters)
@@ -638,10 +639,12 @@ E11_POLS = {
     "la+cp": replace(_LA, name="la+cp", boost="cp"),
     "la+slack": replace(_LA, name="la+slack", boost="slack"),          # fair: smallest largest lateness
     "la+plan": replace(_LA, name="la+plan", boost="plan"),             # THE CPU PLAN (this proposal)
+    "la+plan+jit": replace(_LA, name="la+plan+jit", boost="plan", lazy=True),   # ... just in time
     "cold": Policy("cold", keep="gdsf"),                               # no snapshots: cold start on demand
     "cold+uniform": Policy("cold+uniform", keep="gdsf", boost="uniform"),
     "prewarm": _PW,                                                    # Xanadu-style just-in-time cold prewarm
     "prewarm+plan": replace(_PW, name="prewarm+plan", boost="plan"),
+    "prewarm+plan+jit": replace(_PW, name="prewarm+plan+jit", boost="plan", lazy=True),
 }
 E11_DAGS = [("chain3", lambda t: chain(3, JAVA, t)), ("chain5", lambda t: chain(5, JAVA, t)),
             ("chain8", lambda t: chain(8, JAVA, t)), ("fanout4", lambda t: fanout(4, t)),
@@ -679,11 +682,12 @@ def e11a(seeds=50, quotas=(0.25, 0.5), cores=(1, 2, 4)):
     for q in quotas:
         for K in cores:
             print(f"   q={q} vCPU, {K} cores: mean latency, s (od | od+uniform | la | la+uniform | la+cp | "
-                  f"la+slack | la+plan || cold | cold+uniform | prewarm | prewarm+plan)")
+                  f"la+slack | la+plan | la+plan+jit || cold | cold+uniform | prewarm | prewarm+plan | "
+                  f"prewarm+plan+jit)")
             for d, _ in E11_DAGS:
                 v = [res[(q, K, d, pn)] / 1000 for pn in E11_POLS]
-                print(f"      {d:8s} " + " ".join(f"{x:6.2f}" for x in v[:7]) + "  ||" +
-                      " ".join(f"{x:6.2f}" for x in v[7:]), flush=True)
+                print(f"      {d:8s} " + " ".join(f"{x:6.2f}" for x in v[:8]) + "  ||" +
+                      " ".join(f"{x:6.2f}" for x in v[8:]), flush=True)
     return rows
 
 
@@ -693,9 +697,11 @@ def e11b(seeds=10, cores=(2, 4, 8), q=0.25):
     rows = []
     for K in cores:
         for pn, pol in E11_POLS.items():
-            lats, boost = [], 0.0
+            lats, boost, mem = [], 0.0, 0.0
             for seed in range(seeds):
-                sim = Sim(pol, mem_budget_mb=64 * 1024, seed=seed, cpu_cores=K, cpu_quota=q)
+                # no keep-alive: the burst's workflows share no function, so it changes no latency,
+                # and memory then counts start-ups and runs, not sandboxes kept for later
+                sim = Sim(ttl0(pol), mem_budget_mb=64 * 1024, seed=seed, cpu_cores=K, cpu_quota=q)
                 i = 0
                 for rep in range(2):
                     for dname, mk in E11_DAGS:
@@ -704,11 +710,13 @@ def e11b(seeds=10, cores=(2, 4, 8), q=0.25):
                 sim.run()
                 lats += [r[3] for r in sim.results]
                 boost += sim.cpu_boost / 1000
-            row = (K, pn, len(lats), statistics.mean(lats), pct(lats, .99), max(lats), boost / seeds)
+                mem += sim.memtime / 1e6
+            row = (K, pn, len(lats), statistics.mean(lats), pct(lats, .99), max(lats), boost / seeds, mem / seeds)
             rows.append(row)
-            print(f"   {K} cores {pn:14s} mean {row[3]/1000:6.2f} s  p99 {row[4]/1000:6.2f} s  max {row[5]/1000:6.2f} s"
-                  f"  | boost {row[6]:6.1f} CPU-s per burst", flush=True)
-    write_csv("e11b_cpu_burst.csv", rows, ["cores", "policy", "n", "mean_ms", "p99_ms", "max_ms", "boost_cpu_s"])
+            print(f"   {K} cores {pn:16s} mean {row[3]/1000:6.2f} s  p99 {row[4]/1000:6.2f} s  max {row[5]/1000:6.2f} s"
+                  f"  | boost {row[6]:6.1f} CPU-s | memory {row[7]:6.1f} GB*s per burst", flush=True)
+    write_csv("e11b_cpu_burst.csv", rows, ["cores", "policy", "n", "mean_ms", "p99_ms", "max_ms", "boost_cpu_s",
+                                           "mem_GBs"])
     return rows
 
 
@@ -739,18 +747,23 @@ def _e11_trace(args):
             sim.cpu_used / 1000 / 3600, sim.cpu_boost / 1000 / 3600, sim.stats["overflow"], time.time() - t0)
 
 
-def e11c(days=3, budgets_gb=(32,), cores=(64, 32), q=0.25, seed=1):
+def e11c(days=3, budgets_gb=(32,), cores=(64, 32), q=0.25, seed=1, pols=None):
     """The Azure trace (as e10b) with functions at q vCPU on a node with K cores. The trace's CPU
     demand at 0.25 vCPU is very bursty (unlimited cores: mean 0.6 cores in use, p99 3-7.5,
     p99.9 34, peak 84), so a node of 1-8 cores collapses into queues at the peaks; 32 and 64
     cores hold the p99.9. Snapshot policies only: without snapshots, cold starts are ~4x the CPU
     work and overload even these nodes at the peaks (e11a/e11b cover the no-snapshot case).
-    Rows are printed and saved as each run finishes."""
+    Rows are printed and saved as each run finishes. With pols, only those policies run and the
+    CSV keeps its other rows."""
     from multiprocessing import Pool
     print(f"e11c: Azure 2021 trace, {days} days, functions at {q} vCPU, node {cores} cores", flush=True)
-    pols = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan"]
-    jobs = [(M, pn, K, q, days, seed) for M in budgets_gb for K in cores for pn in pols]
-    order = {(K, pn): i for i, (_, pn, K, *_rest) in enumerate(jobs)}
+    every = ["od", "od+uniform", "la", "la+uniform", "la+cp", "la+slack", "la+plan", "la+plan+jit"]
+    jobs = [(M, pn, K, q, days, seed) for M in budgets_gb for K in cores for pn in (pols or every)]
+    order = {(K, pn): i for i, (K, pn) in enumerate((K, pn) for M in budgets_gb for K in cores for pn in every)}
+    keep = []
+    if pols and os.path.exists(os.path.join(OUT, "e11c_cpu_trace.csv")):
+        with open(os.path.join(OUT, "e11c_cpu_trace.csv")) as f:
+            keep = [r for r in list(csv.reader(f))[1:] if r[1] not in pols]
     header = ["budget_GB", "policy", "cores", "quota_vcpu", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
               "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "starts_per_1000",
               "avg_mem_GB", "cpu_h", "boost_cpu_h", "overflow"]
@@ -762,8 +775,63 @@ def e11c(days=3, budgets_gb=(32,), cores=(64, 32), q=0.25, seed=1):
                   f"mean {r[9]:6.0f} p99 {r[10]:6.0f} | hot mean {r[11]:5.0f} p99 {r[12]:6.0f} | starts/1000 {r[13]:5.1f} | "
                   f"mem {r[14]:5.1f} GB | CPU {r[15]:5.2f} h (boost {r[16]:5.2f} h) | overflow {r[17]} ({r[-1]:.0f}s)",
                   flush=True)
-            write_csv("e11c_cpu_trace.csv", sorted((x[:-1] for x in rows), key=lambda x: order[(x[2], x[1])]), header)
+            write_csv("e11c_cpu_trace.csv", sorted(keep + [x[:-1] for x in rows],
+                                                   key=lambda x: order[(int(x[2]), x[1])]), header)
     return rows
+
+
+def e11x(seeds=10):
+    """Controls for the CPU plan just in time (Policy.lazy): (1) without the CPU layer the flag
+    changes nothing; (2) every isolated run gives all its memory back; (3) the known answer: on
+    one spare core a chain holds exactly the memory-time of on-demand restore with the boost,
+    and finishes (d - 1) edge delays sooner, the only idle CPU there is to overlap (Proposition
+    CP4 with every request CPU work)."""
+    print("e11x: controls for the CPU plan just in time")
+    ok, rows = True, []
+    same = 0
+    for dname, mk in E11_DAGS:
+        for k in range(seeds):
+            got = []
+            for pn in ("la", "la+plan+jit"):
+                sim = Sim(ttl0(E11_POLS[pn]), seed=k)
+                sim.invoke(0.0, mk(dname), "w")
+                sim.run()
+                got.append((sim.results[0][3], sim.memtime))
+            same += got[0] == got[1]
+    n = len(E11_DAGS) * seeds
+    ok &= same == n
+    rows.append(("inert without the CPU layer", same, n))
+    print(f"   without the CPU layer, la+plan+jit = la exactly: {same}/{n}")
+    back = 0
+    for dname, mk in E11_DAGS:
+        for K in (1, 2, 4):
+            for k in range(seeds):
+                sim = Sim(ttl0(E11_POLS["la+plan+jit"]), seed=k, cpu_cores=K, cpu_quota=0.25)
+                sim.invoke(0.0, mk(dname), "w")
+                sim.run()
+                back += abs(sim.mem) < 1e-9 and not sim.cjobs
+    n = len(E11_DAGS) * 3 * seeds
+    ok &= back == n
+    rows.append(("memory and CPU jobs all released", back, n))
+    print(f"   every run ends with no memory held and no CPU job left: {back}/{n}")
+    exact = 0
+    for d in (2, 3, 5, 8):
+        got = {}
+        for pn in ("od+uniform", "la+plan+jit"):
+            sim = Sim(ttl0(E11_POLS[pn]), jitter=False, cpu_cores=1, cpu_quota=0.25)
+            sim.invoke(0.0, chain(d, JAVA, f"c{d}"), "w")
+            sim.run()
+            got[pn] = (sim.results[0][3], sim.memtime)
+        (l0, m0), (l1, m1) = got["od+uniform"], got["la+plan+jit"]
+        hit = abs(m1 - m0) <= 1e-9 * m0 and abs((l0 - l1) - (d - 1) * EDGE_MS) < 1e-6
+        exact += hit
+        print(f"   chain of {d}, 1 spare core: memory {m1 / 1e6:.4f} vs {m0 / 1e6:.4f} GB*s, "
+              f"latency {l1:.1f} vs {l0:.1f} ms ({'ok' if hit else 'FAIL'})")
+    ok &= exact == 4
+    rows.append(("one spare core: memory of on-demand, (d-1) edges sooner", exact, 4))
+    write_csv("e11x_jit_controls.csv", rows, ["control", "passed", "of"])
+    print("   e11x", "PASS" if ok else "FAIL")
+    return ok
 
 
 def _e11_sel(args):

@@ -269,6 +269,23 @@ def min_shift(jobs, P, iters=50):
     return hi
 
 
+def latest_starts(jobs, P, movable, iters=12):
+    """Just in time (Proposition CP8 in theory/CPU_PLAN_THEORY.md): move the release of each
+    movable job as late as the jobs stay feasible, latest deadline first, by bisection between
+    its release and its deadline less its time at cap. Feasibility is monotone in each release,
+    so it holds throughout, and no single job can then start later. Needs feasible jobs."""
+    rel = [r for r, *_ in jobs]
+    for j in sorted(movable, key=lambda j: -jobs[j][1]):
+        _, D, U, q, c = jobs[j]
+        a, b = rel[j], D - U / c
+        for _ in range(iters):
+            mid = (a + b) / 2
+            trial = [(mid if i == j else rel[i],) + tuple(jobs[i][1:]) for i in range(len(jobs))]
+            a, b = (mid, b) if jobs_feasible(trial, P) else (a, mid)
+        rel[j] = a
+    return rel
+
+
 def edf_single(jobs, P):
     """Preemptive earliest-deadline-first with the whole spare CPU P on one job at a time (the
     right schedule when P <= every cap, Proposition C4). Returns the completion times."""

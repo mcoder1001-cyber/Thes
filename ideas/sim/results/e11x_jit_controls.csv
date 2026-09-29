@@ -1,0 +1,4 @@
+control,passed,of
+inert without the CPU layer,80,80
+memory and CPU jobs all released,240,240
+"one spare core: memory of on-demand, (d-1) edges sooner",4,4

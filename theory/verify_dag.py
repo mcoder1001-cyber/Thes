@@ -26,9 +26,9 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
        and bound vs brute force, optimality of T8(b), restore channels, the guard's gap, planned
        triggers through the guard, and the simulator's planner = the exact solver
   P9   keep-alive under look-ahead is a threshold decision (top-k by r_v + l(v))
-  CP1-7 the CPU plan (theory/CPU_PLAN_THEORY.md): deadlines per start-up; the max-flow plan vs an
+  CP1-8 the CPU plan (theory/CPU_PLAN_THEORY.md): deadlines per start-up; the max-flow plan vs an
        exhaustive min-cut condition; soundness and optimality; the fixed-CPU special case (report 1);
-       one spare core; speculation; bursts
+       one spare core; speculation; bursts; just in time (latest starts, least memory on one core)
 
 usage: ./verify_dag.py [--quick]
 """
@@ -1739,6 +1739,56 @@ def cp(quick):
     check("CP7 bursts, P <= cap: earliest deadline first reaches the smallest largest lateness (exact plan)",
           ok7 == K // 2, f"{ok7}/{K // 2}")
 
+    # CP8: just in time. (a) The latest starts (cpuplan.latest_starts) keep the start-ups feasible,
+    # and no single one can then start later. (b) One spare core (P <= cap), a CPU-bound chain:
+    # earliest deadline first, each sandbox held from its first CPU, holds exactly the least
+    # memory-time any plan can, sum_v m (U_v/P + w_v), at the optimal latency sum_v U_v/P + w_d.
+    ok8a = ok8m = 0
+    for _ in range(K):
+        n = rnd.randint(2, 6)
+        jobs = [(0.0, rnd.uniform(0.5, 4.0), rnd.uniform(0.1, 2.0), 0.0, 1.0) for _ in range(n)]
+        P = rnd.uniform(0.6, 3.0)
+        lam = cpuplan.min_shift(jobs, P) + 1e-3
+        jobs = [(r, D + lam, U, q, c) for r, D, U, q, c in jobs]
+        mov = [j for j in range(n) if rnd.random() < 0.8]
+        rel = cpuplan.latest_starts(jobs, P, mov, iters=30)
+        late = [(rel[j],) + jobs[j][1:] for j in range(n)]
+        ok8a += cpuplan.jobs_feasible(late, P)
+        maximal = True
+        for j in mov:
+            bound = jobs[j][1] - jobs[j][2] / jobs[j][4]
+            step = 1e-3 * (bound - jobs[j][0])
+            if bound - rel[j] > step:
+                trial = [(rel[i] + (step if i == j else 0.0),) + jobs[i][1:] for i in range(n)]
+                maximal &= not cpuplan.jobs_feasible(trial, P)
+        ok8m += maximal
+    check(f"CP8 latest starts keep every start-up able to meet its deadline  [{K} instances]",
+          ok8a == K, f"{ok8a}/{K}")
+    check("CP8 ... and no single start-up can start later", ok8m == K, f"{ok8m}/{K}")
+    ok8b = more_eq = 0
+    for _ in range(K // 2):
+        d = rnd.randint(2, 8)
+        P, delta = rnd.uniform(0.3, 1.0), rnd.uniform(0.0, 20.0)
+        w = [rnd.uniform(5.0, 100.0) for _ in range(d)]
+        U = [rnd.uniform(200.0, 900.0) for _ in range(d)]
+        for v in range(1, d):
+            U[v] = max(U[v], P * (w[v - 1] + delta))            # CPU-bound
+        cum = [sum(U[:v + 1]) / P for v in range(d)]            # ready times, one at a time
+        F = []
+        for v in range(d):
+            F.append(max(cum[v], F[-1] + delta if F else 0.0) + w[v])
+        mem = sum(F[v] - (cum[v] - U[v] / P) for v in range(d))
+        low = sum(U[v] / P + w[v] for v in range(d))
+        ok8b += abs(mem - low) < 1e-9 * low and abs(F[-1] - (sum(U) / P + w[-1])) < 1e-9 * F[-1]
+        # control: an equal split from the arrival (every sandbox held from 0) holds more
+        ready = _fluid([(0.0, 1e12, U[v], 0.0, 1.0) for v in range(d)], P, "equal")
+        G = []
+        for v in range(d):
+            G.append(max(ready[v], G[-1] + delta if G else 0.0) + w[v])
+        more_eq += sum(G) > low * (1 + 1e-6)
+    check("CP8 one spare core, CPU-bound chain: just in time holds the least memory-time, at the optimal "
+          "latency", ok8b == K // 2, f"{ok8b}/{K // 2}")
+
     # CONTROLS: the checks can fail. Ignoring the caps changes feasibility; an equal split and
     # greedy earliest-deadline-first are not optimal once the spare CPU exceeds one cap (so C4's
     # condition is needed).
@@ -1767,6 +1817,8 @@ def cp(quick):
           worse_edf > 0, f"worse on {worse_edf}/{K}")
     check("CONTROL: one start-up at a time is not optimal when more than one core is spare (CP4 needs P <= cap)",
           seq_loses > 0, f"worse on {seq_loses}/{K}")
+    check("CONTROL: an equal split with every sandbox from the arrival holds more memory than CP8's minimum",
+          more_eq > 0, f"more on {more_eq}/{K // 2}")
 
 
 def main():
