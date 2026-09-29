@@ -13,6 +13,9 @@ need to build it, what math you need to prove and defend it, and in which order 
   workflow simulator on the Azure trace.
 - **Not done:** nothing has been measured with **real** snapshot restores for this approach, and
   nothing is built inside OpenWhisk yet.
+- **New direction after the review (2026-09-28):** the CPU plan, start-up CPU planned along the
+  workflow (`ideas/CPU_PLAN.md`, `PROFESSOR_REPORT_2.md`; simulator e11). Its key assumption is
+  test T6b in `MACHINE_TEST_PLAN.md`.
 - **Next:** the tests on the machine, written as a prompt with expected results and output
   formats in `MACHINE_TEST_PLAN.md`; the theory chapter is drafted in `thesis/ch_theory.tex`.
 - **The one open question that can change the plan:** do parallel restores slow each other
