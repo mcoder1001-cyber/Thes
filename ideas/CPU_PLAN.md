@@ -1,7 +1,8 @@
 # The CPU plan: CPU for start-ups, planned along the workflow
 
 *Written 2026-09-28, after the supervisor's review of `PROFESSOR_REPORT.md`. Supervisor-facing
-summary: `PROFESSOR_REPORT_2.md`. Code: `sim/dagsim.py` (the CPU layer), `sim/cpuplan.py` (the
+summary: `PROFESSOR_REPORT_2.md`. Theory, with proofs: `../theory/CPU_PLAN_THEORY.md` (and §4.9
+of `../thesis/ch_theory.tex`). Code: `sim/dagsim.py` (the CPU layer), `sim/cpuplan.py` (the
 exact plan). Experiments: `sim/run_sim.py` e11o, e11a, e11b, e11d, e11c. Everything here is
 simulated; `MACHINE_TEST_PLAN.md` T6b measures the one assumption it rests on.*
 
@@ -45,7 +46,7 @@ finishes by `L` if and only if every stage `v` is ready by `D_v = L − T(v)`, w
 work from `v`'s start to the end. So every start-up has its own deadline
 (`dagsim.Sim._cpu_deadlines`, with `L` = the workflow's ideal latency).
 
-**The exact plan** (`cpuplan.py`):
+**The exact plan** (`cpuplan.py`; Theorem CP2 in `../theory/CPU_PLAN_THEORY.md`):
 1. Checking that every start-up can meet its deadline is a max-flow problem (Horn 1974):
    - source → job, capacity `U`;
    - job → its own quota (private);
@@ -79,7 +80,7 @@ demand, under the same CPU policy.
 **Controls:**
 - With the CPU layer off, or with `q = 1` and unlimited cores, `dagsim` reproduces its earlier
   results exactly: 980 isolated runs to 1e-12 ms, a day of the trace, e10a byte for byte, e0 26/26.
-- `theory/verify_dag.py` passes 76/76.
+- `theory/verify_dag.py` passes 93/93, including section CP, which checks the theory (CP1–CP7).
 - `cpuplan.controls()`: a lone start-up runs at `min(c, q + P)`.
 
 ## 4. Results (functions at 0.25 vCPU unless stated)

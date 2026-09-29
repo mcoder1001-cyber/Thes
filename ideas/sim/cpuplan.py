@@ -219,31 +219,30 @@ class MaxFlow:
                 total += f
 
 
-def feasible(workflows, P, lam, rates=False):
-    """Can every start-up be ready by arrival + L_ideal + lam - l(v)? With rates=True also
-    return the time slices and each job's shared-CPU rate in each slice."""
-    J = []
-    for t0, wf in workflows:
-        Li, l = _ideal(wf)
-        for v, (s, _) in enumerate(wf):
-            J.append((t0, t0 + Li + lam - l[v], s))
-    if any(D <= r + EPS for r, D, _ in J):
+def jobs_feasible(jobs, P, rates=False):
+    """Deadline feasibility for start-up jobs [(release, deadline, U, q, c)] with shared spare CPU
+    P (constant): each job may use its own quota q (private) plus shared CPU, at most c in all,
+    only inside its window. True iff the max-flow of Horn's network saturates every job (Theorem
+    C2 in theory/CPU_PLAN_THEORY.md). With rates=True also return the time slices and each job's
+    shared-CPU rate in each slice."""
+    if any(D <= r + EPS for r, D, *_ in jobs):
         return (False, None) if rates else False
-    pts = sorted({x for r, D, _ in J for x in (r, D)})
+    pts = sorted({x for r, D, *_ in jobs for x in (r, D)})
     I = list(zip(pts, pts[1:]))
-    n, m = len(J), len(I)
+    n, m = len(jobs), len(I)
     S, T = 0, 1 + n + m
     mf = MaxFlow(T + 1)
     edges = {}
-    for j, (r, D, s) in enumerate(J):
-        mf.add(S, 1 + j, s.U)
-        mf.add(1 + j, T, s.q * (D - r))
+    for j, (r, D, U, q, c) in enumerate(jobs):
+        mf.add(S, 1 + j, U)
+        if q > 0:
+            mf.add(1 + j, T, q * (D - r))
         for k, (a, b) in enumerate(I):
             if a >= r - EPS and b <= D + EPS:
-                edges[(j, k)] = mf.add(1 + j, 1 + n + k, (s.c - s.q) * (b - a))
+                edges[(j, k)] = mf.add(1 + j, 1 + n + k, (c - q) * (b - a))
     for k, (a, b) in enumerate(I):
         mf.add(1 + n + k, T, P * (b - a))
-    ok = mf.flow(S, T) >= sum(s.U for _, _, s in J) - 1e-6
+    ok = mf.flow(S, T) >= sum(U for _, _, U, _, _ in jobs) - 1e-6
     if not rates:
         return ok
     R = {}
@@ -252,6 +251,55 @@ def feasible(workflows, P, lam, rates=False):
         a, b = I[k]
         R[(j, k)] = mf.g[v][rev][1] / (b - a)
     return ok, (I, R)
+
+
+def min_shift(jobs, P, iters=50):
+    """Smallest lam such that every job can finish by its deadline + lam (the smallest largest
+    lateness), by bisection: feasibility is monotone in lam."""
+    lo = max(r + U / c - D for r, D, U, q, c in jobs)          # nobody finishes before running at cap
+    hi = lo + 1.0
+    while not jobs_feasible([(r, D + hi, U, q, c) for r, D, U, q, c in jobs], P):
+        hi = lo + 2 * (hi - lo)
+    for _ in range(iters):
+        mid = (lo + hi) / 2
+        if jobs_feasible([(r, D + mid, U, q, c) for r, D, U, q, c in jobs], P):
+            hi = mid
+        else:
+            lo = mid
+    return hi
+
+
+def edf_single(jobs, P):
+    """Preemptive earliest-deadline-first with the whole spare CPU P on one job at a time (the
+    right schedule when P <= every cap, Proposition C4). Returns the completion times."""
+    left = [U for _, _, U, _, _ in jobs]
+    done = [None] * len(jobs)
+    t = 0.0
+    while any(d is None for d in done):
+        ready = [j for j, (r, *_rest) in enumerate(jobs) if done[j] is None and r <= t + EPS]
+        if not ready:
+            t = min(jobs[j][0] for j in range(len(jobs)) if done[j] is None)
+            continue
+        j = min(ready, key=lambda j: (jobs[j][1], j))
+        nxt = min([jobs[i][0] for i in range(len(jobs)) if done[i] is None and jobs[i][0] > t + EPS],
+                  default=float("inf"))
+        run = min(left[j] / P, nxt - t)
+        left[j] -= run * P
+        t += run
+        if left[j] <= 1e-12:
+            done[j] = t
+    return done
+
+
+def feasible(workflows, P, lam, rates=False):
+    """Can every start-up be ready by arrival + L_ideal + lam - l(v)? With rates=True also
+    return the time slices and each job's shared-CPU rate in each slice."""
+    J = []
+    for t0, wf in workflows:
+        Li, l = _ideal(wf)
+        for v, (s, _) in enumerate(wf):
+            J.append((t0, t0 + Li + lam - l[v], s.U, s.q, s.c))
+    return jobs_feasible(J, P, rates)
 
 
 def plan(workflows, P):

@@ -26,6 +26,9 @@ nothing. Controls are labelled "CONTROL" and pass when they DETECT the violation
        and bound vs brute force, optimality of T8(b), restore channels, the guard's gap, planned
        triggers through the guard, and the simulator's planner = the exact solver
   P9   keep-alive under look-ahead is a threshold decision (top-k by r_v + l(v))
+  CP1-7 the CPU plan (theory/CPU_PLAN_THEORY.md): deadlines per start-up; the max-flow plan vs an
+       exhaustive min-cut condition; soundness and optimality; the fixed-CPU special case (report 1);
+       one spare core; speculation; bursts
 
 usage: ./verify_dag.py [--quick]
 """
@@ -1498,6 +1501,274 @@ def a9(quick):
     print(f"      5-stage Java chain, first j stages warm, saving vs all-restored ({L_star(g):.0f} ms): {row}")
 
 
+# ============================================================ CP: the CPU plan
+def _subset_feasible(jobs, P):
+    """Independent feasibility test for start-up jobs [(release, deadline, U, q, c)] with shared
+    spare P: by max-flow min-cut on Horn's network, feasible iff for EVERY subset T of jobs,
+    sum_T U_j <= sum_T q_j (D_j - r_j) + integral of min(P, sum over j in T active at t of
+    (c_j - q_j)) dt. Enumerates all subsets (small n only)."""
+    if any(D <= r for r, D, *_ in jobs):
+        return False
+    pts = sorted({x for r, D, *_ in jobs for x in (r, D)})
+    n = len(jobs)
+    for mask in range(1, 1 << n):
+        T = [jobs[j] for j in range(n) if mask >> j & 1]
+        need = sum(U for _, _, U, _, _ in T)
+        have = sum(q * (D - r) for r, D, _, q, _ in T)
+        for a, b in zip(pts, pts[1:]):
+            act = sum(c - q for r, D, _, q, c in T if r <= a + 1e-12 and D >= b - 1e-12)
+            have += min(P, act) * (b - a)
+        if need > have + 1e-7:
+            return False
+    return True
+
+
+def _fluid(jobs, P, rule):
+    """Exact event-driven fluid schedule of jobs [(release, deadline, U, 0, c)] under a rule:
+    "equal" (spare shared equally, capped) or "edf" (earliest deadline first, each up to its cap).
+    Returns completion times."""
+    n = len(jobs)
+    left = [U for _, _, U, _, _ in jobs]
+    done = [None] * n
+    t = 0.0
+    while any(d is None for d in done):
+        act = [j for j in range(n) if done[j] is None and jobs[j][0] <= t + 1e-12]
+        rate = [0.0] * n
+        spare = P
+        if rule == "edf":
+            for j in sorted(act, key=lambda j: (jobs[j][1], j)):
+                rate[j] = min(jobs[j][4], spare)
+                spare -= rate[j]
+        else:
+            free = list(act)
+            while spare > 1e-12 and free:
+                share = spare / len(free)
+                nxt = []
+                for j in free:
+                    add = min(share, jobs[j][4] - rate[j])
+                    rate[j] += add
+                    spare -= add
+                    if rate[j] < jobs[j][4] - 1e-12:
+                        nxt.append(j)
+                if len(nxt) == len(free):
+                    break
+                free = nxt
+        cands = [t + left[j] / rate[j] for j in act if rate[j] > 1e-12]
+        cands += [jobs[j][0] for j in range(n) if done[j] is None and jobs[j][0] > t + 1e-12]
+        t2 = min(cands)
+        for j in act:
+            left[j] -= rate[j] * (t2 - t)
+            if left[j] <= 1e-9:
+                done[j] = t2
+        t = t2
+    return done
+
+
+def _dag_jobs(g, U, q, c, t0=0.0):
+    """Start-up jobs of a look-ahead workflow arriving at t0: released at t0, base deadline
+    t0 - l(v) (Lemma C1: the workflow finishes by t0 + Lam iff every start-up is ready by
+    t0 + Lam - l(v))."""
+    ell = g.ell()
+    return [(t0, t0 - ell[v], U[v], q[v], c[v]) for v in range(g.n)]
+
+
+def cp(quick):
+    hdr("CP -- the CPU plan: start-up CPU planned along the workflow (theory/CPU_PLAN_THEORY.md)")
+    sys.path.insert(0, SIM)
+    import cpuplan
+    rnd = random.Random(11)
+    N = 400 if quick else 2000
+
+    # C1: with any ready times (whatever CPU the start-ups got), L = max_v (ready_v + l(v)), so
+    # L <= Lam iff every ready_v <= Lam - l(v).
+    ok = ok_iff = 0
+    for _ in range(N):
+        g = random_dag(rnd)
+        ready = [rnd.uniform(0, 4000) for _ in range(g.n)]
+        L = evaluate(g, lambda v, I: 0.0, ready_time=lambda v, tau: ready[v])[0]
+        ell = g.ell()
+        form = max(ready[v] + ell[v] for v in range(g.n))
+        ok += abs(L - form) < 1e-6
+        ok_iff += all(ready[v] <= L - ell[v] + 1e-9 for v in range(g.n)) and \
+            any(ready[v] > L - 1e-3 - ell[v] for v in range(g.n))
+    check(f"CP1 latency = max_v (ready_v + l(v)) for any start-up completion times  [{N} random DAGs]",
+          ok == N, f"{ok}/{N}")
+    check("CP1 ... so L <= Lam iff every start-up is ready by Lam - l(v) (deadlines per start-up)",
+          ok_iff == N, f"{ok_iff}/{N}")
+
+    # C2: the max-flow test (cpuplan.jobs_feasible) = the exhaustive min-cut subset condition.
+    M = 600 if quick else 3000
+    agree = {0: 0, 1: 0}
+    tot = {0: 0, 1: 0}
+    nfeas = 0
+    for i in range(M):
+        private = i % 2
+        n = rnd.randint(2, 6)
+        jobs = []
+        for _ in range(n):
+            r = rnd.choice([0.0, 0.0, rnd.uniform(0, 1.5)])
+            c = rnd.choice([0.5, 1.0, 2.0])
+            q = rnd.uniform(0, 0.4) * c if private else 0.0
+            jobs.append((r, r + rnd.uniform(0.2, 3.0), rnd.uniform(0.05, 2.0), q, c))
+        P = rnd.uniform(0.2, 4.0)
+        a, b = cpuplan.jobs_feasible(jobs, P), _subset_feasible(jobs, P)
+        tot[private] += 1
+        agree[private] += a == b
+        nfeas += a
+    check(f"CP2 max-flow feasibility = the min-cut subset condition, start-ups guaranteed nothing (q = 0)  "
+          f"[{tot[0]}, {nfeas} feasible in all]", agree[0] == tot[0], f"{agree[0]}/{tot[0]}")
+    check("CP2 ... and with a private quota per start-up (q > 0)", agree[1] == tot[1], f"{agree[1]}/{tot[1]}")
+
+    # C2: the plan is sound (its rates meet every deadline within the caps and the spare CPU) and
+    # optimal (a hair less lateness is infeasible by the independent subset condition).
+    K = 150 if quick else 500
+    sound = opt = 0
+    for _ in range(K):
+        g = random_dag(rnd, n=rnd.randint(2, 6))
+        c = [rnd.choice([0.5, 1.0, 2.0]) for _ in range(g.n)]
+        q = [rnd.uniform(0, 0.3) * x for x in c]
+        U = [rnd.uniform(0.2, 3.0) * 1000 for _ in range(g.n)]
+        P = rnd.uniform(0.2, 3.0)
+        J = _dag_jobs(g, U, q, c)
+        lam = cpuplan.min_shift(J, P)
+        Jl = [(r, D + lam, u, qq, cc) for r, D, u, qq, cc in J]
+        okf, (I, R) = cpuplan.jobs_feasible(Jl, P, rates=True)
+        done = [qq * (D - r) for r, D, u, qq, cc in Jl]
+        within = True
+        for k, (a, b) in enumerate(I):
+            used = 0.0
+            for j in range(len(Jl)):
+                x = R.get((j, k), 0.0)
+                within &= x <= Jl[j][4] - Jl[j][3] + 1e-7
+                used += x
+                done[j] += x * (b - a)
+            within &= used <= P + 1e-7
+        sound += okf and within and all(done[j] >= Jl[j][2] - 1e-5 for j in range(len(Jl)))
+        tight = [(r, D + lam - 1e-6 * max(1.0, abs(lam)), u, qq, cc) for r, D, u, qq, cc in J]
+        opt += not _subset_feasible(tight, P)
+    check(f"CP2 the exact plan's rates meet every deadline, within each cap and the spare CPU  [{K} DAGs]",
+          sound == K, f"{sound}/{K}")
+    check("CP2 ... and it is optimal: any smaller latency is infeasible (independent subset condition)",
+          opt == K, f"{opt}/{K}")
+
+    # C3: special cases. No spare CPU: every start-up runs at its quota, and the optimum is report 1's
+    # L* with r_v = U_v / q_v (Theorem 1). Unlimited spare: L_ideal = max_v (U_v/c_v + l(v)).
+    ok0 = okinf = 0
+    for _ in range(K):
+        g = random_dag(rnd, n=rnd.randint(2, 8))
+        c = [rnd.choice([0.5, 1.0, 2.0]) for _ in range(g.n)]
+        q = [rnd.uniform(0.1, 0.5) * x for x in c]
+        U = [rnd.uniform(0.2, 3.0) * 1000 for _ in range(g.n)]
+        J = _dag_jobs(g, U, q, c)
+        ell = g.ell()
+        g1 = DAG(g.n, g.preds, [U[v] / q[v] for v in range(g.n)], g.w, g.m, g.delta)
+        ok0 += abs(cpuplan.min_shift(J, 0.0) - L_star(g1)) < 1e-6 * L_star(g1)
+        Li = max(U[v] / c[v] + ell[v] for v in range(g.n))
+        okinf += abs(cpuplan.min_shift(J, 1e9) - Li) < 1e-6 * Li
+    check("CP3 no spare CPU: the optimum = report 1's L* with r_v = U_v/q_v (Theorem 1 is the fixed-CPU case)",
+          ok0 == K, f"{ok0}/{K}")
+    check("CP3 unlimited spare CPU: the optimum = L_ideal = max_v (U_v/c_v + l(v))", okinf == K, f"{okinf}/{K}")
+
+    # C4: at most one start-up's worth of spare CPU (P <= every cap, no private quota): the optimum
+    # runs start-ups one at a time in deadline order (longest tail first) at the full spare CPU.
+    # On a chain it beats restoring on demand with the same boost by at most sum_{v<d} (w_v + delta).
+    ok4 = okb = 0
+    for i in range(K):
+        g = random_dag(rnd, n=rnd.randint(2, 8), chain=i % 2 == 0)
+        c = [1.0] * g.n
+        U = [rnd.uniform(0.2, 3.0) * 1000 for _ in range(g.n)]
+        P = rnd.uniform(0.2, 1.0)
+        J = _dag_jobs(g, U, [0.0] * g.n, c)
+        ell = g.ell()
+        fin = cpuplan.edf_single(J, P)
+        L_edf = max(fin[v] + ell[v] for v in range(g.n))
+        L_opt = cpuplan.min_shift(J, P)
+        ok4 += abs(L_edf - L_opt) < 1e-6 * L_opt
+        if i % 2 == 0:
+            L_od = sum(U[v] / P + g.w[v] for v in range(g.n)) + (g.n - 1) * g.delta
+            okb += -1e-6 * L_opt <= L_od - L_opt <= sum(g.w[:-1]) + (g.n - 1) * g.delta + 1e-6 * L_opt
+    check("CP4 spare CPU <= one start-up's cap: the optimum = one start-up at a time, earliest deadline first",
+          ok4 == K, f"{ok4}/{K}")
+    check("CP4 ... and on a chain look-ahead then gains at most sum_{v<d} (w_v + delta) over on-demand with the "
+          "same boost", okb == (K + 1) // 2, f"{okb}/{(K + 1) // 2}")
+
+    # C5/C6: speculation. A start-up that gets only the CPU the certain ones leave never delays them
+    # (C5). With P <= cap, one that is served as if certain and then not taken delays a CPU-bound
+    # chain by exactly U_s / P (C6), so speculating pays only if p * gain >= (1 - p) * U_s / P.
+    ok5 = ok6 = 0
+    for _ in range(K):
+        d = rnd.randint(2, 6)
+        g = DAG(d, [[]] + [[v - 1] for v in range(1, d)], [0.0] * d, [rnd.uniform(1, 30) for _ in range(d)],
+                [512.0] * d, 2.0)
+        U = [rnd.uniform(0.5, 3.0) * 1000 for _ in range(d)]
+        P = rnd.uniform(0.3, 1.0)
+        J = _dag_jobs(g, U, [0.0] * d, [1.0] * d)
+        ell = g.ell()
+        base = cpuplan.edf_single(J, P)
+        Us = rnd.uniform(0.3, 2.0) * 1000
+        spec = (0.0, 1e12, Us, 0.0, 1.0)                        # leftover only: latest deadline
+        with_spec = cpuplan.edf_single(J + [spec], P)
+        ok5 += all(abs(with_spec[v] - base[v]) < 1e-6 for v in range(d))
+        as_certain = (0.0, J[0][1], Us, 0.0, 1.0)             # served as urgently as the entry
+        fin = cpuplan.edf_single(J + [as_certain], P)
+        L0 = max(base[v] + ell[v] for v in range(d))
+        L1 = max(fin[v] + ell[v] for v in range(d))
+        cpu_bound = abs(L0 - (base[-1] + ell[-1])) < 1e-6
+        ok6 += (not cpu_bound) or abs((L1 - L0) - Us / P) < 1e-6
+    check("CP5 a speculative start-up given only leftover CPU never delays a certain one", ok5 == K, f"{ok5}/{K}")
+    check("CP6 P <= cap: a speculative start-up served as certain and not taken delays a CPU-bound chain by "
+          "exactly U_s/P", ok6 == K, f"{ok6}/{K}")
+
+    # C7: several workflows (bursts) with P <= every cap: preemptive earliest-deadline-first by absolute
+    # deadline minimises the largest lateness (Horn 1974, 1|r_j,pmtn|Lmax), i.e. it reaches the exact
+    # plan's smallest common extra delay.
+    ok7 = 0
+    for _ in range(K // 2):
+        J = []
+        for w in range(rnd.randint(2, 4)):
+            g = random_dag(rnd, n=rnd.randint(2, 4))
+            t0 = rnd.uniform(0, 2000)
+            U = [rnd.uniform(0.2, 2.0) * 1000 for _ in range(g.n)]
+            ell = g.ell()
+            Li = max(U[v] + ell[v] for v in range(g.n))
+            J += [(t0, t0 + Li - ell[v], U[v], 0.0, 1.0) for v in range(g.n)]
+        P = rnd.uniform(0.3, 1.0)
+        fin = cpuplan.edf_single(J, P)
+        late = max(fin[j] - J[j][1] for j in range(len(J)))
+        ok7 += abs(late - cpuplan.min_shift(J, P)) < 1e-5 * max(1.0, abs(late))
+    check("CP7 bursts, P <= cap: earliest deadline first reaches the smallest largest lateness (exact plan)",
+          ok7 == K // 2, f"{ok7}/{K // 2}")
+
+    # CONTROLS: the checks can fail. Ignoring the caps changes feasibility; an equal split and
+    # greedy earliest-deadline-first are not optimal once the spare CPU exceeds one cap (so C4's
+    # condition is needed).
+    diff_cap = worse_eq = worse_edf = seq_loses = 0
+    for _ in range(K):
+        n = rnd.randint(2, 6)
+        jobs = [(0.0, rnd.uniform(0.3, 3.0), rnd.uniform(0.1, 2.0), 0.0, 1.0) for _ in range(n)]
+        P = rnd.uniform(1.2, 4.0)
+        nocap = [(r, D, U, q, 1e9) for r, D, U, q, c in jobs]
+        diff_cap += cpuplan.jobs_feasible(jobs, P) != _subset_feasible(nocap, P)
+        opt = cpuplan.min_shift(jobs, P)
+        for rule in ("equal", "edf"):
+            fin = _fluid(jobs, P, rule)
+            late = max(fin[j] - jobs[j][1] for j in range(n))
+            if late > opt + 1e-3 * max(1.0, abs(opt)):
+                if rule == "equal":
+                    worse_eq += 1
+                else:
+                    worse_edf += 1
+        fin = cpuplan.edf_single([(r, D, U, q, c) for r, D, U, q, c in jobs], min(P, 1.0))
+        seq_loses += max(fin[j] - jobs[j][1] for j in range(n)) > opt + 1e-3 * max(1.0, abs(opt))
+    check("CONTROL: ignoring the per-start-up cap gives a different feasibility answer", diff_cap > 0,
+          f"differs on {diff_cap}/{K}")
+    check("CONTROL: an equal split of the spare CPU is not optimal", worse_eq > 0, f"worse on {worse_eq}/{K}")
+    check("CONTROL: greedy earliest-deadline-first is not optimal when the spare CPU exceeds one cap",
+          worse_edf > 0, f"worse on {worse_edf}/{K}")
+    check("CONTROL: one start-up at a time is not optimal when more than one core is spare (CP4 needs P <= cap)",
+          seq_loses > 0, f"worse on {seq_loses}/{K}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
@@ -1515,6 +1786,7 @@ def main():
     c73(a.quick)
     t8(a.quick)
     a9(a.quick)
+    cp(a.quick)
     hdr("SUMMARY")
     bad = [n for n, ok in results if ok is False]
     skipped = [n for n, ok in results if ok is None]

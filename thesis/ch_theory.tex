@@ -24,7 +24,7 @@ orchestrator, which knows the workflow graph and each function's measured timing
 every stage \emph{ahead of need}, each timed to be ready when its input arrives. The workflow's
 own upstream execution then hides the downstream restores.
 
-The chapter answers three questions and then shows how they fit together:
+The chapter answers four questions and then shows how they fit together:
 \begin{enumerate}
   \item \textbf{When to restore each stage} (\cref{sec:th-optimal,sec:th-uncertain}). Restoring
         each stage just in time reaches the lowest latency any policy can reach, and holds no
@@ -38,6 +38,11 @@ The chapter answers three questions and then shows how they fit together:
   \item \textbf{Memory} (\cref{sec:th-memory}). Look-ahead raises the memory peak. With a budget
         of $k$ sandboxes on a chain each extra sandbox divides the restore cost, and a memory
         guard never exceeds the budget and never deadlocks (\cref{thm:memory}).
+  \item \textbf{How much CPU each start-up gets} (\cref{sec:th-cpu}). A start-up is CPU work,
+        and small CPU shares starve it. The server's spare CPU is planned per start-up and over
+        time: every start-up has a deadline from the workflow graph, and the exact plan is a
+        maximum flow (\cref{lem:cpu-deadlines,thm:cpu-flow}). The fixed-CPU look-ahead above is
+        the case with no spare CPU.
 \end{enumerate}
 \Cref{sec:th-rcpsp} shows that the whole problem is an instance of a classical
 operations-research problem, resource-constrained project scheduling with time lags. The
@@ -705,6 +710,9 @@ budget, general & RCPSP/max with one resource & strongly NP-hard (\cref{prop:nph
   exact branch and bound (\cref{alg:bb}); the guard as a heuristic \\
 keep-alive between calls & online weighted caching & online & \cref{prop:keepalive}; GDSF
   \cite{cherkasova1998,faascache2021} \\
+CPU for start-ups, no budget & flexible resource profiles \cite{naber2014}; preemptive deadline
+  scheduling \cite{horn1974} & polynomial: max-flow and bisection & \cref{thm:cpu-flow}; one
+  spare core: \cref{prop:cpu-onecore,prop:cpu-burst} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -931,6 +939,316 @@ compile counter stops rising (in HotSpot, from \texttt{hsperfdata} or JFR). In o
 the compiled-method count at the snapshot rose monotonically with warm-up work.
 
 % ------------------------------------------------------------------------------------------
+\section{Planning CPU for start-ups}
+\label{sec:th-cpu}
+% repo: theory/CPU_PLAN_THEORY.md (results CP1-CP7)
+
+So far every start-up had a fixed length: a restore took $r_v$. That length depends on the CPU
+the sandbox gets. Starting a function is CPU work (restoring memory, loading classes, compiling
+hot methods), and serverless functions get small CPU shares. In our measurements the same JVM
+warm-up took $3.59$\,s at $0.25$\,vCPU and $0.86$\,s at $1$\,vCPU, for the same CPU time ($0.90$
+and $0.86$\,CPU-seconds; \chapref{ch:model}{Chapter~3}). A server's spare CPU can therefore
+shorten start-ups without costing CPU time. But it is limited, and a cold workflow starts several
+sandboxes at once, so who gets it, and when, decides how fast the workflow starts. Cloud Run's
+startup CPU boost gives every starting instance the same extra CPU \cite{cloudrunboost}; ORION
+sizes each stage once, for its whole run \cite{orion2022}. This section makes the CPU of each
+start-up a decision over time, planned from the workflow graph. The results of
+\cref{sec:th-optimal} are its special case with no spare CPU.
+
+\subsection{Model}
+
+\begin{definition}[CPU plan]
+\label{def:cpuplan}
+% repo: CPU_PLAN_THEORY.md section 1
+Each stage $v$ of a workflow (\cref{def:workflow}) has a \emph{start-up} of CPU work $U_v > 0$,
+in CPU-seconds: a snapshot restore plus the first request's residual warm-up, or a cold boot plus
+the full warm-up. The start-up can use at most $c_v > 0$ cores (its \emph{cap}), and it has a
+\emph{private quota} $q_v \in [0, c_v]$ that no other start-up can use. It may begin at its
+\emph{release} $a_v \ge 0$; under look-ahead $a_v = 0$. The server has \emph{spare CPU}
+$\Pi(t) \ge 0$, piecewise constant: the CPU the running requests leave. A \emph{CPU plan} gives each
+start-up a rate $x_v(t) = y_v(t) + z_v(t)$ for $t \ge a_v$, with a private part
+$0 \le y_v(t) \le q_v$, a shared part $z_v(t) \ge 0$, $x_v(t) \le c_v$, and
+$\sum_v z_v(t) \le \Pi(t)$. Start-up $v$ is \emph{ready} at the time $\rho_v$ at which
+$\int_{a_v}^{\rho_v} x_v = U_v$. The schedule is that of \cref{def:schedule} with $\tau_v + r_v$
+replaced by $\rho_v$: $S_v = \max(\rho_v, I_v)$ and $F_v = S_v + w_v$.
+\end{definition}
+
+The platform can enforce a plan: it sets each starting sandbox's CPU limit (cgroup
+\texttt{cpu.max}) and lowers it to the function's normal share once the start-up is done. The
+plan used by the simulator sets $q_v = 0$: a start-up is guaranteed nothing, so a start-up that
+is not urgent cannot hold CPU that an urgent one needs. \Cref{tab:cpu-assumptions} lists the
+assumptions.
+
+\begin{table}[htbp]
+\centering
+\caption{Assumptions of the CPU plan.}
+\label{tab:cpu-assumptions}
+\small
+\begin{tabular}{@{}p{0.2\textwidth}p{0.36\textwidth}p{0.36\textwidth}@{}}
+\toprule
+assumption & statement & status \\
+\midrule
+B1 linear speed-up & a start-up given rate $x \le c_v$ does its work $U_v$ in $U_v / x$ &
+  measured for JVM warm-up from $0.25$ to $1$\,vCPU ($4.2\times$ faster at the same CPU time);
+  an assumption for restores and cold starts, to be measured \\
+B2 separate requests & running requests keep their CPU share; start-ups use only $\Pi(t)$ & the
+  platform's choice (a CPU limit per sandbox) \\
+B3 known work & $U_v$ and $w_v$ are profiled & as A2 and A3; under uncertainty use quantiles
+  (\cref{thm:newsvendor}) \\
+B4 look-ahead & a start-up may begin when its workflow arrives & as in \cref{sec:th-optimal} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Deadlines per start-up}
+
+\begin{lemma}[Deadlines per start-up]
+\label{lem:cpu-deadlines}
+% repo: Lemma CP1
+For every CPU plan the latency is $L = \max_{v \in V} \bigl(\rho_v + \ell(v)\bigr)$. Hence
+$L \le \Lambda$ if and only if every start-up is ready by its \emph{deadline}
+$D_v(\Lambda) := \Lambda - \ell(v)$.
+\end{lemma}
+
+\begin{proof}
+As in the proof of \cref{thm:lb}(b), with $r_v$ replaced by $\rho_v$. By induction in
+topological order, $F_v = \max_{u, P} \bigl(\rho_u + W(P)\bigr)$ over the ancestors $u$ of $v$
+(including $v$) and the paths $P$ from $u$ to $v$: at the entry $F_e = \rho_e + w_e$ because
+$I_e = 0 \le \rho_e$, and for $v \ne e$ the term $\rho_v + w_v$ covers $u = v$ while
+$\max_{u \in \pred(v)} F_u + \delta + w_v$ extends every path into a predecessor by one edge. At
+the sinks this is $\max_u \bigl(\rho_u + \ell(u)\bigr)$. The equivalence holds because $L$ is a
+maximum of the terms $\rho_v + \ell(v)$.
+\end{proof}
+
+The lemma turns ``finish the workflow soon'' into ``every start-up meets its own deadline''. The
+deadlines depend on the target $\Lambda$ only through a common shift, and the most urgent
+start-ups are those with the longest remaining path $\ell(v)$.
+
+\subsection{The exact plan}
+
+\begin{theorem}[The exact CPU plan]
+\label{thm:cpu-flow}
+% repo: Theorem CP2
+Fix a target $\Lambda$ and let $D_v = \Lambda - \ell(v)$. Cut the time axis at every release,
+every deadline and every breakpoint of $\Pi$ into slices $I_1, I_2, \dots$, and let $\Pi_k$ be the
+spare CPU on $I_k$. Build a network with a source, a sink, one node per start-up and one node per
+slice, and the arcs
+\begin{itemize}
+  \item source $\to v$, capacity $U_v$;
+  \item $v \to$ sink, capacity $q_v \max(0, D_v - a_v)$ (the private quota);
+  \item $v \to k$ for every slice $I_k \subseteq [a_v, D_v]$, capacity $(c_v - q_v)\,|I_k|$;
+  \item $k \to$ sink, capacity $\Pi_k\,|I_k|$.
+\end{itemize}
+Then a CPU plan with latency at most $\Lambda$ exists if and only if a maximum flow saturates
+every source arc, and such a flow gives the plan. Feasibility is monotone in $\Lambda$, so
+bisection on $\Lambda$ finds the optimal latency $L^*_\Pi$ to any precision.
+\end{theorem}
+
+\begin{proof}
+By \cref{lem:cpu-deadlines}, latency at most $\Lambda$ means $\rho_v \le D_v$ for every $v$.
+\begin{itemize}
+  \item \emph{A flow gives a plan.} Let $g_v$ be the flow on $v$'s private arc and $f_{vk}$ on
+        its arc to slice $k$. Run $v$ at private rate $g_v / (D_v - a_v) \le q_v$ over its window
+        and at shared rate $f_{vk} / |I_k| \le c_v - q_v$ in slice $k$. The shared rates in a
+        slice sum to at most $\Pi_k$, the total rate is at most $c_v$, and the work done by $D_v$ is
+        $g_v + \sum_k f_{vk} = U_v$.
+  \item \emph{A plan gives a flow.} Integrate the private part $y_v$ over the window and the
+        shared part $z_v$ over each slice. Every capacity holds, and the flow out of $v$ is the
+        work done by $D_v$, which is $U_v$.
+  \item \emph{Monotonicity.} A larger $\Lambda$ moves every deadline later, so a plan for
+        $\Lambda$ is a plan for every $\Lambda' > \Lambda$. \qedhere
+\end{itemize}
+\end{proof}
+
+This is Horn's flow construction for preemptive scheduling with release times and deadlines
+\cite{horn1974}, with a rate cap per job. In project-scheduling terms, the start-ups are
+activities whose duration depends on how much of a resource they get: project scheduling with
+flexible resource profiles \cite{naber2014}. The problems of \cref{sec:th-rcpsp} fix the
+durations.
+
+\begin{corollary}[A certificate]
+\label{cor:cpu-cut}
+% repo: Corollary CP2.1
+No CPU plan reaches $\Lambda$ if and only if some set $T$ of start-ups has
+\[
+  \sum_{v \in T} U_v \;>\; \sum_{v \in T} q_v \max(0, D_v - a_v)
+  + \int_0^\infty \min\Bigl(\Pi(t),\; \sum_{v \in T,\; a_v \le t < D_v} (c_v - q_v)\Bigr)\, dt .
+\]
+\end{corollary}
+
+\begin{proof}
+Max-flow/min-cut. A cut that keeps the start-ups of $T$ on the source side cuts the source arcs
+of all others, the private arcs of $T$, and in each slice either the arcs from $T$ or the slice's
+arc to the sink, whichever is smaller. Its capacity is therefore
+$\sum_{v \notin T} U_v$ plus the right-hand side, and the flow saturates every source arc if and
+only if no such cut has capacity below $\sum_v U_v$.
+\end{proof}
+
+Such a set $T$ proves that the target cannot be met; it is a lower bound that needs no search.
+
+\begin{proposition}[The two extremes]
+\label{prop:cpu-limits}
+% repo: Proposition CP3
+Let every $a_v = 0$.
+\begin{enumerate}[label=(\alph*)]
+  \item With no spare CPU ($\Pi \equiv 0$) and $q_v > 0$, the optimal latency is
+        $\max_v (U_v / q_v + \ell(v))$: the $L^*$ of \cref{thm:lb} with $r_v = U_v / q_v$.
+  \item With spare CPU at least $\sum_v (c_v - q_v)$ at all times, it is
+        $L_{\mathrm{ideal}} = \max_v (U_v / c_v + \ell(v))$.
+  \item The optimal latency is non-increasing in $\Pi$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) Without shared CPU, start-up $v$ is ready no earlier than $U_v / q_v$, and running every
+start-up at its quota from time $0$ attains that; \cref{lem:cpu-deadlines} gives the maximum.
+(b) Every start-up can run at its cap from time $0$, and none can be ready before $U_v / c_v$.
+(c) A plan for $\Pi$ is a plan for any $\Pi' \ge \Pi$.
+\end{proof}
+
+So the CPU plan interpolates between the fixed-CPU look-ahead of \cref{thm:lb} ($\Pi = 0$) and the
+ideal, in which every start-up runs at full speed.
+
+\subsection{One spare core}
+
+\begin{proposition}[One spare core]
+\label{prop:cpu-onecore}
+% repo: Proposition CP4
+Let $q_v = 0$, $a_v = 0$ and $\Pi(t) \le c_v$ for all $v$ and $t$: the spare CPU never exceeds what
+one start-up can use.
+\begin{enumerate}[label=(\alph*)]
+  \item Running the start-ups one at a time, earliest deadline first (longest $\ell(v)$ first),
+        each at rate $\Pi(t)$, is optimal.
+  \item On a chain of $d$ stages with constant $\Pi$, the optimum $L^*_\Pi$ and restoring on demand
+        with the same boost, $L_{\mathrm{od},\Pi} = \sum_v (U_v / \Pi + w_v) + (d - 1)\delta$,
+        satisfy
+        \[
+          0 \le L_{\mathrm{od},\Pi} - L^*_\Pi \le \sum_{v < d} w_v + (d - 1)\,\delta ,
+        \]
+        with equality when the chain is CPU-bound, that is when
+        $L^*_\Pi = \sum_v U_v / \Pi + w_d$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) Number the start-ups so that $\ell(v_1) \ge \ell(v_2) \ge \dots$ and let
+$\bar\Pi(t) = \int_0^t \Pi$. Earliest deadline first makes $v_k$ ready at $\rho_k$, the first time $\bar\Pi$
+reaches $U_{v_1} + \dots + U_{v_k}$. In any plan the rates sum to at most $\Pi(t)$, so the first $k$
+start-ups cannot all be ready before $\rho_k$: some $v_i$ with $i \le k$ is ready at
+$\rho'_{v_i} \ge \rho_k$, and $\ell(v_i) \ge \ell(v_k)$. By \cref{lem:cpu-deadlines} that plan's
+latency is at least $\rho_k + \ell(v_k)$ for every $k$, which is the latency of earliest
+deadline first. This is Jackson's rule \cite{jackson1955}.
+
+(b) Restoring on demand is a plan, so $L^*_\Pi \le L_{\mathrm{od},\Pi}$. In any plan the last
+start-up to be ready, say $v$, is ready no earlier than $\sum_u U_u / \Pi$, and $\ell(v) \ge w_d$ on
+a chain, so $L^*_\Pi \ge \sum_u U_u / \Pi + w_d$ by \cref{lem:cpu-deadlines}. Subtracting gives the
+bound, with equality exactly when this lower bound is attained.
+\end{proof}
+
+With about one core to spare, look-ahead can only overlap start-ups with the stages' own run
+times, $\sum (w + \delta)$: about $0.1$\,s on a three-stage Java chain at $0.25$\,vCPU. This is
+why, in the simulator, the CPU plan only ties with the startup boost on one spare core.
+The parallelism of look-ahead needs more than one spare core.
+
+\subsection{Branches}
+
+\begin{proposition}[Leftover speculation]
+\label{prop:cpu-spec}
+% repo: Proposition CP5
+If the start-ups of stages that may not run (behind an if/else not yet decided) get only the CPU
+that the certain start-ups' plan leaves, every certain start-up is ready exactly when it would be
+without them.
+\end{proposition}
+
+\begin{proof}
+The certain start-ups' rates are computed without the speculative ones, which use only what is
+left at each instant.
+\end{proof}
+
+\begin{proposition}[The cost of a wrong guess]
+\label{prop:cpu-wrong}
+% repo: Proposition CP6
+Under the conditions of \cref{prop:cpu-onecore} with constant $\Pi$, let a speculative start-up $s$
+be served as if certain, ahead of some certain start-ups in earliest-deadline order, and let its
+branch not be taken. Then every certain start-up after it is ready $U_s / \Pi$ later, and a
+CPU-bound chain finishes exactly $U_s / \Pi$ later.
+\end{proposition}
+
+\begin{proof}
+One start-up runs at a time at rate $\Pi$, so inserting $U_s$ of work before them shifts each later
+ready time by $U_s / \Pi$. When the chain is CPU-bound its latency is the last ready time plus
+$w_d$.
+\end{proof}
+
+So serving a branch reached with probability $p$ as certain pays in expectation only if
+$p\, G \ge (1 - p)\, U_s / \Pi$, where $G$ is what its early start saves when the branch is taken.
+By \cref{prop:cpu-onecore}(b), $G$ is at most the overlap with the run times, $\sum (w + \delta)$
+along its path. With the measured Java values on one spare core ($U_s / \Pi \approx 0.7$\,s,
+$G \approx 0.05$\,s) this needs $p \ge 0.93$. The rule has the form of \cref{thm:branch}
+(speculate if and only if $p \ge \kappa$), with CPU time as the cost. Hence the online rule
+below: with at most one spare core only stages certain to run are served as certain, and with
+more the likely path is, as in \cref{alg:plan}.
+
+\subsection{Bursts}
+
+\begin{proposition}[Bursts on one spare core]
+\label{prop:cpu-burst}
+% repo: Proposition CP7
+Workflows $w$ arrive at times $t_w$, with $q_v = 0$ and $\Pi(t) \le c_v$. Give each start-up $v$ of
+workflow $w$ the release $t_w$ and the deadline $t_w + \Lambda_w - \ell(v)$, where $\Lambda_w$ is
+the ideal latency of $w$ (\cref{prop:cpu-limits}(b)). Then preemptive earliest deadline first
+minimises the largest delay of any workflow over its ideal, $\max_w (L_w - \Lambda_w)$.
+\end{proposition}
+
+\begin{proof}
+By \cref{lem:cpu-deadlines} applied to each workflow,
+$L_w - \Lambda_w = \max_{v \in w} (\rho_v - D_v)$, so $\max_w (L_w - \Lambda_w)$ is the largest
+lateness over all start-ups. Each start-up can absorb all the spare CPU, so in the time scale
+$\bar\Pi(t) = \int_0^t \Pi$ this is preemptive scheduling on one machine with release times, minimising
+the largest lateness, for which preemptive earliest deadline first is optimal \cite{horn1974}.
+\end{proof}
+
+With more than one spare core, greedy earliest deadline first is not optimal (the
+multiprocessor case \cite{dhall1978}). The exact plan then comes from \cref{thm:cpu-flow}, with
+one common shift added to all deadlines and minimised by bisection.
+
+\subsection{The online rule}
+
+The exact plan needs the whole future. The platform runs a rule that is recomputed at every
+event (\cref{alg:boost}).
+
+\begin{algorithm}[t]
+\caption{\textsc{Boost} (event-driven, per machine): CPU for start-ups.}
+\label{alg:boost}
+\begin{algorithmic}[1]
+\On{a start-up or a request begins or ends, or a branch is decided}
+  \State requests run at their quota; $\Pi \gets$ the machine's CPU that they leave
+  \State give each start-up the deadline $t_w + \Lambda_w - \ell(v)$
+    \Comment{\cref{lem:cpu-deadlines}}
+  \State certain $\gets$ $p = 1$ if $\Pi \le$ one cap, else $p \ge 1/2$
+    \Comment{\cref{prop:cpu-wrong}}
+  \If{the certain start-ups belong to one workflow}
+    \State constant rates that minimise their largest lateness; share the rest equally
+  \Else
+    \State earliest deadline first, each up to its cap \Comment{\cref{prop:cpu-burst}}
+  \EndIf
+  \State the other start-ups share what is left \Comment{\cref{prop:cpu-spec}}
+  \State set each starting sandbox's CPU limit to its rate
+\EndOn
+\end{algorithmic}
+\end{algorithm}
+
+For one workflow the rule chooses, by bisection on the lateness, the constant rates that
+minimise the largest lateness of its start-ups; they are optimal among plans whose rates stay
+constant from now on. The exact plan can do better by giving CPU to the urgent start-ups first;
+on our test workflows in a fluid model the rule is within $0$--$9\%$ of it, while an equal split,
+the startup boost's rule, is up to $1.39\times$ slower. For several workflows the rule is
+earliest deadline first: optimal for the largest delay on one spare core
+(\cref{prop:cpu-burst}), and chosen by simulation beyond that. Not proved, and not claimed: a
+competitive ratio for the online rule, the burst rule beyond one spare core, and anything about
+real speed-up curves (B1).
+
+% ------------------------------------------------------------------------------------------
 \section{Verification}
 \label{sec:th-verification}
 
@@ -939,8 +1257,8 @@ Each result of this chapter was checked by an independent computation in a verif
 computation that does not use it: exhaustive search, brute force over all options, an event-level
 simulation, or Monte Carlo sampling. Each check is paired with a \emph{control}: a variant designed
 to fail, which passes only if the check detects the violation. A check that cannot fail proves
-nothing. The program runs 76 checks, 14 of them controls, and all pass. \Cref{tab:checks} lists
-the main ones.
+nothing. The program runs 93 checks, 18 of them controls, and all pass.
+\Cref{tab:checks,tab:checks-cpu} list the main ones.
 
 \begin{table}[t]
 \centering
@@ -988,6 +1306,31 @@ the guard's gap (\cref{sec:th-rcpsp}) & A4 & the exact optimum is never above th
 \end{tabular}
 \end{table}
 
+\begin{table}[t]
+\centering
+\caption{Checks of the CPU plan (\cref{sec:th-cpu}) in \texttt{theory/verify\_dag.py}.}
+\label{tab:checks-cpu}
+\small
+\begin{tabular}{@{}p{0.18\textwidth}p{0.07\textwidth}p{0.4\textwidth}p{0.27\textwidth}@{}}
+\toprule
+result & check & what is compared & control \\
+\midrule
+\cref{lem:cpu-deadlines} & CP1 & the latency formula and the deadlines, 2000 DAGs with random
+  ready times & \\
+\cref{thm:cpu-flow,cor:cpu-cut} & CP2 & max-flow vs the exhaustive subset condition (3000
+  instances, with and without private quotas); the plan meets every deadline and a smaller target
+  is infeasible (500 DAGs) & ignoring the caps changes the answer (172/500); an equal split is
+  worse (398/500) \\
+\cref{prop:cpu-limits} & CP3 & no and unlimited spare CPU, 500 DAGs each & \\
+\cref{prop:cpu-onecore} & CP4 & earliest deadline first $=$ the exact plan (500 DAGs); the chain
+  bound (250 chains) & one start-up at a time is worse with more than one spare core (443/500) \\
+\cref{prop:cpu-spec,prop:cpu-wrong} & CP5, CP6 & 500 CPU-bound chains each & \\
+\cref{prop:cpu-burst} & CP7 & earliest deadline first $=$ the exact smallest largest lateness
+  (250 bursts) & greedy earliest deadline first is not optimal beyond one spare core (171/500) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \Cref{tab:status} states the status of each kind of claim. What cannot be proved, and is not
 claimed, are the absolute restore times and the contention $\beta$: they are properties of the
 hardware, measured in \chapref{ch:evaluation}{Chapter~6}.
@@ -1013,6 +1356,13 @@ the guard's distance from the optimum; the planner under noise and load & measur
   DAGs; simulated \\
 A2: restores run in parallel ($\beta$ small) & assumption, to be measured \\
 A3: residual warm-up after a restore & assumption, to be measured \\
+deadlines per start-up; the exact CPU plan; the fixed-CPU and ideal extremes; one spare core;
+  speculation; bursts on one spare core & proved; verified against exhaustive enumeration and the
+  exact plan \\
+the online CPU rule's distance from the exact plan; the burst rule beyond one spare core &
+  measured in a fluid model; chosen by simulation \\
+B1: start-ups speed up linearly with CPU up to one core & measured for JVM warm-up; assumption
+  for restores and cold starts, to be measured \\
 no user data in any snapshot & by construction \\
 \bottomrule
 \end{tabular}
@@ -1038,3 +1388,11 @@ restores into that problem), the special cases solved exactly and proved
 dynamic program, the keep-alive analysis, and the measurements that calibrate the model.
 Timing provisioning along the workflow graph is Xanadu's idea \cite{xanadu2020}; this thesis
 applies it to snapshots, whose restore is short enough to hide, and proves what is optimal.
+
+A start-up is CPU work, and its length depends on the CPU it gets. Planning the server's spare CPU
+per start-up gives each start-up a deadline from the workflow graph (\cref{lem:cpu-deadlines}),
+and the best plan is a maximum flow (\cref{thm:cpu-flow}). The fixed-CPU look-ahead of
+\cref{thm:lb} is its case with no spare CPU. With about one spare core, earliest deadline first is
+optimal, and look-ahead gains only the stages' own run times over starting on demand with the
+same CPU (\cref{prop:cpu-onecore}); the planning pays where several start-ups compete for more
+than one spare core.
