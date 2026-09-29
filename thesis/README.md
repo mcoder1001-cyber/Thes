@@ -2,10 +2,10 @@
 
 | file | what |
 |---|---|
-| `ch_theory.tex` | **Chapter 4, theory** (draft, English): the model, the theorems with proofs, the problem as RCPSP/max, the algorithm, and how everything was verified |
+| `ch_theory.tex` | **Chapter 4, theory** (draft, English): the model, the theorems with proofs, the problem as RCPSP/max, the algorithm, the CPU plan, and how everything was verified |
 | `theory.bib` | the references the chapter cites |
 | `theory_standalone.tex` | a wrapper that compiles the chapter on its own |
-| `theory_standalone.pdf` | the compiled draft (18 pages) |
+| `theory_standalone.pdf` | the compiled draft (23 pages) |
 
 **Build** (pdflatex, as installed here):
 ```bash
@@ -50,6 +50,14 @@ the repository's documents):
 | Proposition 4.22 | Proposition 9 | keep-alive under look-ahead |
 | Proposition 4.23 | Proposition 8 | when to stop warming up |
 | Algorithms 1–4 | `ALGORITHM.md` §4 | Exact (branch and bound), Build, Plan, Run |
+| Definition 4.24, Table 4.4 | `CPU_PLAN_THEORY.md` §1 | the CPU plan; assumptions B1–B4 |
+| Lemma 4.25 | Lemma CP1 | deadlines per start-up |
+| Theorem 4.26, Corollary 4.27 | Theorem CP2, Corollary CP2.1 | the exact plan by max-flow; the min-cut certificate |
+| Proposition 4.28 | Proposition CP3 | no spare CPU gives Theorem 4.4; unlimited gives the ideal |
+| Proposition 4.29 | Proposition CP4 | one spare core: earliest deadline first; look-ahead's gain bounded |
+| Propositions 4.30, 4.31 | Propositions CP5, CP6 | speculation on leftover CPU; the cost of a wrong guess |
+| Proposition 4.32 | Proposition CP7 | bursts on one spare core |
+| Algorithm 5 | `CPU_PLAN_THEORY.md` §7 | Boost: the online CPU rule (`dagsim`, `Policy.boost = "plan"`) |
 
 Left out on purpose: `MODEL.md`'s on-demand depth model belongs to the measurement chapter,
 and Proposition 7 (scrubbed priming) belongs to a dropped idea. Simulation results appear
@@ -57,7 +65,8 @@ only where they explain a design rule; the evaluation chapter reports them.
 
 **Still to do in this chapter.**
 - Once the machine tests run (`../MACHINE_TEST_PLAN.md`), replace "to be measured" in
-  Table 4.1 (assumptions A2, A3) and Table 4.5 (status) with the measured values.
+  Table 4.1 (assumptions A2, A3), Table 4.4 (assumption B1, the CPU speed-up; test T6b) and
+  Table 4.7 (status) with the measured values.
 - Check the bibliography entries against the final versions of the papers. Two entries list
   only their first authors (CIDRE, Fork in the Road).
 - Decide whether §4.8 (when to stop warming up) belongs here or in the design chapter.
