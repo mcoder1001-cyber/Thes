@@ -1212,6 +1212,61 @@ With more than one spare core, greedy earliest deadline first is not optimal (th
 multiprocessor case \cite{dhall1978}). The exact plan then comes from \cref{thm:cpu-flow}, with
 one common shift added to all deadlines and minimised by bisection.
 
+\subsection{Just in time}
+
+A start-up that begins when its workflow arrives holds its sandbox's memory from then until its
+stage finishes, and with little CPU it holds it for long: in the simulator the plan as described
+so far held up to $11\times$ the memory$\cdot$time of restoring on demand with an equal
+startup boost. For fixed restore
+times, \cref{thm:jit} solved this by starting each restore just in time. Here when a start-up
+begins interacts with the CPU the others get.
+
+\begin{proposition}[Just in time]
+\label{prop:cpu-jit}
+% repo: Proposition CP8
+\begin{enumerate}[label=(\alph*)]
+  \item Let the targets $D_v$ be feasible (\cref{thm:cpu-flow}). Taking the start-ups latest
+        target first, move each one's release as late as the network stays feasible. Then the
+        final releases are feasible, and no single release can move later.
+  \item Let a sandbox hold memory $m_v$ from the first time its start-up gets CPU, $\sigma_v$,
+        until its stage finishes. Under the conditions of \cref{prop:cpu-onecore}, with constant
+        $\Pi$, every plan holds at least $\sum_v m_v (U_v / \Pi + w_v)$, the memory$\cdot$time
+        of restoring on demand with the same boost. On a chain with
+        $U_{v+1} / \Pi \ge w_v + \delta$ for every $v$, running the start-ups one at a time,
+        each holding memory only from its first CPU, attains this minimum and the optimal
+        latency $\sum_v U_v / \Pi + w_d$ together.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(a) Feasibility is monotone in each release: a later release shrinks a window, and a plan for
+the smaller window is a plan for the larger one. The moves accept only feasible releases, so
+feasibility holds throughout. When $v$ was moved, the start-ups moved after it had releases no
+later than their final ones; moving them later only removes plans, so $v$ still cannot move
+later.
+
+(b) A start-up gets at most $\Pi$ at any instant, so it is ready no earlier than
+$\sigma_v + U_v / \Pi$, and $F_v \ge \rho_v + w_v$. One at a time, start-up $v$ runs from
+$\sum_{u < v} U_u / \Pi$ to $\rho_v = \sum_{u \le v} U_u / \Pi$. If stage $v - 1$ started at
+$\rho_{v-1}$, the input of $v$ arrives at $\rho_{v-1} + w_{v-1} + \delta \le \rho_v$, so stage $v$
+starts at $\rho_v$ and $F_v - \sigma_v = U_v / \Pi + w_v$; by induction this holds for every
+stage. The latency is $F_d = \sum_v U_v / \Pi + w_d$, the lower bound in the proof of
+\cref{prop:cpu-onecore}(b).
+\end{proof}
+
+Part (b) is \cref{thm:jit} for the CPU plan on one spare core: again there is no trade-off
+between latency and memory. With more spare CPU, (a) guarantees that holding start-ups back
+gives up no reachable target; how much memory it saves is measured. The platform computes the
+latest starts once, when a workflow arrives, on the stages likely to run, and triggers each
+start-up a margin before its latest start; until then the start-up holds no memory and no CPU.
+A CPU-bound workflow (its smallest lateness above the all-at-cap one) is the exception: there
+idle CPU is lost time, so the next start-up runs rather than leave the CPU idle. Stages that may
+not run are not held back, since they get only leftover CPU anyway (\cref{prop:cpu-spec}), and a
+branch not taken cancels its start-ups. In the simulator this keeps the plan's latency (from
+$8\%$ faster to $1.3\%$ slower) and cuts its memory$\cdot$time for one workflow by $49$--$88\%$ on
+one spare core, where it then equals restoring on demand, by up to $73\%$ on two and $33\%$ on
+four, and by $76$--$82\%$ in a burst of sixteen workflows.
+
 \subsection{The online rule}
 
 The exact plan needs the whole future. The platform runs a rule that is recomputed at every
@@ -1221,19 +1276,28 @@ event (\cref{alg:boost}).
 \caption{\textsc{Boost} (event-driven, per machine): CPU for start-ups.}
 \label{alg:boost}
 \begin{algorithmic}[1]
-\On{a start-up or a request begins or ends, or a branch is decided}
+\On{a workflow arrives}
+  \State latest start of each look-ahead start-up, less a margin \Comment{\cref{prop:cpu-jit}}
+\EndOn
+\On{a start-up or a request begins or ends, or a latest start passes}
   \State requests run at their quota; $\Pi \gets$ the machine's CPU that they leave
   \State give each start-up the deadline $t_w + \Lambda_w - \ell(v)$
     \Comment{\cref{lem:cpu-deadlines}}
   \State certain $\gets$ $p = 1$ if $\Pi \le$ one cap, else $p \ge 1/2$
     \Comment{\cref{prop:cpu-wrong}}
-  \If{the certain start-ups belong to one workflow}
+  \State hold back certain start-ups before their latest start, unless CPU-bound
+    \Comment{\cref{prop:cpu-jit}}
+  \If{one workflow and $\Pi >$ one cap}
     \State constant rates that minimise their largest lateness; share the rest equally
   \Else
-    \State earliest deadline first, each up to its cap \Comment{\cref{prop:cpu-burst}}
+    \State earliest deadline first, each up to its cap
+      \Comment{\cref{prop:cpu-onecore,prop:cpu-burst}}
   \EndIf
   \State the other start-ups share what is left \Comment{\cref{prop:cpu-spec}}
-  \State set each starting sandbox's CPU limit to its rate
+  \State set each starting sandbox's CPU limit to its rate; it takes its memory now
+\EndOn
+\On{a branch is decided}
+  \State cancel the start-ups of the branches not taken
 \EndOn
 \end{algorithmic}
 \end{algorithm}
@@ -1244,9 +1308,10 @@ constant from now on. The exact plan can do better by giving CPU to the urgent s
 on our test workflows in a fluid model the rule is within $0$--$9\%$ of it, while an equal split,
 the startup boost's rule, is up to $1.39\times$ slower. For several workflows the rule is
 earliest deadline first: optimal for the largest delay on one spare core
-(\cref{prop:cpu-burst}), and chosen by simulation beyond that. Not proved, and not claimed: a
-competitive ratio for the online rule, the burst rule beyond one spare core, and anything about
-real speed-up curves (B1).
+(\cref{prop:cpu-burst}), and chosen by simulation beyond that. Each certain start-up is held
+back to its latest start (\cref{prop:cpu-jit}). Not proved, and not claimed: a competitive ratio
+for the online rule, the burst rule beyond one spare core, how much memory holding start-ups
+back saves with more than one spare core, and anything about real speed-up curves (B1).
 
 % ------------------------------------------------------------------------------------------
 \section{Verification}
@@ -1257,7 +1322,7 @@ Each result of this chapter was checked by an independent computation in a verif
 computation that does not use it: exhaustive search, brute force over all options, an event-level
 simulation, or Monte Carlo sampling. Each check is paired with a \emph{control}: a variant designed
 to fail, which passes only if the check detects the violation. A check that cannot fail proves
-nothing. The program runs 93 checks, 18 of them controls, and all pass.
+nothing. The program runs 97 checks, 19 of them controls, and all pass.
 \Cref{tab:checks,tab:checks-cpu} list the main ones.
 
 \begin{table}[t]
@@ -1327,6 +1392,9 @@ result & check & what is compared & control \\
 \cref{prop:cpu-spec,prop:cpu-wrong} & CP5, CP6 & 500 CPU-bound chains each & \\
 \cref{prop:cpu-burst} & CP7 & earliest deadline first $=$ the exact smallest largest lateness
   (250 bursts) & greedy earliest deadline first is not optimal beyond one spare core (171/500) \\
+\cref{prop:cpu-jit} & CP8 & latest starts stay feasible and none can move later (500 instances);
+  one at a time holds the least memory at the optimal latency (250 chains) & an equal split from
+  the arrival holds more memory (250/250) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1357,10 +1425,11 @@ the guard's distance from the optimum; the planner under noise and load & measur
 A2: restores run in parallel ($\beta$ small) & assumption, to be measured \\
 A3: residual warm-up after a restore & assumption, to be measured \\
 deadlines per start-up; the exact CPU plan; the fixed-CPU and ideal extremes; one spare core;
-  speculation; bursts on one spare core & proved; verified against exhaustive enumeration and the
-  exact plan \\
-the online CPU rule's distance from the exact plan; the burst rule beyond one spare core &
-  measured in a fluid model; chosen by simulation \\
+  speculation; bursts on one spare core; just in time & proved; verified against exhaustive
+  enumeration and the exact plan \\
+the online CPU rule's distance from the exact plan; the burst rule beyond one spare core; the
+  memory just in time saves with more spare CPU & measured in a fluid model; chosen by
+  simulation; simulated \\
 B1: start-ups speed up linearly with CPU up to one core & measured for JVM warm-up; assumption
   for restores and cold starts, to be measured \\
 no user data in any snapshot & by construction \\
@@ -1395,4 +1464,5 @@ and the best plan is a maximum flow (\cref{thm:cpu-flow}). The fixed-CPU look-ah
 \cref{thm:lb} is its case with no spare CPU. With about one spare core, earliest deadline first is
 optimal, and look-ahead gains only the stages' own run times over starting on demand with the
 same CPU (\cref{prop:cpu-onecore}); the planning pays where several start-ups compete for more
-than one spare core.
+than one spare core. Held back to its latest start, a start-up gives up no reachable target, and
+on one spare core the plan then also holds the least memory$\cdot$time (\cref{prop:cpu-jit}).

@@ -8,7 +8,7 @@ need to build it, what math you need to prove and defend it, and in which order 
 ## 0. Where we are
 
 - **Done:** the approach (`REPORT.md`), 8 theorems with proofs checked by computer
-  (`theory/DAG_SNAPSHOT_THEORY.md`; `verify_dag.py` 93/93), the algorithm as a known OR problem with an exact
+  (`theory/DAG_SNAPSHOT_THEORY.md`; `verify_dag.py` 97/97), the algorithm as a known OR problem with an exact
   solver (`theory/ALGORITHM.md`), notes on 28 papers (`ideas/PAPER_NOTES.md`), real JVM warm-up experiments (1,600 runs), a
   workflow simulator on the Azure trace.
 - **Not done:** nothing has been measured with **real** snapshot restores for this approach, and
@@ -19,8 +19,12 @@ need to build it, what math you need to prove and defend it, and in which order 
   test T6b in `MACHINE_TEST_PLAN.md`.
 - **Next:** the tests on the machine, written as a prompt with expected results and output
   formats in `MACHINE_TEST_PLAN.md`; the theory chapter is drafted in `thesis/ch_theory.tex`.
-- **The one open question that can change the plan:** do parallel restores slow each other
-  down (the number **β**)? Test `x2` answers it. That is the next goal (§3).
+- **The two open questions that can change the plan**, both answered on the box (§3):
+  1. **Does a start-up get faster with CPU, at the same CPU-seconds?** Test T6b. The CPU plan,
+     now the thesis's main contribution, rests on it; so far only JVM warm-up was measured
+     (exp-b).
+  2. **Do parallel restores slow each other down (the number β)?** Test T1 (`x2`). Look-ahead
+     starts several restores at once, so this decides how much of it survives.
 
 ---
 
@@ -55,6 +59,7 @@ need to build it, what math you need to prove and defend it, and in which order 
 |---|---|---|
 | **Snapshot action image** | a Docker image that starts with `java -XX:CRaCRestoreFrom=<dir>` instead of a fresh JVM, and answers OpenWhisk's `/init` and `/run` on port 8080 | `ideas/criu-box/FnServer.java` already serves HTTP; change it to OpenWhisk's `/init`, `/run` contract. Deploy as a blackbox action (`wsk action create --docker`) |
 | **Workflow orchestrator + planner** | runs the DAG by calling OpenWhisk actions over its REST API, does the look-ahead (steps B1–B5), and applies the **memory guard** (Theorem 8(c)). When the JIT schedule's peak exceeds the budget, it first **plans** the triggers exactly (`ALGORITHM.md` Algorithm 2; reference code `exact_capped()` in `theory/verify_dag.py`) and the guard executes the plan. Its budget is the invoker's memory minus what is already running, and a start whose input has arrived preempts unclaimed look-ahead sandboxes. `theory/verify_dag.py: capped()` is the reference logic | new, Python. **Recommended over changing OpenWhisk's controller** (Scala): OpenWhisk sequences are linear only, while you need fan-out and if/else, and your own orchestrator is where "the orchestrator knows the DAG" lives |
+| **CPU allocator** | the CPU plan (theory chapter, Algorithm 5): on every start-up or request start and finish, give each starting container a CPU limit from the plan (balanced rates for one workflow, earliest deadline first for several, leftover only for branches not yet decided), each start-up held back until its latest start, and set the limit back to the function's share after its first response | `dagsim.Sim._cpu_plan` and `_lazy_starts` (the rule), `cpuplan.py` (the exact plan); sets `docker update --cpus` or the container's cgroup `cpu.max` |
 | **Wake call** | to "restore ahead", the planner sends a no-op activation (`{"__wake": true}`) to a downstream action at time τ. The invoker restores a container, the runtime returns at once, and the warm container is reused when the real input arrives | about 10 lines in the action image |
 | **Snapshot builder** | steps A1–A4: profile the function; warm up with the developer's own test requests if the runtime has a JIT, stopping when its compile counters flatten; reset random state and secrets; checkpoint; store the image | `ideas/criu-box/criu_box.py` (checkpoint/restore helpers), `FnServer.java` (`/prime` endpoint) |
 | **Depth planner** | step A6: picks depth per stage | `dp_joint` in `theory/verify_dag.py` |
@@ -102,6 +107,9 @@ weaker.
 | **Theorem 7** | two numbers (W, P) describe any sub-workflow; an exact DP picks depth and timing together | functions of the form `max(x+W, P)` (**max-plus algebra**), **induction on the series-parallel decomposition tree**, **dynamic programming**, Pareto sets, **NP-hardness by reduction** (multiple-choice knapsack) | Kleinberg & Tardos, *Algorithm Design* (DP chapter, NP chapter); Kellerer, Pferschy & Pisinger, *Knapsack Problems* (multiple-choice knapsack); Valdes, Tarjan & Lawler (1982) for series-parallel graphs; first chapter of Heidergott, Olsder & van der Woude, *Max Plus at Work* (optional) |
 | Corollaries 7.1, 7.2 | some cold starts are hidden by the DAG; give snapshots to the longest tail first | monotonicity, **exchange argument** | Kleinberg & Tardos, greedy chapter (exchange arguments) |
 | Proposition 8 | depth is work, not number of requests (when to stop warming up) | additive counters, thresholds | how HotSpot's tiered compilation counts invocations (OpenJDK docs) |
+| **Lemma CP1, Theorem CP2** (`theory/CPU_PLAN_THEORY.md`) | every start-up has a deadline `Λ − ℓ(v)`; whether all can meet them is a max-flow problem | Theorem 1's induction; **maximum flow and minimum cut**; bisection on a monotone predicate | CLRS, maximum-flow chapter; Horn (1974) for the scheduling network |
+| Propositions CP4, CP7 | with one spare core, earliest deadline first is optimal, also in bursts | **exchange and prefix arguments** (Jackson's rule); `1\|r_j,pmtn\|L_max` | Pinedo, *Scheduling*, single-machine chapter |
+| Propositions CP5, CP6 | speculation only on leftover CPU; when a guess is worth CPU | the same expected-cost comparison as Theorem 4 | none extra |
 | `MODEL.md` | depth on chains (the on-demand special case) | multiple-choice knapsack, convexity, greedy, **isotonic regression (PAVA)** | Kellerer et al.; any isotonic-regression reference |
 
 ### 2.3 For the experiments
@@ -132,16 +140,44 @@ weaker.
   1400 ms): why choosing the fastest option per stage is wrong.
 - Say what each assumption A1–A4 means and what happens when it fails (A2 → Corollary 1.2;
   A1 → prediction could only help).
+- Draw **Theorem CP2**'s network (source → start-up → time slice → sink) and say why a saturating
+  flow is a CPU plan; say why one spare core makes earliest deadline first optimal (CP4) and
+  why look-ahead then gains only the stages' run times.
 - Say which results are classical and which are yours (§2.1).
 
 ---
 
 ## 3. The next goal
 
-> **Measure β on the box.** Run `x2-parallel` (`sudo ./ideas/criu-box/run_x2.sh`) (1, 2, 4, 8 restores at once, 20 repetitions,
-> 1 vCPU) and `x1-ladder`. One to three days.
+> **Measure the start-up speed-up curve (T6b), then β (T1), on the box.** T6b: restore and cold
+> start of the Spring Boot function at a fixed quota of 0.25–4 vCPU, the CPU-seconds each uses,
+> and a boost for the start-up only (`MACHINE_TEST_PLAN.md` T6b). T1: `x2-parallel`
+> (`sudo ./ideas/criu-box/run_x2.sh`) (1, 2, 4, 8 restores at once, 20 repetitions, 1 vCPU) and
+> `x1-ladder`. About four days in all.
 
-**Who runs it:** it has to run on the machine that has CRIU. A cloud Claude session cannot
+**Why T6b first:** after the supervisor's review the thesis leads with the CPU plan
+(`ideas/CPU_PLAN.md`): spare CPU given to sandboxes while they start, planned along the
+workflow. Its one untested assumption is B1 (`theory/CPU_PLAN_THEORY.md`): a start-up finishes
+about in proportion to the CPU it gets, up to about one core, without using more CPU-seconds.
+exp-b measured this for JVM warm-up (3.59 s at 0.25 vCPU, 0.86 s at 1 vCPU, 0.90 vs 0.86
+CPU-s). Restores and cold starts are not measured yet. It takes two days, and it can end the
+CPU plan, so it goes first.
+
+**Prediction for T6b (write it down before running):** from 0.25 to 1 vCPU, a cold start and a
+restore get about 4× faster at about the same CPU-seconds (across exp12's quotas and depths,
+restores already span 0.64–9.1 s and cold starts 2.3–26.8 s of wall time);
+from 1 to 4 vCPU, less than 2× more. Raising the quota for the start-up only and lowering it
+after the first response does not slow the requests after it.
+
+**Decision after T6b:**
+
+| from 0.25 to 1 vCPU | meaning | what to do |
+|---|---|---|
+| **≥ 3× faster, CPU-seconds within 20%** | B1 holds | continue as planned; put the measured curve into `cpuplan.py` and rerun e11 |
+| **1.5–3× faster, or 20–100% more CPU-seconds** | partial | continue; rerun e11 with the measured, non-linear curve and report the smaller gains |
+| **< 1.5× faster** (disk- or lock-bound start-up) | the CPU plan has little to allocate | the thesis keeps look-ahead restore, snapshot selection and the memory results; the CPU plan becomes a negative result |
+
+**Why β matters:** see below. **Who runs both:** they have to run on the machine that has CRIU. A cloud Claude session cannot
 reach your Mac or anything behind it, including `ssh -p 2222 localhost`: its `localhost` is
 the cloud container, and outbound SSH is blocked there. To let Claude do it, start a session
 on the Mac: open a terminal where `ssh -p 2222 <user>@localhost` works, `cd` into the `Thes`
@@ -149,7 +185,7 @@ folder, and run `claude remote-control`. That session appears in the Claude Code
 SSH into the VM and run `run_x2.sh` itself. Alternatively, install Claude Code inside the VM
 and run it there.
 
-**Why this first:** Look-ahead restore assumes parallel restores do not slow each
+**Why β:** Look-ahead restore assumes parallel restores do not slow each
 other much. Corollary 1.2 says the gain is at least `(1 − β)` of the ideal. If β is close to 1,
 restores run one after another anyway and look-ahead gives little. Everything later depends
 on this number, and it is cheap to get.
@@ -163,7 +199,7 @@ for N ≤ 4, rising at N = 8** (8 quotas + host work > 8 cores).
 Docker. Run N parallel `docker run … java -XX:CRaCRestoreFrom=…` too, so β is measured on
 the path you will deploy.
 
-**Decision after x2:**
+**Decision after x2** (T1):
 
 | β | meaning | what to do |
 |---|---|---|
@@ -178,13 +214,16 @@ the path you will deploy.
 Each stage has a **goal**, **input**, **output**, and an **exit test** (you do not start the
 next stage until it passes). Times are rough estimates for one person, full time.
 
-### Stage 1 — Go/no-go on the box *(1 week)*
-- **Goal:** know whether look-ahead restore works on real hardware.
+### Stage 1 — Go/no-go on the box *(1–2 weeks)*
+- **Goal:** know whether the CPU plan and look-ahead restore work on real hardware.
 - **Input:** the S0 box, `ideas/criu-box/`.
-- **Work:** `x2` (plus the CRaC-in-Docker variant), `x1`.
-- **Output:** β; restore time `r` for each tier (disk, page cache, pre-restored); memory held.
-- **Exit:** β known with a confidence interval; decision from the table in §3.
-- **In parallel:** read Pronghorn's full paper; take `REPORT.md` to your supervisor and agree on the approach.
+- **Work:** T6b (the start-up speed-up curve, its CPU-seconds, a boost only while starting);
+  `x2` (plus the CRaC-in-Docker variant), `x1`.
+- **Output:** the speed-up curve of restores and cold starts; β; restore time `r` for each tier
+  (disk, page cache, pre-restored); memory held.
+- **Exit:** both numbers known with confidence intervals; decisions from the two tables in §3.
+  Rerun e11 with the measured curve.
+- **In parallel:** read Pronghorn's full paper; take `PROFESSOR_REPORT_2.md` to your supervisor and agree on the approach.
 
 ### Stage 2 — Real snapshots of one function *(3 weeks)*
 - **Goal:** replace every emulated number with a measured one.
@@ -200,17 +239,21 @@ next stage until it passes). Times are rough estimates for one person, full time
 ### Stage 3 — One snapshot action inside OpenWhisk *(2–3 weeks)*
 - **Goal:** OpenWhisk starts an action by restoring a CRaC snapshot.
 - **Input:** the Stage 2 image; OpenWhisk on the box.
-- **Work:** the snapshot action image (§1.3), invoker capabilities and memory budget, local registry.
-- **Output:** a blackbox action whose cold start is a restore; the wake call works.
+- **Work:** the snapshot action image (§1.3), invoker capabilities and memory budget, local registry;
+  changing a running action container's CPU limit from outside (`docker update --cpus`, or the
+  container's cgroup `cpu.max`) and timing how fast the change takes effect.
+- **Output:** a blackbox action whose cold start is a restore; the wake call works; a container's
+  CPU limit can be raised for its start-up and lowered after it.
 - **Exit:** 20/20 cold starts succeed, and OpenWhisk cold start ≈ standalone restore time + a measured, constant OpenWhisk overhead.
 
 ### Stage 4 — Look-ahead on chains: the first headline result *(3 weeks)*
 - **Goal:** measure look-ahead restore on a real system.
 - **Input:** Stage 3; the profiles from Stage 2.
-- **Work:** the orchestrator with steps B1–B3 and B5 (gate, compute start times, trigger restores at `τ = S* − r`, wake calls), for chains of 3, 5 and 8 stages at 1 and 0.25 vCPU; policies: on-demand, eager, just-in-time.
-- **Output:** latency and memory-time per policy, n = 20.
+- **Work:** the orchestrator with steps B1–B3 and B5 (gate, compute start times, trigger restores at `τ = S* − r`, wake calls), for chains of 3, 5 and 8 stages at 1 and 0.25 vCPU; policies: on-demand, eager, just-in-time. Then the **CPU allocator** (§1.3): on-demand and look-ahead with an equal boost (Cloud Run-style), and look-ahead with the CPU plan, on 1, 2 and 4 spare cores.
+- **Output:** latency, memory-time and CPU-seconds per policy, n = 20.
 - **Exit (the control):** on-demand latency ≈ `Σ (r + w)` (Theorem 1c) and look-ahead ≈ `r + Σ w` scaled by the measured β (Corollaries 1.1, 1.2). If the measurement disagrees with the theorem, find out why before going on.
 - **The cascade × cliff figure:** latency against depth `d` at 0.25 and 1 vCPU, on-demand and look-ahead. Fit a line to each: the on-demand slope should be `r(c) + w(c) + δ` per stage, the look-ahead slope `w(c) + δ`. Report R² (Xanadu reports 0.993 for the cascade on AWS Step Functions). This one figure shows both effects and what the thesis does to them.
+- **The CPU plan's control:** on 1 spare core the CPU plan and the equal boost tie (Proposition CP4: look-ahead can then only overlap the stages' run times); on 2 and 4 cores it is faster (e11a predicts 19–48% and 41–71% against the Cloud Run-style boost at 0.25 vCPU).
 - **Also measure memory:** the peak under look-ahead vs on-demand (Theorem 8(a) predicts up to 8× on an 8-stage chain), and latency with the guard at a budget of 1, 2 and 4 sandboxes (Theorem 8(b) predicts 5.80 / 2.98 / 1.68 s for the 8-stage chain with the thesis's `r` and `w`).
 
 ### Stage 5 — The snapshot builder *(2 weeks)*
@@ -234,7 +277,9 @@ next stage until it passes). Times are rough estimates for one person, full time
   - uncertain input times with the κ-quantile trigger (Theorem 3);
   - depth per stage from Theorem 7's DP (step A3), including "no snapshot" for dominated and hidden stages and the image's storage tier (Corollary 7.3; measure real image sizes first, since e6 assumes them);
   - the memory guard under a burst of cold workflows (sim e7a predicts no over-budget starts, still faster than on-demand);
-  - the planner under a tight budget on a DAG like `ALGORITHM.md` §5's example (predicted: guard 1.93 s, planned 1.29 s).
+  - the planner under a tight budget on a DAG like `ALGORITHM.md` §5's example (predicted: guard 1.93 s, planned 1.29 s);
+  - the CPU plan on branches (speculation only on leftover CPU, Propositions CP5 and CP6) and in a burst of cold workflows competing for CPU (e11b predicts a mean 16–24% below the Cloud Run-style boost);
+  - stages without a snapshot (`Policy.nosnap`): cold prewarm with the CPU plan against snapshot restore on demand.
 - **In the simulator (done, e8):** per-function GDSF keep-alive beats LRU; whole-workflow eviction (Proposition 9) loses. Use GDSF in the orchestrator's keep-alive.
 - **In the simulator (done, e9):** the planner with its four safety rules (`theory/ALGORITHM.md` §5b). Port `ideas/sim/planner.py` and the queue/re-plan logic into the orchestrator.
 - **Output:** one experiment per theorem, each with its control.
@@ -244,8 +289,9 @@ next stage until it passes). Times are rough estimates for one person, full time
 - **Goal:** the comparison the thesis will be judged on.
 - **Workloads:** your 3-stage Spring Boot workflow (exp15), plus 3–5 SeBS-Flow workflows **ported to Java** (most SeBS benchmarks are Python or Node.js, and the JIT gain is Java's).
 - **Arrivals:** Azure Functions 2021 trace replay.
-- **Baselines:** cold start; OpenWhisk keep-alive; restore-on-demand (what SnapStart does); cold prewarm (Xanadu/ORION style); `-XX:TieredStopAtLevel=3`; JDK 25 AOT profiles (JEP 515).
-- **Metrics:** mean, p50, p99 latency; memory-time (GB·s); number of restores; snapshot storage. Bootstrap CIs.
+- **Baselines:** cold start; OpenWhisk keep-alive; restore-on-demand (what SnapStart does); restore on demand with Cloud Run's startup CPU boost (spare CPU split equally among starting containers); look-ahead with the equal boost; cold prewarm (Xanadu/ORION style); one fixed CPU size per stage (ORION/Aquatope-style right-sizing, 1 vCPU); `-XX:TieredStopAtLevel=3`; JDK 25 AOT profiles (JEP 515).
+- **Ours:** look-ahead with the CPU plan (Algorithm 5 of the theory chapter), start mode per stage, the memory guard and GDSF keep-alive.
+- **Metrics:** mean, p50, p99 latency; memory-time (GB·s); CPU-seconds; number of restores; snapshot storage. Bootstrap CIs.
 - **Exit:** full result tables; every claim in `REPORT.md` either confirmed on the real system or corrected.
 
 ### Stage 8 — Writing *(6–8 weeks, starts during Stage 7)*

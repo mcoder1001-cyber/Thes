@@ -3,11 +3,11 @@
 *Written 2026-09-29. Companion to `DAG_SNAPSHOT_THEORY.md` (report 1's theorems, which this
 extends) and `ALGORITHM.md` (the problem as project scheduling). The design and the simulation
 results are in `../ideas/CPU_PLAN.md`. The code is in `../ideas/sim/cpuplan.py` (the exact plan) and
-`../ideas/sim/dagsim.py` (`Policy.boost = "plan"`, the online rule). Every result below is checked
-in `verify_dag.py`, section CP: 17 checks, 4 of them controls designed to fail, which they do.
-With the new section, `verify_dag.py` passes 93/93. Tags as in `DAG_SNAPSHOT_THEORY.md`:
+`../ideas/sim/dagsim.py` (`Policy.boost = "plan"`, the online rule; `Policy.lazy`, just in time).
+Every result below is checked in `verify_dag.py`, section CP: 21 checks, 5 of them controls
+designed to fail, which they do. With the new section, `verify_dag.py` passes 97/97. Tags as in `DAG_SNAPSHOT_THEORY.md`:
 **[proved]**, **[verified]**, **[measured]**, **[assumption]**. In the thesis chapter
-(`../thesis/ch_theory.tex`, §4.9) these results are Definition 4.24 to Proposition 4.32 and
+(`../thesis/ch_theory.tex`, §4.9) these results are Definition 4.24 to Proposition 4.33 and
 Algorithm 5; there the spare CPU is written `Π`, because `P` names paths.*
 
 ---
@@ -27,7 +27,8 @@ start-up gets, and when.
 | **Proposition CP5** | A speculative start-up that gets only leftover CPU never delays a certain one. | proved, verified |
 | **Proposition CP6** | With at most one spare core, a speculative start-up served as certain and not taken delays a CPU-bound chain by exactly `U_s/P`. So speculation pays only if `p · gain ≥ (1 − p) · U_s/P`. | proved, verified |
 | **Proposition CP7** | A burst with at most one spare core: earliest deadline first across workflows minimises the largest lateness (Horn 1974). With more spare CPU it is not optimal, and the exact plan is needed. | proved (known result), verified |
-| online rule | Balanced rates for one workflow, earliest deadline first for several, speculation only on leftover CPU. | within 0–9% of CP2 on test cases (e11o); the burst choice is empirical (e11b) |
+| **Proposition CP8** | Just in time. Holding each start-up back to its latest start (the latest release that keeps CP2's network feasible) keeps every target reachable, and no start-up can start later. With one spare core, one start-up at a time, each holding memory only from its first CPU, reaches both the optimal latency and the least memory·time on a CPU-bound chain. | proved, verified |
+| online rule | Balanced rates for one workflow, earliest deadline first for several, speculation only on leftover CPU; each certain start-up held back to its latest start. | within 0–9% of CP2 on test cases (e11o); the burst choice is empirical (e11b); just in time: latency −8% to +1.3%, memory·time up to 88% lower for one workflow and 76–82% lower in a burst (e11a, e11b) |
 
 ---
 
@@ -219,7 +220,75 @@ So the burst rule is chosen from experiment, not proved.
 
 **[verified]** CP7: EDF reaches the exact smallest largest lateness on 250 random bursts.
 
-## 7. The online rule, and what is not proved
+## 7. Just in time: memory
+
+The plan so far starts every look-ahead start-up when the workflow arrives. A sandbox holds its
+memory from then until its stage finishes, so a start-up that gets little CPU for a long time
+holds memory for a long time. In the simulator this made the plan hold up to 11× the
+memory·time of restoring on demand with an equal startup boost (e11a). Report 1's Theorem 2 answered the same problem for fixed restore times:
+start each restore just in time. Here the start time interacts with the CPU the others get.
+
+**Proposition CP8 (just in time).**
+- (a) Let the targets `D_v` be feasible (Theorem CP2). Take the start-ups latest target first,
+  and move each one's release as late as the network stays feasible. Then the final releases
+  are feasible: some plan meets every target with no start-up getting CPU before its release.
+  And no single release can move later.
+- (b) Let a sandbox hold memory `m_v` from the first CPU its start-up gets, `σ_v`, until its stage
+  finishes, `F_v`. Under the conditions of CP4 (`q = 0`, constant `P ≤ c`):
+    - every plan holds at least `Σ_v m_v (U_v/P + w_v)`, the memory·time of restoring on demand
+      with the same boost;
+    - on a chain that is CPU-bound at every stage (`U_{v+1}/P ≥ w_v + δ`), one start-up at a time,
+      in order, each holding memory only from its first CPU, attains this minimum and the
+      optimal latency `Σ_v U_v/P + w_d` together.
+
+*Proof.*
+- (a) Feasibility is monotone in each release: a later release shrinks the job's window, and a
+  plan for the smaller window is a plan for the larger one. The bisection accepts only feasible
+  positions, so feasibility holds throughout. When start-up `v` was moved, the start-ups
+  moved after it had releases no later than their final ones. Moving those later afterwards
+  only removes plans, so `v` still cannot move later.
+- (b) A start-up gets at most `P` at any instant, so `ready_v ≥ σ_v + U_v/P`, and
+  `F_v ≥ ready_v + w_v`. One at a time, start-up `v` runs from `Σ_{u<v} U_u/P` to
+  `ready_v = Σ_{u≤v} U_u/P`. If stage `v−1` started at `ready_{v−1}`, then `v`'s input arrives at
+  `ready_{v−1} + w_{v−1} + δ ≤ ready_{v−1} + U_v/P = ready_v`, by CPU-boundness. So stage `v` starts
+  at `ready_v`, and `F_v − σ_v = U_v/P + w_v` exactly; by induction this holds for every stage.
+  The latency is `F_d = Σ U_v/P + w_d`, CP4(b)'s lower bound. ∎
+
+This is Theorem 2 of report 1 for the CPU plan on one spare core: no trade-off between latency
+and memory. With more spare CPU, (a) still guarantees that holding start-ups back loses no
+feasible target. How much memory it saves is measured, not proved.
+
+**[verified]** CP8: (a) 500 random instances, with releases feasible after the moves and none
+able to move later; (b) 250 CPU-bound chains. **Control:** an equal split with every sandbox
+from the arrival holds more memory on 250 of 250.
+
+**The rule in the simulator** (`Policy.lazy`, `Sim._lazy_starts`):
+- At the arrival, the workflow's start-ups and first requests become jobs of CP2's network,
+  on the stages likely to run. The smallest feasible lateness `λ` gives the targets, and
+  `cpuplan.latest_starts` gives each look-ahead start-up its latest start. The trigger comes a
+  margin earlier: 0.3 of the time its start-up and first request take at cap.
+- A start-up holds no memory and gets no CPU before its latest start. The exception is a
+  CPU-bound workflow (`λ` above the all-at-cap lateness), where the next start-up runs rather
+  than leave CPU idle.
+- With at most one spare core, one start-up at a time (CP4, CP8(b)).
+- Stages that may not run are not held back: they get only leftover CPU anyway (CP5). A branch
+  not taken cancels its start-ups.
+- Results (e11a, e11b; functions at 0.25 vCPU; against the plan without it):
+    - one workflow, one spare core: 49–88% less memory·time at the same latency, and exactly the
+      memory·time of restoring on demand for chains;
+    - two spare cores: up to 73% less (router 10.6 → 2.9 GB·s), latency 8% lower to 0.7% higher;
+    - four spare cores: up to 33% less, latency 3.8% lower to 1.3% higher (start-ups wait little
+      there anyway);
+    - a burst of 16 workflows: 76–82% less, the same latency, and less than restoring on demand
+      with an equal boost.
+- Controls (`run_sim.py e11x`):
+    - without the CPU layer, the flag changes nothing (80/80);
+    - every run gives all memory back;
+    - on one spare core, a chain holds exactly the memory·time of restoring on demand with the
+      boost, and finishes `(d − 1)δ` sooner: the edge delays are the only idle CPU there is to
+      overlap.
+
+## 8. The online rule, and what is not proved
 
 The rule `dagsim` runs (`Policy.boost = "plan"`), recomputed at every event:
 - **one workflow starting:** constant rates that minimise the largest lateness of its start-ups.
@@ -229,14 +298,17 @@ The rule `dagsim` runs (`Policy.boost = "plan"`), recomputed at every event:
 - **several workflows:** earliest deadline first. This is optimal for the largest lateness with at
   most one spare core (CP7) and chosen by experiment beyond that (e11b);
 - **speculation:** leftover only (CP5), and only certain stages count as certain when at most one
-  core is spare (CP6).
+  core is spare (CP6);
+- **just in time:** each certain start-up is held back to its latest start (CP8(a)); with at most
+  one spare core, one start-up at a time (CP4, CP8(b)).
 
 **Not proved, and not claimed:**
 - a competitive ratio for the online rule;
 - the burst rule beyond one spare core;
+- how much memory just in time saves with more than one spare core;
 - anything about real speed-up curves (B1, to be measured).
 
-## 8. Status
+## 9. Status
 
 | claim | status |
 |---|---|
@@ -246,6 +318,8 @@ The rule `dagsim` runs (`Policy.boost = "plan"`), recomputed at every event:
 | one spare core: EDF optimal; look-ahead's gain bounded by `Σ (w + δ)` (CP4) | proved; verified; explains the 1-core tie in e11a |
 | speculation: non-interference; cost of a wrong guess (CP5, CP6) | proved; verified |
 | bursts with one spare core: EDF (CP7) | known result (Horn 1974); verified |
+| just in time: latest starts keep targets; least memory·time on one spare core (CP8) | proved; verified |
+| just in time with more spare CPU: same latency, less memory | measured in the simulator (e11a, e11b) |
 | online rule within 0–9% of the exact plan | measured in the fluid model (e11o) |
 | the burst rule beyond one spare core | chosen by simulation (e11b) |
 | linear speed-up of restores and cold starts (B1) | **assumption**: T6b |
