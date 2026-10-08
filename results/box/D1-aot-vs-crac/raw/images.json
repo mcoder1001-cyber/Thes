@@ -1,0 +1,162 @@
+[
+ {
+  "kind": "crac",
+  "K": 0,
+  "i": 0,
+  "rc": -9,
+  "ok": true,
+  "bytes": 83345412,
+  "build_cpu_s": 3.89133,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 0,
+  "i": 0,
+  "rc": 0,
+  "ok": true,
+  "bytes": 44630016,
+  "build_cpu_s": 8.609725,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 0,
+  "i": 1,
+  "rc": -9,
+  "ok": true,
+  "bytes": 85880836,
+  "build_cpu_s": 3.843951,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 0,
+  "i": 1,
+  "rc": 0,
+  "ok": true,
+  "bytes": 44609536,
+  "build_cpu_s": 8.479161,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 0,
+  "i": 2,
+  "rc": -9,
+  "ok": true,
+  "bytes": 83963908,
+  "build_cpu_s": 3.861501,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 0,
+  "i": 2,
+  "rc": 0,
+  "ok": true,
+  "bytes": 44621824,
+  "build_cpu_s": 8.741647,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 0,
+  "i": 3,
+  "rc": -9,
+  "ok": true,
+  "bytes": 83505156,
+  "build_cpu_s": 3.746139,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 0,
+  "i": 3,
+  "rc": 0,
+  "ok": true,
+  "bytes": 44625920,
+  "build_cpu_s": 8.6556,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 50,
+  "i": 0,
+  "rc": -9,
+  "ok": true,
+  "bytes": 84926468,
+  "build_cpu_s": 4.666715,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 50,
+  "i": 0,
+  "rc": 0,
+  "ok": true,
+  "bytes": 47165440,
+  "build_cpu_s": 10.060014,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 50,
+  "i": 1,
+  "rc": -9,
+  "ok": true,
+  "bytes": 98328580,
+  "build_cpu_s": 4.764814,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 50,
+  "i": 1,
+  "rc": 0,
+  "ok": true,
+  "bytes": 47181824,
+  "build_cpu_s": 9.885741,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 50,
+  "i": 2,
+  "rc": -9,
+  "ok": true,
+  "bytes": 94167044,
+  "build_cpu_s": 4.835324,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 50,
+  "i": 2,
+  "rc": 0,
+  "ok": true,
+  "bytes": 47157248,
+  "build_cpu_s": 9.760481,
+  "tail": ""
+ },
+ {
+  "kind": "crac",
+  "K": 50,
+  "i": 3,
+  "rc": -9,
+  "ok": true,
+  "bytes": 98217988,
+  "build_cpu_s": 4.798619,
+  "tail": ""
+ },
+ {
+  "kind": "aot",
+  "K": 50,
+  "i": 3,
+  "rc": 0,
+  "ok": true,
+  "bytes": 47165440,
+  "build_cpu_s": 9.94292,
+  "tail": ""
+ }
+]
