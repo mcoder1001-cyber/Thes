@@ -288,6 +288,10 @@ class Policy:
     # not the trigger times, decide when each start-up finishes.
     boost: Optional[str] = None
     spec_p: float = 0.5             # CPU plan: stages reached with a lower probability are speculative
+    cpu_floor: bool = False         # CPU plan: every sandbox, starting or serving, keeps its quota as a
+                                    # floor; the plan shares only the CPU above the floors. Without it a
+                                    # start-up gets only what requests leave, and on a busy node the
+                                    # scale-out start-ups of hot functions stall (e12, 2026-10-08)
     nosnap: frozenset = frozenset()     # stages (function name after the '.') that get no snapshot:
                                         # they cold-start, ahead or on demand, even when snap is on
 
@@ -1123,13 +1127,20 @@ class Sim:
         (reached with probability >= spec_p)."""
         run = [j for j in jobs if not j["boost"]]
         starts = [j for j in jobs if j["boost"]]
-        nr = len(run)
-        br = self.q * min(1.0, self.K / (self.q * nr)) if nr else 0.0
-        for j in run:
-            j["base"] = j["rate"] = br
-        for j in starts:
-            j["base"] = j["rate"] = 0.0
-        spare = max(0.0, self.K - br * nr)
+        if self.p.cpu_floor:
+            n = len(jobs)
+            b = self.q * min(1.0, self.K / (self.q * n)) if n else 0.0
+            for j in jobs:
+                j["base"] = j["rate"] = b
+            spare = max(0.0, self.K - b * n)
+        else:
+            nr = len(run)
+            br = self.q * min(1.0, self.K / (self.q * nr)) if nr else 0.0
+            for j in run:
+                j["base"] = j["rate"] = br
+            for j in starts:
+                j["base"] = j["rate"] = 0.0
+            spare = max(0.0, self.K - br * nr)
         thr = self.p.spec_p if spare > self.cap + 1e-9 else 1.0 - 1e-9
         main = [j for j in starts if not self._cpu_spec(j, thr)]
         spec = [j for j in starts if self._cpu_spec(j, thr)]

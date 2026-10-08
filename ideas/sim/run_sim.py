@@ -638,6 +638,7 @@ E11_POLS = {
     "la+cp": replace(_LA, name="la+cp", boost="cp"),
     "la+slack": replace(_LA, name="la+slack", boost="slack"),          # fair: smallest largest lateness
     "la+plan": replace(_LA, name="la+plan", boost="plan"),             # THE CPU PLAN (this proposal)
+    "la+planf": replace(_LA, name="la+planf", boost="plan", cpu_floor=True),   # + quota floor (e12 fix)
     "cold": Policy("cold", keep="gdsf"),                               # no snapshots: cold start on demand
     "cold+uniform": Policy("cold+uniform", keep="gdsf", boost="uniform"),
     "prewarm": _PW,                                                    # Xanadu-style just-in-time cold prewarm
@@ -763,6 +764,31 @@ def e11c(days=3, budgets_gb=(32,), cores=(64, 32), q=0.25, seed=1):
                   f"mem {r[14]:5.1f} GB | CPU {r[15]:5.2f} h (boost {r[16]:5.2f} h) | overflow {r[17]} ({r[-1]:.0f}s)",
                   flush=True)
             write_csv("e11c_cpu_trace.csv", sorted((x[:-1] for x in rows), key=lambda x: order[(x[2], x[1])]), header)
+    return rows
+
+
+def e12(days=3, cores=(8, 12, 16, 24, 32), q=0.25, seed=1, budget_gb=32,
+        pols=("od+uniform", "la+uniform", "la+plan"), fname="e12_cost_cores.csv"):
+    """The cost framing (2026-10-08): on the Azure trace, the smallest node (cores) that holds
+    a latency target, per policy. e11c showed the CPU plan equal to an equal split on 32-64
+    cores, where spare CPU is almost always there; the question here is whether it lets the
+    same traffic run on FEWER cores at the same latency. Same runs as e11c (_e11_trace), more
+    node sizes, the three policies that matter: Cloud Run-style (od+uniform), look-ahead with an
+    equal split (la+uniform), the CPU plan (la+plan)."""
+    from multiprocessing import Pool
+    print(f"e12: Azure trace, {days} days, {q} vCPU, nodes {cores} cores, {budget_gb} GB", flush=True)
+    jobs = [(budget_gb, pn, K, q, days, seed) for K in cores for pn in pols]
+    header = ["budget_GB", "policy", "cores", "quota_vcpu", "n", "mean_ms", "p50_ms", "p99_ms", "n_after_idle",
+              "after_idle_mean_ms", "after_idle_p99_ms", "hot_mean_ms", "hot_p99_ms", "starts_per_1000",
+              "avg_mem_GB", "cpu_h", "boost_cpu_h", "overflow"]
+    rows = []
+    with Pool(int(os.environ.get("SIM_PROCS", "4"))) as pool:
+        for r in pool.imap_unordered(_e11_trace, jobs):
+            rows.append(r)
+            print(f"   {r[2]:3d} cores {r[1]:12s} all mean {r[5]:6.0f} p99 {r[7]:6.0f} | cold wf mean {r[9]:6.0f} "
+                  f"p99 {r[10]:6.0f} | CPU {r[15]:5.2f} h | overflow {r[17]} ({r[-1]:.0f}s)", flush=True)
+            write_csv(fname, sorted((x[:-1] for x in rows), key=lambda x: (x[2], pols.index(x[1]))),
+                      header)
     return rows
 
 
