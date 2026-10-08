@@ -13,6 +13,10 @@ Variants (one row per repetition):
   serial       copy i launched when copy i-1 answered (the control: beta = 1)
   docker-noop  N containers at once running `date +%s%N` (Docker's own start-up cost and
                contention, control b)
+  exec         N containers started BEFORE the clock (idle `sleep infinity`, as OpenWhisk's
+               prewarmed stem cells), then N restores at once via `docker exec`: the restore's
+               own contention, without Docker's container creation (added 2026-10-08 after the
+               first T1b reps showed docker-noop scaling like the restores)
 beta(N) = (median r_max(N) / median r_max(1) - 1) / (N - 1), CI by bootstrap in analyze.py.
 
 Cold means cold here as in an invoker with a local image store: the snapshot and the JDK
@@ -31,6 +35,7 @@ import time
 IMG = "ubuntu:24.04"
 APPDIR = "/var/tmp/d1/app"
 CR = "/var/tmp/t1b/cr"
+CR_EXEC = "/var/tmp/t1b/cr_exec"   # checkpointed under `sh -c`, so the JVM is not PID 1 (exec variant)
 SHAPE = ["-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC", "-Xms256m", "-Xmx512m"]
 CAPS = os.environ.get("T1B_CAPS", "--privileged").split()
 MOUNTS = ["-v", "/opt/crac:/opt/crac:ro", "-v", f"{APPDIR}:/app:ro"]
@@ -40,16 +45,18 @@ def sh(cmd):
     return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
 
-def checkpoint(K):
-    shutil.rmtree(CR, ignore_errors=True)
-    os.makedirs(CR)
+def checkpoint(K, cr=CR, wrap=False):
+    shutil.rmtree(cr, ignore_errors=True)
+    os.makedirs(cr)
     sh("docker rm -f t1b-ck")
-    p = subprocess.run(["docker", "run", "--name", "t1b-ck", *CAPS, *MOUNTS, "-v", f"{CR}:/cr", IMG,
-                        "/opt/crac/bin/java", *SHAPE, "-XX:CRaCCheckpointTo=/cr", "-Dckpt=true",
-                        f"-Dwarm={K}", "-Dpost=20", "-jar", "/app/craca.jar"],
+    java = ["/opt/crac/bin/java", *SHAPE, "-XX:CRaCCheckpointTo=/cr", "-Dckpt=true",
+            f"-Dwarm={K}", "-Dpost=20", "-jar", "/app/craca.jar"]
+    if wrap:
+        java = ["sh", "-c", " ".join(java) + "; true"]
+    p = subprocess.run(["docker", "run", "--name", "t1b-ck", *CAPS, *MOUNTS, "-v", f"{cr}:/cr", IMG, *java],
                        capture_output=True, text=True, timeout=600)
     sh("docker rm -f t1b-ck")
-    size = int(sh(f"du -sb {CR}").stdout.split()[0])
+    size = int(sh(f"du -sb {cr}").stdout.split()[0])
     ok = size > 10 << 20
     return ok, size, (p.stdout + p.stderr)[-1500:]
 
@@ -75,7 +82,7 @@ class Copy:
 
 
 def one_rep(variant, N, vcpu, rep):
-    sh(f"cat {CR}/* > /dev/null")
+    sh(f"cat {CR}/* {CR_EXEC}/* > /dev/null 2>&1")
     names = [f"t1b-{i}" for i in range(N)]
     sh("docker rm -f " + " ".join(names))
     if variant == "docker-noop":
@@ -84,6 +91,11 @@ def one_rep(variant, N, vcpu, rep):
     else:
         mk = lambda i: ["docker", "run", "--rm", "--name", names[i], f"--cpus={vcpu}", *CAPS, *MOUNTS,
                         "-v", f"{CR}:/cr:ro", IMG, "/opt/crac/bin/java", "-XX:CRaCRestoreFrom=/cr"]
+    if variant == "exec":
+        for i in range(N):                       # stem cells: created and running before t0
+            sh(f"docker run -d --name {names[i]} --cpus={vcpu} {' '.join(CAPS)} {' '.join(MOUNTS)} "
+               f"-v {CR_EXEC}:/cr:ro {IMG} sleep infinity")
+        mk = lambda i: ["docker", "exec", names[i], "/opt/crac/bin/java", "-XX:CRaCRestoreFrom=/cr"]
     copies = [Copy(i, mk(i)) for i in range(N)]
     t0 = time.time_ns()
     if variant == "serial":
@@ -118,12 +130,21 @@ def main():
     ap.add_argument("--K", type=int, default=50)
     ap.add_argument("--variants", nargs="+", default=["parallel", "serial", "docker-noop"])
     ap.add_argument("--out", default="raw")
+    ap.add_argument("--skip-checkpoint", action="store_true", help="reuse the snapshot in /var/tmp/t1b/cr")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     if sh(f"docker image inspect {IMG}").returncode:
         sh(f"docker pull -q {IMG}")
-    ok, size, log = checkpoint(a.K)
-    json.dump(dict(K=a.K, ok=ok, bytes=size, caps=CAPS, log=log), open(f"{a.out}/checkpoint.json", "w"), indent=1)
+    if "exec" in a.variants:
+        okx, sizex, logx = checkpoint(a.K, CR_EXEC, wrap=True)
+        json.dump(dict(K=a.K, ok=okx, bytes=sizex, caps=CAPS, wrap=True, log=logx),
+                  open(f"{a.out}/checkpoint_exec.json", "w"), indent=1)
+        print("checkpoint (exec)", okx, sizex, flush=True)
+    if a.skip_checkpoint:
+        ok, size, log = True, int(sh(f"du -sb {CR}").stdout.split()[0]), "reused"
+    else:
+        ok, size, log = checkpoint(a.K)
+        json.dump(dict(K=a.K, ok=ok, bytes=size, caps=CAPS, log=log), open(f"{a.out}/checkpoint.json", "w"), indent=1)
     print("checkpoint", ok, size, flush=True)
     if not ok:
         print(log)
@@ -133,7 +154,7 @@ def main():
             for rep in range(a.reps):            # interleave variants and N within a repetition
                 for variant in a.variants:
                     for N in a.N:
-                        if variant == "serial" and N == 1:
+                        if variant in ("serial",) and N == 1:
                             continue             # identical to parallel N = 1
                         row = one_rep(variant, N, vcpu, rep)
                         f.write(json.dumps(row) + "\n")
