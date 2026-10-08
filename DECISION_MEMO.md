@@ -110,6 +110,70 @@ saves cores are ours.
 - **Open:** deep restores interleaved with cold JVM runs were bimodal (≈ 70 or ≈ 300 ms at 1 vCPU);
   cause unknown, not eviction or disk.
 
+## 3b. Reading figure 9: what snapshot depth and CPU do together
+
+![Figure 9](figures/fig9_cliff.png)
+
+**What K is.** K is the snapshot's *depth*: how many warm-up requests the function served before
+the checkpoint. **K = 0** checkpoints right after the application has started (framework loaded,
+no request served): the point AWS Lambda SnapStart uses; a restore skips start-up, but the JIT has
+compiled almost nothing. **K = 200** first serves 200 requests from a fixed test set, so the JIT
+compiles the hot code, and only then checkpoints; a restore resumes an already mostly warm process.
+
+**What is plotted.** Time to first response plus the residual warm-up over the next 200 requests:
+the whole extra cost a new sandbox pays. Both axes logarithmic. Spring Boot function, median of 20
+runs per point, Warp engine (`results/box/T6-cliff`).
+
+| | 0.25 vCPU | 1 vCPU | 4 vCPU |
+|---|---|---|---|
+| cold start | 22.3 s | 5.2 s | 2.4 s |
+| snapshot, K = 0 | 10.0 s | 2.4 s | 0.82 s |
+| snapshot, K = 200 | 3.2 s | 0.75 s | 0.17 s |
+
+1. **Start-up is CPU-bound.** Every line falls as the quota rises, about 8–10× from 0.25 to 2 vCPU,
+   then flattens: a starting JVM uses about two cores. This is the CPU plan's key assumption,
+   measured.
+2. **Depth matters as much as having a snapshot.** At 1 vCPU, SnapStart's K = 0 halves the cost
+   (5.2 → 2.4 s); K = 200 cuts it another 3× (→ 0.75 s).
+3. **Snapshots save most where CPU is scarce:** 19.1 s per start at 0.25 vCPU against 2.2 s at
+   4 vCPU. Serverless functions usually get small shares (a 512 MB Lambda ≈ 0.3 vCPU).
+4. **A deep snapshot does not make low CPU harmless.** As a ratio the deep-snapshot line falls *more*
+   steeply (19× from 4 to 0.25 vCPU, cold 9.4×): what remains after a deep restore is JIT work, and
+   it still slows down with less CPU. (The prediction that depth flattens the cliff was falsified.)
+5. **The two levers multiply.** A deep snapshot given 2 vCPU while it starts costs 0.22 s, against
+   22 s for a cold start at 0.25 vCPU (≈ 100×). Neither depth nor start-up CPU alone gets there;
+   choosing both is what the CPU plan optimises.
+
+*Caveats:* one function (Spring Boot), Warp engine; the restore points at 0.25 and 1 vCPU include an
+unexplained slow mode and are upper bounds.
+
+## 3c. Is this only Java?
+
+The figure and every box test are Java: CRaC (and its Warp engine) checkpoint only the JVM. The
+earlier factor study (exp8, 7 workloads × 5 CPU levels × 20 runs; **run on the laptop, not yet
+repeated on the test machine**, whose JVM figures were later revised down) shows the effect depends
+on how much compilation a runtime does while starting, not on the language as such:
+
+| runtime class | warm-up after start (1 vCPU) | 4 → 0.25 vCPU | what a snapshot should capture |
+|---|---|---|---|
+| **JVM** (HotSpot, heavy JIT, big frameworks) | 0.2–0.6 s (laptop); 1.27 s for the Spring Boot function on the test machine | large: 10× (T6) to 13–35× (exp14) on the test machine | **deep: ~50–200 requests** (figure 9) |
+| **.NET** (tiered JIT, light) | ≈ 18 ms | 5.4× (≈ 96 ms at 0.25) | one request is enough |
+| **Node.js** (V8) | ≈ 3 ms | none measured | start-up only (module loading); the JIT part is noise |
+| **Python** (CPython, no JIT) | 0 | start-up (imports) 3.3× slower: 821 vs 248 ms for numpy + pandas | **start-up only (K = 0)** |
+| **Go** (compiled ahead of time) | 0 | nothing to warm up | nothing to snapshot |
+
+What carries over: **the method** (measure the warm-up curve, choose the depth per runtime, plan the
+start-up CPU along the workflow) and **the CPU effect on start-up**, which also hits Python's import
+time. What does not: **deep snapshots pay off only for heavy-JIT runtimes** (the JVM, partly .NET).
+For Python and Node the snapshot captures initialisation, so the gain is the start-up time, not
+warm-up. **This is also the main argument for CRIU over Warp:** Warp is faster but Java-only; CRIU
+checkpoints any process (the test machine's smoke test restored a Python process with its libraries),
+so a platform with mixed-language workflows needs it.
+
+*Gap:* no non-Java function has been snapshotted and measured on the test machine yet. The machine
+test plan already asks for a Python function and an ML-like Python stage at K = 0 (T3); about an
+hour on the next box session.
+
 ## 4. Recommendation
 
 Keep CRaC snapshots as the mechanism, with either engine (Warp by default, CRIU within 17–91 ms):
