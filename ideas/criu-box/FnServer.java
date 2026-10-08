@@ -47,7 +47,9 @@ public class FnServer {
 
     public static void main(String[] args) throws Exception {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
-        HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 64);
+        // 127.0.0.1 by default; -Dbind=0.0.0.0 inside a container whose port is published
+        String bind = System.getProperty("bind", "127.0.0.1");
+        HttpServer s = HttpServer.create(new InetSocketAddress(bind, port), 64);
         s.setExecutor(Executors.newSingleThreadExecutor());   // one request at a time, like OpenWhisk
         s.createContext("/ping", ex -> reply(ex, 200, "ok", -1));
         s.createContext("/run", ex -> {

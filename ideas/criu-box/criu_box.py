@@ -202,18 +202,30 @@ def x1_ladder(a):
 
 # ------------------------------------------------------------------ x2
 def x2_parallel(a):
-    """Needs podman. Checkpoint once, then restore N copies at the same instant."""
+    """Needs podman. Checkpoint once, then restore N copies at the same instant (or, with
+    --serial, one after another through the same code path: the control, beta = 1)."""
     img = "/tmp/fn-ckpt.tar.gz"
     sh("podman rm -f fnbase", check=False)
     sh(f"podman run -d --name fnbase -v {IDEAS}:/ideas:ro --cpus {a.vcpu} -p 19000:8080 "
-       f"docker.io/library/eclipse-temurin:21-jdk java {' '.join(JFLAGS)} "
+       f"docker.io/library/eclipse-temurin:21-jdk java {' '.join(JFLAGS)} -Dbind=0.0.0.0 "
        f"-cp '/ideas/criu-box/build:/ideas/exp-a-context-priming/lib/*' FnServer 8080")
     wait_ready(19000)
     req(19000, "GET", f"/prime?file=/ideas/exp-a-context-priming/inputs/real_bulk.jsonl&n={a.K}")
+    time.sleep(1.0)
     one = rss_mb(int(sh("podman inspect -f '{{.State.Pid}}' fnbase").stdout.strip()))
-    sh(f"podman container checkpoint --export={img} fnbase")
+    sh(f"rm -f {img}; podman container checkpoint --export={img} fnbase")
+    sh("podman rm -f fnbase", check=False)
+    size = os.path.getsize(img) / 2 ** 20
+    print(f"checkpoint: export {size:.1f} MB (gzip), base RSS {one:.0f} MB", flush=True)
+
+    def launch(i, nm):
+        return subprocess.Popen(["podman", "container", "restore", f"--import={img}", f"--name={nm}",
+                                 "--ignore-static-ip", "--ignore-static-mac",
+                                 "-p", f"{19100 + i}:8080"], stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE, text=True)
+
     rows = []
-    for N in (1, 2, 4, 8):
+    for N in a.N:
         # memory guard for the box itself: N restored copies must fit with 50% margin, or the
         # run would measure swapping instead of restore contention
         need, avail = 1.5 * N * one, mem_available_mb()
@@ -223,30 +235,40 @@ def x2_parallel(a):
             continue
         for rep in range(a.reps):
             names = [f"fnr{i}" for i in range(N)]
-            for nm in names:
-                sh(f"podman rm -f {nm}", check=False)
+            sh(f"podman rm -f {' '.join(names)}", check=False)
+            if a.drop_caches:
+                drop_caches()
+            else:
+                sh(f"cat {img} > /dev/null")            # image in the page cache
+            r, procs = [0.0] * N, []
             t0 = time.perf_counter()
-            procs = [subprocess.Popen(["podman", "container", "restore", f"--import={img}", f"--name={nm}",
-                                       "-p", f"{19100 + i}:8080"], stdout=subprocess.DEVNULL,
-                                      stderr=subprocess.DEVNULL) for i, nm in enumerate(names)]
+            if a.serial:
+                for i, nm in enumerate(names):          # copy i starts when copy i-1 is ready
+                    procs.append(launch(i, nm))
+                    wait_ready(19100 + i)
+                    r[i] = (time.perf_counter() - t0) * 1000
+            else:
+                procs = [launch(i, nm) for i, nm in enumerate(names)]
 
-            def ready_ms(i):   # each copy's own launch -> first /ping answered
-                wait_ready(19100 + i)
-                return (time.perf_counter() - t0) * 1000
-            with ThreadPoolExecutor(N) as ex:
-                r = list(ex.map(ready_ms, range(N)))
-            for pr in procs:
-                pr.wait()
-            rows.append(dict(N=N, rep=rep, restore_ms_max=max(r), restore_ms_mean=statistics.mean(r),
-                             restore_ms=r))
-            for nm in names:
-                sh(f"podman rm -f {nm}", check=False)
+                def ready_ms(i):   # common launch instant -> copy i's first /ping answered
+                    wait_ready(19100 + i)
+                    return (time.perf_counter() - t0) * 1000
+                with ThreadPoolExecutor(N) as ex:
+                    r = list(ex.map(ready_ms, range(N)))
+            errs = [pr.communicate()[1].strip() for pr in procs if pr.wait() != 0]
+            rows.append(dict(variant="serial" if a.serial else "parallel", vcpu=a.vcpu, N=N, rep=rep,
+                             drop_caches=a.drop_caches, restore_ms_max=max(r),
+                             restore_ms_mean=statistics.mean(r), restore_ms=r, export_MB=size,
+                             base_rss_MB=one, errors=errs, t_start=time.time()))
+            sh(f"podman rm -f {' '.join(names)}", check=False)
         print(N, statistics.median(x["restore_ms_max"] for x in rows if x["N"] == N), flush=True)
     base = statistics.median(x["restore_ms_max"] for x in rows if x["N"] == 1)
     for N in sorted({x["N"] for x in rows} - {1}):
         rN = statistics.median(x["restore_ms_max"] for x in rows if x["N"] == N)
-        print(f"N={N}: r(N)/r(1) = {rN / base:.2f}  ->  dagsim beta ~ {(rN / base - 1) / (N - 1):.2f}")
-    json.dump(rows, open(f"x2_parallel_vcpu{a.vcpu}.json", "w"), indent=1)
+        print(f"N={N}: r(N)/r(1) = {rN / base:.2f}  ->  beta ~ {(rN / base - 1) / (N - 1):.2f}")
+    tag = ("serial" if a.serial else "parallel") + ("_dropcache" if a.drop_caches else "")
+    out = a.out or f"x2_{tag}_vcpu{a.vcpu}.json"
+    json.dump(rows, open(out, "w"), indent=1)
 
 
 # ------------------------------------------------------------------ x3
@@ -322,6 +344,10 @@ def main():
     ap.add_argument("--vcpu", type=float, default=1.0)
     ap.add_argument("--K", type=int, default=100)
     ap.add_argument("--rewarm-n", type=int, default=50)
+    ap.add_argument("--N", type=int, nargs="+", default=[1, 2, 4, 8], help="x2: copies per run")
+    ap.add_argument("--serial", action="store_true", help="x2: restore one after another (control)")
+    ap.add_argument("--drop-caches", action="store_true", help="x2: drop the page cache before each rep")
+    ap.add_argument("--out", help="output JSON path")
     a = ap.parse_args()
     if os.geteuid() != 0:
         sys.exit("run as root (criu, cgroups, drop_caches)")
