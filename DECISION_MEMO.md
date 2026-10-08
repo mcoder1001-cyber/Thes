@@ -82,6 +82,21 @@ oversized server" but **"how small a server holds the same latency"**.
   ranges 2.7–12.6 s across seeds). Two "fixes" were tried and rejected: a guaranteed quota for
   start-ups (worse) and an equal split under overload (safe, but keeps a third of the gain).
 
+**With the measured profile** (2026-10-08; `results/box/sim/`, 3 seeds per cell). The table above
+used the thesis's assumed profile (restore 650 ms). Rerun with the profile measured on the test
+machine (deep restore ≈ 74 ms, start-ups using up to 2 cores, T6b) the node sizes that matter
+shrink, but the saving in cores stays. The simulator puts a sandbox's whole warm-up into its first
+request, so the measurements map onto it in two ways that bound the truth:
+
+| bound | equal split needs | CPU plan reaches the same with | saving |
+|---|---|---|---|
+| first request only (residual warm-up dropped: understates the CPU work) | 16 cores for a 160 ms cold-workflow mean; 24 cores for 141 ms | 12 cores (155 ms); 16 cores (143 ms) | **25–33%** |
+| whole warm-up in the first request (right CPU work; overstates the first request) | 24 cores for an all-calls p99 of 2.30 s with no start over budget | 16 cores (2.33 s, 0 over budget, every seed); the equal split at 16 cores: 2.93 s, ≈ 9,600 starts over budget | **33%** |
+
+Below that (12 cores, whole warm-up) the equal split collapses into queues in every seed (all-calls
+p99 118–139 s); the plan degrades far less (2.4 / 32.6 / 3.1 s across seeds) but is not stable
+either. The earlier "the plan stays stable at 12 cores" held for one seed only.
+
 **The optimisation problem the thesis now states:** for each stage of a workflow, choose its start
 mode (warm, snapshot restore at depth K, AOT-cached or C1 cold start), when it starts, and how much
 CPU it gets while starting, to meet latency targets on the fewest cores under a memory budget.

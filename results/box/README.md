@@ -26,7 +26,9 @@ same CPU).
 
 Derived: `profile_vcpu1.0.json`, `profile_vcpu0.25.json` (measured Java profile; Python/ML assumed),
 `predict_measured_vcpu*.md` (the closed-form predictions with them), `sim/` (the cost sweep e12 with
-the measured profile and a 2-core start-up cap), `logs/` (run logs from the box).
+the measured profile and a 2-core start-up cap, two bounds: `e12_measured_cap2_*` with only the first
+request's warm-up, `e12_lumped_cap2_*` with the whole residual warm-up in the first request; summaries
+`*_summary.txt` from `sim/summary.py`: the CPU plan needs 25–33% fewer cores than an equal split), `logs/` (run logs from the box).
 
 **Scripts.** D1 `D1-aot-vs-crac/run.py`; T1b `T1b-crac-docker/run.py`; T2–T6b and T5
 `T3-profile/grid.py` (phases build, uniq, contention, boost, grid) and `T3-profile/t5_rerun.sh`; D2
