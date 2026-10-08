@@ -1,0 +1,9 @@
+{
+ "K": 50,
+ "ok": true,
+ "bytes": 97292292,
+ "caps": [
+  "--privileged"
+ ],
+ "log": "CHECKPOINT_META 1836 9446400 2333\n[2.502s][info][crac] Checkpoint ...\n11255.809875: warp: Checkpoint 129 to /cr\n11255.875316: Checkpointing thread wakeup after checkpoint/restore\n11255.875468: Restore open file descriptors\n11255.875702: Waiting for other threads...\n11255.875709: Memory cleanup after checkpoint/restore\n11255.875885: Checkpointing thread checkpoint/restore completed\n11255.875891: warp: Checkpoint successful!\n"
+}
