@@ -100,6 +100,12 @@ public class CracApp {
         Class<?> res = Class.forName("jdk.crac.Resource");
         resetHook = java.lang.reflect.Proxy.newProxyInstance(CracApp.class.getClassLoader(), new Class<?>[]{res},
                 (proxy, m, a) -> {
+                    switch (m.getName()) {       // a Proxy must answer Object's methods itself
+                        case "hashCode": return System.identityHashCode(proxy);
+                        case "equals": return proxy == a[0];
+                        case "toString": return "resetHook";
+                        default: break;
+                    }
                     if (m.getName().equals("afterRestore")) {
                         startRandom = new java.util.Random();
                         startSecure = new java.security.SecureRandom();
@@ -108,7 +114,7 @@ public class CracApp {
                     return null;
                 });
         Object ctx = Class.forName("jdk.crac.Core").getMethod("getGlobalContext").invoke(null);
-        ctx.getClass().getMethod("register", res).invoke(ctx, resetHook);
+        Class.forName("jdk.crac.Context").getMethod("register", res).invoke(ctx, resetHook);
     }
 
     public static void main(String[] args) throws Exception {

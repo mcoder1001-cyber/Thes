@@ -35,11 +35,11 @@ import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RAW = os.path.join(HERE, "raw")
+RAW = os.environ.get("GRID_RAW", os.path.join(HERE, "raw"))
 J21 = "/opt/crac/bin/java"
-APP = "/var/tmp/grid/app/craca.jar"
-WORK = "/var/tmp/grid"
-CGP = "/sys/fs/cgroup/grid"
+WORK = os.environ.get("GRID_WORK", "/var/tmp/grid")
+APP = f"{WORK}/app/craca.jar"
+CGP = "/sys/fs/cgroup/" + os.environ.get("GRID_CGNAME", "grid")
 CG = f"{CGP}/run"
 CPUS = os.environ.get("GRID_CPUS", "0-3")
 SHAPE = ["-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC", "-Xms256m", "-Xmx512m"]
@@ -177,6 +177,16 @@ def phase_build():
         print("build", meta, r["ok"], r["bytes"] // 2 ** 20, "MB", flush=True)
 
 
+def phase_build_uniq():
+    """Only the two uniqueness images (the T5 rerun after the reset-hook reflection fix)."""
+    quota(1.0)
+    for h in ("off", "on"):
+        r = ckpt(f"{WORK}/img_uniq_{h}", ["-Dwarm=50", "-Duniq=true", f"-Dreset.hooks={h}"])
+        r.update(kind="uniq", K=50, hooks=h)
+        emit("images.jsonl", r)
+        print("build uniq", h, r["ok"], r["bytes"] // 2 ** 20, "MB", flush=True)
+
+
 # ------------------------------------------------------------------ grid
 def grid_cmd(mode, i):
     base = ["-Dwarm=0", f"-Dpost={POST}", "-jar", APP]
@@ -261,15 +271,20 @@ def phase_contention():
             cgs.append(p)
         for rep in range(REPS):
             for rule in ("equal", "one_at_a_time"):
-                # after its first response a copy is throttled to 1% so it stops competing: only
-                # the start-ups share the core, as in the CPU plan's model
+                # after its first response a copy is ended so it stops competing: only the
+                # start-ups share the core, as in the CPU plan's model
                 res, evs = [None] * N, [threading.Event() for _ in range(N)]
                 for c, p in enumerate(cgs):
                     quota(1.0 / N if rule == "equal" else 1.0, p)
 
                 def go(c):
                     def first():
+                        # only the time to first response is measured: end the copy at once, so it
+                        # stops competing and the repetition does not wait for its later requests
+                        # (v1 throttled it to 1% instead, which made each repetition take minutes;
+                        # those rows are in contention.jsonl, these in contention_v2.jsonl)
                         quota(0.01, cgs[c])
+                        w(f"{cgs[c]}/cgroup.kill", "1")
                         evs[c].set()
                     res[c] = run([J21, f"-XX:CRaCRestoreFrom={WORK}/img_K50_{c}"], cg=cgs[c], on_first=first)
                     evs[c].set()
@@ -284,7 +299,7 @@ def phase_contention():
                 ready = [(x["first_done_ns"] - t0) / 1e6 if x.get("first_done_ns") else None for x in res]
                 row = dict(N=N, rep=rep, rule=rule, ready_ms=ready, cpu_s=[x["cpu_s"] for x in res],
                            errors=[x.get("error") for x in res if x.get("error")])
-                emit("contention.jsonl", row)
+                emit("contention_v2.jsonl", row)
                 print("contention", N, rule, rep, [r and round(r) for r in ready], flush=True)
 
 

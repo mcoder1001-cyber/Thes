@@ -1,0 +1,13 @@
+hooks,field,distinct_of_10
+off,math_random,1
+off,nanotime,10
+off,random,1
+off,secure_random,10
+off,token,1
+off,uuid,10
+on,math_random,1
+on,nanotime,10
+on,random,10
+on,secure_random,10
+on,token,10
+on,uuid,10
