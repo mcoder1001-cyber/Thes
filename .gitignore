@@ -2,3 +2,4 @@
 experiments/vm-setup/ACCESS-secret.txt
 experiments/vm-setup/thesis_key
 __pycache__/
+results/box/*/app/target/
