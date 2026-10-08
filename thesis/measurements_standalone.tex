@@ -1,0 +1,40 @@
+% Compiles the measurement chapter on its own: pdflatex measurements_standalone && bibtex measurements_standalone
+% && pdflatex measurements_standalone && pdflatex measurements_standalone. In the thesis, \input{ch_measurements}
+% from the department's template instead (thesis/README.md).
+\documentclass[11pt,a4paper]{report}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem,booktabs,graphicx,xcolor,tikz}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{microtype}
+\usepackage{xr-hyper}
+\externaldocument{theory_standalone}  % labels of the theory chapter (build it first)
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+\graphicspath{{../figures/}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\newcommand{\chapref}[2]{#2}
+
+\title{Measurements on a test machine\\[4pt]\large Measurement chapter, draft}
+\author{MSc thesis, Amirkabir University of Technology}
+\date{\today}
+
+\begin{document}
+\maketitle
+\setcounter{chapter}{2}
+\input{ch_measurements}
+\bibliographystyle{plain}
+\bibliography{theory}
+\end{document}

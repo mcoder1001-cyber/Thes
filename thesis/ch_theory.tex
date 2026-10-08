@@ -989,8 +989,10 @@ assumptions.
 assumption & statement & status \\
 \midrule
 B1 linear speed-up & a start-up given rate $x \le c_v$ does its work $U_v$ in $U_v / x$ &
-  measured for JVM warm-up from $0.25$ to $1$\,vCPU ($4.2\times$ faster at the same CPU time);
-  an assumption for restores and cold starts, to be measured \\
+  measured: JVM warm-up $4.2\times$ faster from $0.25$ to $1$\,vCPU at the same CPU time; on the
+  test machine (\chapref{ch:measure}{Chapter~3}) a cold JVM start $4.2\times$ and a snapshot restore
+  $3.5$--$4.5\times$ faster, at the same CPU-seconds within 6--12\%, and the speed-up continues to
+  about $c_v = 2$ cores \\
 B2 separate requests & running requests keep their CPU share; start-ups use only $\Pi(t)$ & the
   platform's choice (a CPU limit per sandbox) \\
 B3 known work & $U_v$ and $w_v$ are profiled & as A2 and A3; under uncertainty use quantiles

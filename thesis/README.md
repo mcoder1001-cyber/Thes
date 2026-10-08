@@ -2,6 +2,7 @@
 
 | file | what |
 |---|---|
+| `ch_measurements.tex` | **Chapter 3 (part), measurements on the test machine** (draft, English): snapshot vs the JDK 25 AOT cache, Warp vs CRIU, parallel restores, the profile against snapshot depth, checkpoint loss and re-warming, CPU during start-up, snapshot uniqueness, registered predictions and outcomes. Source: `results/box/*/REPORT.md`. Build with `measurements_standalone.tex` (needs `theory_standalone.aux` for its references to Chapter 4; figure 9 from `../figures/make_figures.py`) |
 | `ch_theory.tex` | **Chapter 4, theory** (draft, English): the model, the theorems with proofs, the problem as RCPSP/max, the algorithm, the CPU plan, and how everything was verified |
 | `theory.bib` | the references the chapter cites |
 | `theory_standalone.tex` | a wrapper that compiles the chapter on its own |
