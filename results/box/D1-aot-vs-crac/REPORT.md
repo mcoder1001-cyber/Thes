@@ -1,5 +1,7 @@
 # D1. Is CRIU (via CRaC) worth it against the JDK's own AOT cache?
 
+> **Engine (added after D2): Warp**, the Zulu CRaC JDK's default (`CRaCEngine=warp`), not CRIU. D2 measured CRIU on the same function: 17–91 ms slower per restore, same CPU; the verdict below holds for CRIU (AOT cache / CRIU restore at K = 50 ≈ 24× at 1 vCPU, 23× at 0.25). See `../D2-warp-vs-criu/REPORT.md`.
+
 ## Question
 The thesis's snapshot mechanism is CRIU through CRaC. JDK 24/25 ship a cheaper competitor that
 needs no CRIU, no extra Linux capabilities and has no shared-random-state risk: the AOT cache

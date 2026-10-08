@@ -1,5 +1,7 @@
 # T1b. Parallel CRaC restores in Docker: the contention β
 
+> **Engine (added after D2): Warp**, the Zulu CRaC JDK's default (`CRaCEngine=warp`), not CRIU. D2 measured CRIU on the same function: 17–91 ms slower per restore, same CPU; the restore contention with CRIU, and CRIU inside stem containers, are untested (T7). See `../D2-warp-vs-criu/REPORT.md`.
+
 ## Question
 Look-ahead restores several stages at once. When N copies of one snapshot are restored at the
 same time, how much slower is the slowest? (Corollary 1.2: the look-ahead saving is at least
