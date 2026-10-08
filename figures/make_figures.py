@@ -437,6 +437,41 @@ def fig8_priming():
     save(fig, "fig8_priming")
 
 
+# ---------------------------------------------------------------- figure 9
+def fig9_cliff():
+    """T6 on the box: start-up + residual warm-up against the CPU quota, cold vs restored (Warp)."""
+    rows = read("cliff.csv", base=os.path.join(REPO, "results", "box", "T6-cliff"))
+    v = [0.25, 0.5, 1.0, 2.0, 4.0]
+    get = lambda m: [next((float(r["ttfr_ms"]) + float(r["R_ms"])) / 1000 for r in rows
+                          if r["mode"] == m and float(r["vcpu"]) == x) for x in v]
+    cold, k0, k200 = get("cold"), get("restore_K0"), get("restore_K200")
+    fig = plt.figure(figsize=(W, 3.3))
+    ax = fig.add_axes([0.08, 0.14, 0.62, 0.72])
+    style(ax)
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    line(ax, v, cold, GRAY, "Cold JVM start")
+    line(ax, v, k0, ORANGE, "Snapshot after start-up (K = 0)")
+    line(ax, v, k200, BLUE, "Deep snapshot (K = 200)")
+    ax.set_xticks(v)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:g}"))
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda y, _: f"{y:g}"))
+    ax.set_xlim(0.2, 5.0)
+    ax.set_xlabel("CPU quota (vCPU)")
+    ax.set_ylabel("First response + residual warm-up (s)")
+    title(ax, "Snapshots save most where CPU is scarce",
+          "Spring Boot function on the test machine, median of 20 runs per point (T6)")
+    end_label(ax, 4.0, cold[-1], f"Cold  {cold[-1]:.1f} s")
+    end_label(ax, 4.0, k0[-1], f"K = 0  {k0[-1]:.2f} s")
+    end_label(ax, 4.0, k200[-1], f"K = 200  {k200[-1]:.2f} s")
+    ax.annotate(f"saves {cold[0] - k200[0]:.1f} s", (0.25, (cold[0] * k200[0]) ** 0.5), xytext=(8, 0),
+                textcoords="offset points", fontsize=8, color=INK2, va="center")
+    ax.annotate(f"saves {cold[-1] - k200[-1]:.1f} s", (4.0, (cold[-1] * k200[-1]) ** 0.5), xytext=(-62, 0),
+                textcoords="offset points", fontsize=8, color=INK2, va="center")
+    ax.legend(loc="lower left", handlelength=1.6)
+    save(fig, "fig9_cliff")
+
+
 def main():
     fig1_cascade()
     fig2_trace()
@@ -449,6 +484,7 @@ def main():
         print("skip fig6: run theory/exact_scale.py first (writes theory/exact_scale.csv)")
     fig7_keepalive()
     fig8_priming()
+    fig9_cliff()
 
 
 if __name__ == "__main__":
