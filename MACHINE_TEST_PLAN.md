@@ -7,6 +7,13 @@ result (with its source), the output files, and what to decide. It is written so
 it to a Claude Code session on the box as a prompt: the section "Prompt" below is that
 prompt.*
 
+> **Status 2026-10-08.** Done: T0, T1b (+ a stem-container variant), T2 (partial: disk, page
+> cache, warm), T3, T4, T5, T6, T6b, plus two decision tests not in this plan, D1 (CRaC vs the JDK 25
+> AOT cache) and D2 (CRaC's Warp vs CRIU engine). Not run: T1 (podman checkpoint hung in
+> `criu dump`; T1b and D2 answer its question). Not started: T7–T13. Index and verdicts:
+> `results/box/README.md`. Note for every later test: the Zulu CRaC JDK uses the **Warp** engine
+> unless `-XX:CRaCEngine=criu` is given; record the engine.
+
 ---
 
 ## Prompt

@@ -21,6 +21,17 @@ need to build it, what math you need to prove and defend it, and in which order 
   formats in `MACHINE_TEST_PLAN.md`; the theory chapter is drafted in `thesis/ch_theory.tex`.
 - **The one open question that can change the plan:** do parallel restores slow each other
   down (the number **β**)? Test `x2` answers it. That is the next goal (§3).
+- **Update 2026-10-08: the box tests T0–T6b are done** (`results/box/README.md`; advisor memo
+  `DECISION_MEMO.md`). β ≈ 0.04–0.07 restoring into pre-created containers (T1b): **continue as
+  planned** (§3's decision table). A CRaC restore is 23–30× faster to first response than the JDK 25
+  AOT cache (D1, D2); CRaC's default engine is Warp, CRIU is within 17–91 ms of it (D2). Start-up
+  speeds up with CPU at constant CPU-seconds, up to ~2 cores (T6b). Measured profile:
+  `results/box/profile_vcpu*.json`. **Next: T7** (the snapshot action in OpenWhisk, restoring into
+  stem containers) — but first agree the framing in `DECISION_MEMO.md` with the supervisor.
+- **What the measured profile changes:** a deep restore takes ≈ 70–85 ms at 1 vCPU, not 650 ms,
+  so look-ahead hides ≈ 80 ms per stage at 1 vCPU and ≈ 300 ms at 0.25 vCPU; the residual JIT
+  warm-up (≈ 720 ms over the next 200 requests) and the start-up CPU now matter more than restore
+  timing. OpenWhisk's per-edge delay δ (T7) could eat much of look-ahead's gain at 1 vCPU.
 
 ---
 

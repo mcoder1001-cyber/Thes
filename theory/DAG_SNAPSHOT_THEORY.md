@@ -124,8 +124,8 @@ workflow** arrives at `t = 0` and finds no live sandbox. A **policy** chooses a 
 | assumption | statement | status |
 |---|---|---|
 | **A1** no clairvoyance | `τ_v ≥ 0`: nothing starts before the workflow arrives | conservative: arrival prediction (MPC, ORION) could only help; the control in T1 shows the bound needs it |
-| **A2** independent restores | a restore triggered at `τ` completes at `τ + r_v` | relaxed in Cor 1.2 (contention) and Cor 1.3 (random `r_v`); **x2 on the box measures it** |
-| **A3** fixed work | a stage takes `w_v` once started | re-warming lowers `w_v`; **x3 measures it** |
+| **A2** independent restores | a restore triggered at `τ` completes at `τ + r_v` | relaxed in Cor 1.2 (contention) and Cor 1.3 (random `r_v`). **[measured]** (T1b, `results/box/T1b-crac-docker`): restoring into pre-created containers, β(4) = 0.04 (0.25 vCPU) and 0.07 (1 vCPU), β(8) ≤ 0.14; through `docker run` β(4) = 0.21–0.53, all of it Docker's container creation |
+| **A3** fixed work | a stage takes `w_v` once started | re-warming lowers `w_v`. **[measured]** (T4, `results/box/T4-x3`): the checkpoint adds `L(50)` = 955 ms of residual warm-up at 0.25 vCPU and 163 ms at 1 vCPU (Spring Boot function), and 50 re-warm requests leave less than the never-checkpointed process |
 | **A4** memory | stage `v` holds `m_v` from `τ_v` to its finish | lazy-pages restore would hold less, so A4 is conservative for Theorem 2 |
 
 Semantics: `I_e = 0`, `I_v = max_{u ∈ pred(v)} F_u + δ`; `S_v = max(τ_v + r_v, I_v)`;
@@ -406,7 +406,9 @@ frequent workflows wrongly.
 **What the cost view shows** (`ideas/sim/e6_cost.py`, exact model). Prices are public list
 prices used only as an example: $0.0000167 per GB-second, $0.08 per GB-month next to the
 invoker, $0.023 per GB-month in object storage, and 100 MB/s from object storage **[assumption]**.
-The Spring Boot image (90 MB) and the ML image (≈ its 1 GB of memory) are **[assumption]**.
+The Spring Boot image (90 MB) and the ML image (≈ its 1 GB of memory) are **[assumption]**;
+the Spring Boot image is now **[measured]** at 82–88 MB for every depth K = 0…200 (T3,
+`results/box/T3-profile`), so the 90 MB used here stands.
 
 | function | cold start | restore, deepest snapshot | image in local / remote storage pays for itself above |
 |---|---|---|---|
@@ -573,6 +575,10 @@ JFR; .NET EventPipe; V8 trace flags). This needs no knowledge of what the reques
 (2/2 CPU levels). A mix containing the same heavy requests compiles at least as much (4/4)
 and leaves no more residual warm-up (4/4, 0.80–0.89×). Pollution was smaller than the gain on
 this workload.
+**[measured, 2026-10-08]** On the Spring Boot function (T3), compile time at the checkpoint rises
+monotonically from K = 0 to 200 (4.5 → 6.7 s; code cache 7.6 → 9.4 MB) and has **not** flattened by
+K = 200, while the residual warm-up keeps falling. Monotonicity holds; the stopping rule did not
+trigger within 200 requests, so on this function it would warm up longer than 200 requests.
 
 ---
 
@@ -587,8 +593,9 @@ this workload.
 | the capped problem is RCPSP/max; exact branch and bound; Thm 8(b) optimal; restore channels; the guard's gap; planned triggers (`ALGORITHM.md`) | reduction **proved** (Lemma A1); solver **verified** against brute force; gaps **measured** on random DAGs; the planner **simulated** with jitter, bursts and the Azure trace (e9) |
 | keep-alive under look-ahead is a threshold decision (Prop 9) | **proved**; verified against brute force; **simulated (e8): whole-workflow eviction loses to per-function GDSF**, so it is not used as a policy |
 | the model's gain on real traffic | **simulated** on the Azure 2021 trace (`ideas/sim` e4/e4b) |
-| A2: restores run in parallel (β small) | **assumption**: x2 on the S0 box; Cor 1.2 gives the gain as a function of the measured β |
-| A3: residual warm-up after restore, `L(K)` | **assumption**: x3 |
+| A2: restores run in parallel (β small) | **measured** (T1b): β ≈ 0.04–0.07 at 4 parallel restores into pre-created containers; was an assumption until 2026-10-08 |
+| A3: residual warm-up after restore, `L(K)` | **measured** (T4): `L(50)` = 955 ms at 0.25 vCPU, 163 ms at 1 vCPU, ≈ 0 at 2–4 vCPU; was an assumption until 2026-10-08 |
+| model inputs `r`, `w` for a real function | **measured** (T3, D2): deep restore 67–84 ms at 1 vCPU (the examples in this document use 650 ms); residual warm-up 720 ms over 200 requests at K = 50, 1 vCPU (examples use 63 ms). The theorems do not depend on these values; the size of the gains does (`results/box/predict_measured_vcpu*.md`) |
 | depth in work (when to stop warming up) | **proved** for threshold compilation; **measured** on this workload |
 | no user data in any image | **by construction**: warm-up uses only the developer's test requests, or none |
 
