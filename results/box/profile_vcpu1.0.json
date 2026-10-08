@@ -1,0 +1,32 @@
+{
+ "_note": "Measured on the box 2026-10-08 (results/box: T3 grid, D2, T1b) for the Spring Boot function; java only. Stage = one request: r = restore TTFR - first request (CRIU engine, D2, K=50); RK = first request after restore - C; C = steady latency (T3, cont_K200 requests 150-200); A = cold TTFR - first request; B = cold first request - C (T3 grid). m = 512 not measured (cgroup memory included page cache). beta from T1b exec (stem containers). delta_ms not measured (T7). python and py-ml: thesis values, ASSUMED.",
+ "vcpu": 1.0,
+ "delta_ms": 2.0,
+ "beta": 0.07,
+ "functions": {
+  "java": {
+   "A": 3646,
+   "B": 321,
+   "C": 0.7,
+   "r": 74,
+   "RK": 9.0,
+   "m": 512
+  },
+  "python": {
+   "A": 400,
+   "B": 15,
+   "C": 20,
+   "r": 60,
+   "RK": 5,
+   "m": 256
+  },
+  "py-ml": {
+   "A": 1800,
+   "B": 40,
+   "C": 300,
+   "r": 180,
+   "RK": 20,
+   "m": 1024
+  }
+ }
+}

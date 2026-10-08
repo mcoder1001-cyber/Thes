@@ -650,13 +650,17 @@ E11_DAGS = [("chain3", lambda t: chain(3, JAVA, t)), ("chain5", lambda t: chain(
             ("ml", ml_pipeline), ("mixed", mixed), ("router", router), ("trip", trip_booking)]
 
 
+# measured (T6b, 2026-10-08): a JVM start-up uses up to ~2 cores even pinned to one CPU
+CPU_CAP = float(os.environ.get("DAGSIM_CPU_CAP", "1.0"))
+
+
 def _e11_iso(args):
     q, K, dname, pn, seeds = args
     mk = dict(E11_DAGS)[dname]
     pol = E11_POLS[pn]
     lats, boost, mem = [], [], []
     for k in range(seeds):
-        sim = Sim(ttl0(pol), seed=k, cpu_cores=K, cpu_quota=q)
+        sim = Sim(ttl0(pol), seed=k, cpu_cores=K, cpu_quota=q, cpu_cap=CPU_CAP)
         sim.invoke(0.0, mk(dname), "w")
         sim.run()
         lats.append(sim.results[0][3])
@@ -697,7 +701,7 @@ def e11b(seeds=10, cores=(2, 4, 8), q=0.25):
         for pn, pol in E11_POLS.items():
             lats, boost = [], 0.0
             for seed in range(seeds):
-                sim = Sim(pol, mem_budget_mb=64 * 1024, seed=seed, cpu_cores=K, cpu_quota=q)
+                sim = Sim(pol, mem_budget_mb=64 * 1024, seed=seed, cpu_cores=K, cpu_quota=q, cpu_cap=CPU_CAP)
                 i = 0
                 for rep in range(2):
                     for dname, mk in E11_DAGS:
@@ -725,7 +729,7 @@ def _e11_trace(args):
         gap.append(t - last[a] if a in last else math.inf)
         last[a] = t
     t0 = time.time()
-    sim = Sim(pol, mem_budget_mb=M * 1024, seed=seed, cpu_cores=K, cpu_quota=q)
+    sim = Sim(pol, mem_budget_mb=M * 1024, seed=seed, cpu_cores=K, cpu_quota=q, cpu_cap=CPU_CAP)
     for t, a in arr:
         sim.invoke(t, dags[a], a)
     sim.run()
@@ -799,7 +803,7 @@ def _e11_sel(args):
     pol = replace(E11_POLS[pn], nosnap=frozenset(nosnap))
     lats = []
     for k in range(seeds):
-        sim = Sim(ttl0(pol), seed=k, cpu_cores=K, cpu_quota=q)
+        sim = Sim(ttl0(pol), seed=k, cpu_cores=K, cpu_quota=q, cpu_cap=CPU_CAP)
         sim.invoke(0.0, mk(dname), "w")
         sim.run()
         lats.append(sim.results[0][3])

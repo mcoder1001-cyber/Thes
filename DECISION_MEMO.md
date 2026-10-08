@@ -3,13 +3,17 @@
 **MSc thesis, Amirkabir University of Technology** · 8 October 2026 · measured on the test machine
 (8 × Xeon Gold 6248R, Ubuntu 24.04, CRIU 4.2.1, Zulu CRaC JDK 21) and in the workflow simulator
 
+> **Engine note.** The Zulu CRaC JDK checkpoints with Azul's *Warp* engine by default, not CRIU.
+> D1, T1b and T3–T6b ran with Warp; D2 measured both engines on the same function. Where this memo
+> says "snapshot restore" it means CRaC; the CRIU numbers are given wherever they were measured.
+
 *Two doubts were raised: (1) is snapshotting with CRIU a wise choice at all, and (2) does the
 approach contain a real optimisation, or is it "restore earlier"? This memo answers both with
 measurements taken for this purpose. Every number links to its raw data and report.*
 
 ---
 
-## 1. Is CRIU worth it? Yes, by a wide margin
+## 1. Is snapshotting (CRaC, with CRIU or Warp) worth it? Yes, by a wide margin
 
 **The competitor that needs no CRIU.** JDK 24/25 ship an ahead-of-time cache (Project Leyden,
 JEPs 483/514/515): a training run records loaded and linked classes and method profiles, and later
@@ -25,12 +29,15 @@ response, median:
 | cold start (JDK 21 / JDK 25) | 16.9 / 17.6 s | 3.97 / 4.08 s | 5.4–5.7 |
 | JIT capped at C1 (`TieredStopAtLevel=1`) | 9.8 s | 2.32 s | 3.0 |
 | JDK 25 AOT cache, trained with 50 requests | 8.7 s | 2.05 s | 3.0–3.3 |
-| CRaC restore, checkpoint after start-up (SnapStart's point) | 2.09 s | 0.50 s | 2.0 |
-| **CRaC restore, checkpoint after 50 requests** | **0.29 s** | **0.08 s** | **1.2** |
+| CRaC restore (Warp), checkpoint after start-up (SnapStart's point) | 2.09 s | 0.50 s | 2.0 |
+| **CRaC restore (Warp), checkpoint after 50 requests** | **0.29 s** | **0.08 s** | **1.2** |
+| **same with the CRIU engine** (D2) | **0.38 s** | **0.08 s** | **1.0** |
 
 - The AOT cache halves a cold start (0.55×), but **a depth-50 snapshot answers 25–30× sooner**
   (95% CI lower bounds 23× and 29×) and uses 2.5× less CPU per start. Registered decision rule:
-  ≥ 3× at both CPU levels → CRIU is justified. It is.
+  ≥ 3× at both CPU levels → snapshots are justified. They are, with either engine: **CRIU is only
+  17–91 ms slower than Warp** (D2, `results/box/D2-warp-vs-criu/REPORT.md`), so the AOT cache is
+  still 23–24× slower to first response than a CRIU restore.
 - One prediction failed: after a deep restore, the residual JIT warm-up over the next 200 requests
   is *not* smaller than the AOT cache's. The snapshot's advantage is the first response.
 
@@ -82,19 +89,32 @@ Its parts are classical (critical path, max-flow scheduling, multiple-choice kna
 and cited as such; the model, the measurements that set its parameters, and the result that it
 saves cores are ours.
 
-## 3. Still open (measurements running on the box)
+## 3. The CPU plan's premise, measured (T6b, T3, T4, T6; 1,280 runs, 0 failures)
 
-- **T6b:** does a restore really run ~4× faster with 4× the CPU, at the same CPU-seconds? The CPU
-  plan assumes it (exp-b showed it for JVM warm-up). *[to be filled from the grid]*
-- **T3/T4/T6:** restore time, residual warm-up and image size against snapshot depth and CPU
-  (0.25–4 vCPU); warm-up lost to the checkpoint. These replace the simulator's assumed profile.
-- Then: rerun e12 with the measured profile, and build the snapshot action in OpenWhisk (T7),
-  restoring into stem containers.
+- **Start-up is CPU work that speeds up with CPU at constant CPU-seconds** (`results/box/T6b-speedup`).
+  A cold JVM start: 16.6 / 8.0 / 4.0 / 2.0 / 1.8 s at 0.25 / 0.5 / 1 / 2 / 4 vCPU — 4.2× faster at 4×
+  the CPU, 8.3× at 8×, always ≈ 5.2 CPU-s. A restore at K = 0: 3.5× from 0.25 to 1 vCPU. **So the plan
+  has something to allocate.** The model capped a start-up at one core; it uses about **two**.
+- **Boosting only while starting works, with a caveat:** lowering the quota after the first response
+  takes effect in 1.4–4.8 ms and costs no extra CPU, but for cold starts and shallow snapshots the
+  remaining warm-up then moves into the following requests (17–52% slower). The boost should last
+  until warm-up is done, not until the first response.
+- **On one spare core, one start-up at a time beats an equal split** by 19–27% in mean ready time
+  (the plan's rule for ≤ 1 spare core).
+- **Snapshots save most where CPU is scarce:** 19.1 s per start at 0.25 vCPU vs 2.2 s at 4 vCPU (T6).
+  The relative cliff does *not* flatten with depth (it steepens), a falsified prediction.
+- **Profile, measured:** image 82–88 MB at every depth; deep restore ≈ 60–84 ms at 1–4 vCPU
+  (the thesis assumed 650 ms); residual warm-up keeps falling to K = 200 (no plateau, so
+  Proposition 8's stopping rule does not trigger); checkpoint loss L(50) = 955 ms at 0.25 vCPU,
+  and re-warming while waiting recovers more than all of it (keep re-warm).
+- **Open:** deep restores interleaved with cold JVM runs were bimodal (≈ 70 or ≈ 300 ms at 1 vCPU);
+  cause unknown, not eviction or disk.
 
 ## 4. Recommendation
 
-Keep CRIU (through CRaC) as the mechanism: it is 25–30× ahead of the JDK's own alternative and its
-restores parallelise once container creation is taken out of the path. Present the contribution
+Keep CRaC snapshots as the mechanism, with either engine (Warp by default, CRIU within 17–91 ms):
+they are 23–30× ahead of the JDK's own alternative, and their restores parallelise once container
+creation is taken out of the path. Present the contribution
 as the joint start-mode / timing / start-up-CPU plan that serves the same workflows on fewer cores,
 with the measured safety limits (`Math.random()`) as an explicit input to which stages may be
 snapshotted.
