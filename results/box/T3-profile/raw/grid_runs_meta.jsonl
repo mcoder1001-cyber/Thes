@@ -1,0 +1,2 @@
+{"date": "2026-10-08T18:21:21", "cpus": "0-3", "vcpus": [0.25, 0.5, 1.0, 2.0, 4.0], "reps": 20, "ks": [0, 1, 5, 20, 50, 100, 200], "shape": ["-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC", "-Xms256m", "-Xmx512m"], "phases": ["build", "uniq", "contention", "boost", "grid"]}
+{"date": "2026-10-08T19:59:53", "cpus": "0-3", "vcpus": [0.25, 0.5, 1.0, 2.0, 4.0], "reps": 20, "ks": [0, 1, 5, 20, 50, 100, 200], "shape": ["-XX:ActiveProcessorCount=1", "-XX:+UseSerialGC", "-Xms256m", "-Xmx512m"], "phases": ["contention", "boost", "grid"]}

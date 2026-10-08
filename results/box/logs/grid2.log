@@ -1,0 +1,1484 @@
+=== phase contention
+contention 2 equal 0 [136, 138]
+contention 2 one_at_a_time 0 [70, 153]
+contention 2 equal 1 [135, 144]
+contention 2 one_at_a_time 1 [75, 159]
+contention 2 equal 2 [137, 139]
+contention 2 one_at_a_time 2 [73, 160]
+contention 2 equal 3 [130, 146]
+contention 2 one_at_a_time 3 [69, 155]
+contention 2 equal 4 [131, 145]
+contention 2 one_at_a_time 4 [70, 153]
+contention 2 equal 5 [126, 142]
+contention 2 one_at_a_time 5 [70, 159]
+contention 2 equal 6 [143, 145]
+contention 2 one_at_a_time 6 [70, 156]
+contention 2 equal 7 [127, 157]
+contention 2 one_at_a_time 7 [75, 160]
+contention 2 equal 8 [136, 140]
+contention 2 one_at_a_time 8 [69, 158]
+contention 2 equal 9 [134, 133]
+contention 2 one_at_a_time 9 [71, 154]
+contention 2 equal 10 [130, 150]
+contention 2 one_at_a_time 10 [69, 160]
+contention 2 equal 11 [136, 146]
+contention 2 one_at_a_time 11 [77, 159]
+contention 2 equal 12 [140, 151]
+contention 2 one_at_a_time 12 [66, 162]
+contention 2 equal 13 [144, 158]
+contention 2 one_at_a_time 13 [76, 162]
+contention 2 equal 14 [135, 161]
+contention 2 one_at_a_time 14 [66, 155]
+contention 2 equal 15 [127, 146]
+contention 2 one_at_a_time 15 [69, 156]
+contention 2 equal 16 [134, 148]
+contention 2 one_at_a_time 16 [68, 156]
+contention 2 equal 17 [133, 144]
+contention 2 one_at_a_time 17 [72, 157]
+contention 2 equal 18 [139, 150]
+contention 2 one_at_a_time 18 [68, 156]
+contention 2 equal 19 [134, 149]
+contention 2 one_at_a_time 19 [67, 161]
+contention 4 equal 0 [254, 284, 272, 293]
+contention 4 one_at_a_time 0 [66, 153, 249, 344]
+contention 4 equal 1 [241, 300, 299, 284]
+contention 4 one_at_a_time 1 [69, 153, 234, 322]
+contention 4 equal 2 [262, 279, 298, 302]
+contention 4 one_at_a_time 2 [70, 161, 252, 339]
+contention 4 equal 3 [257, 290, 266, 294]
+contention 4 one_at_a_time 3 [72, 156, 243, 332]
+contention 4 equal 4 [259, 285, 309, 296]
+contention 4 one_at_a_time 4 [71, 155, 237, 329]
+contention 4 equal 5 [241, 267, 285, 299]
+contention 4 one_at_a_time 5 [69, 154, 239, 333]
+contention 4 equal 6 [278, 301, 259, 297]
+contention 4 one_at_a_time 6 [71, 159, 245, 336]
+contention 4 equal 7 [269, 286, 271, 278]
+contention 4 one_at_a_time 7 [71, 156, 241, 335]
+contention 4 equal 8 [245, 270, 296, 290]
+contention 4 one_at_a_time 8 [72, 157, 247, 336]
+contention 4 equal 9 [274, 268, 283, 290]
+contention 4 one_at_a_time 9 [72, 161, 245, 331]
+contention 4 equal 10 [260, 264, 292, 285]
+contention 4 one_at_a_time 10 [74, 158, 249, 335]
+contention 4 equal 11 [220, 284, 300, 272]
+contention 4 one_at_a_time 11 [72, 160, 246, 332]
+contention 4 equal 12 [233, 277, 274, 296]
+contention 4 one_at_a_time 12 [72, 155, 238, 327]
+contention 4 equal 13 [261, 293, 269, 310]
+contention 4 one_at_a_time 13 [74, 165, 247, 337]
+contention 4 equal 14 [239, 284, 280, 288]
+contention 4 one_at_a_time 14 [69, 155, 237, 322]
+contention 4 equal 15 [262, 293, 264, 299]
+contention 4 one_at_a_time 15 [70, 158, 246, 334]
+contention 4 equal 16 [313, 329, 335, 352]
+contention 4 one_at_a_time 16 [132, 239, 354, 464]
+contention 4 equal 17 [338, 362, 384, 389]
+contention 4 one_at_a_time 17 [91, 238, 367, 469]
+contention 4 equal 18 [241, 308, 313, 316]
+contention 4 one_at_a_time 18 [87, 173, 260, 352]
+contention 4 equal 19 [316, 372, 365, 375]
+contention 4 one_at_a_time 19 [76, 171, 263, 360]
+=== phase boost
+boost 2.0->0.25 rep=0 restore_K50 ttfr=72 lag=5.969808 cpu=1.36
+boost 1.0->0.25 rep=0 restore_K0  ttfr=675 lag=3.179164 cpu=2.60
+boost 2.0->0.25 rep=0 cold        ttfr=2820 lag=1.984094 cpu=7.23
+boost 2.0->0.25 rep=0 restore_K0  ttfr=404 lag=3.197736 cpu=2.39
+boost 1.0->0.25 rep=0 restore_K50 ttfr=71 lag=5.837919 cpu=1.18
+boost 1.0->0.25 rep=0 cold        ttfr=5795 lag=1.924176 cpu=7.51
+boost 2.0->0.25 rep=1 cold        ttfr=2866 lag=2.506716 cpu=6.87
+boost 2.0->0.25 rep=1 restore_K0  ttfr=352 lag=4.17318 cpu=2.95
+boost 1.0->0.25 rep=1 restore_K0  ttfr=878 lag=3.095008 cpu=3.06
+boost 1.0->0.25 rep=1 cold        ttfr=5879 lag=2.356287 cpu=7.33
+boost 1.0->0.25 rep=1 restore_K50 ttfr=87 lag=5.640566 cpu=1.56
+boost 2.0->0.25 rep=1 restore_K50 ttfr=77 lag=6.269374 cpu=1.43
+boost 1.0->0.25 rep=2 restore_K0  ttfr=606 lag=2.668645 cpu=2.06
+boost 2.0->0.25 rep=2 restore_K50 ttfr=70 lag=5.973623 cpu=1.01
+boost 1.0->0.25 rep=2 cold        ttfr=3711 lag=1.501332 cpu=4.81
+boost 2.0->0.25 rep=2 cold        ttfr=1947 lag=1.41917 cpu=4.93
+boost 2.0->0.25 rep=2 restore_K0  ttfr=245 lag=1.969944 cpu=1.68
+boost 1.0->0.25 rep=2 restore_K50 ttfr=64 lag=5.036843 cpu=1.02
+boost 1.0->0.25 rep=3 cold        ttfr=3902 lag=1.439973 cpu=5.43
+boost 1.0->0.25 rep=3 restore_K50 ttfr=60 lag=5.026239 cpu=1.20
+boost 2.0->0.25 rep=3 restore_K0  ttfr=250 lag=2.096039 cpu=2.09
+boost 2.0->0.25 rep=3 restore_K50 ttfr=60 lag=5.006024 cpu=1.21
+boost 1.0->0.25 rep=3 restore_K0  ttfr=411 lag=2.111265 cpu=2.06
+boost 2.0->0.25 rep=3 cold        ttfr=2003 lag=1.383386 cpu=5.42
+boost 1.0->0.25 rep=4 restore_K50 ttfr=57 lag=4.795822 cpu=0.91
+boost 2.0->0.25 rep=4 restore_K0  ttfr=282 lag=2.229979 cpu=1.75
+boost 2.0->0.25 rep=4 restore_K50 ttfr=61 lag=4.646795 cpu=0.92
+boost 2.0->0.25 rep=4 cold        ttfr=1944 lag=1.469651 cpu=5.33
+boost 1.0->0.25 rep=4 restore_K0  ttfr=502 lag=2.239848 cpu=1.75
+boost 1.0->0.25 rep=4 cold        ttfr=3816 lag=1.520253 cpu=4.94
+boost 2.0->0.25 rep=5 restore_K0  ttfr=274 lag=2.189087 cpu=2.18
+boost 2.0->0.25 rep=5 restore_K50 ttfr=62 lag=4.700661 cpu=1.17
+boost 1.0->0.25 rep=5 restore_K50 ttfr=60 lag=4.45608 cpu=1.18
+boost 2.0->0.25 rep=5 cold        ttfr=1978 lag=1.496471 cpu=4.97
+boost 1.0->0.25 rep=5 cold        ttfr=3820 lag=1.407864 cpu=5.04
+boost 1.0->0.25 rep=5 restore_K0  ttfr=477 lag=2.122477 cpu=2.13
+boost 1.0->0.25 rep=6 restore_K0  ttfr=411 lag=2.010497 cpu=1.74
+boost 1.0->0.25 rep=6 restore_K50 ttfr=62 lag=4.878175 cpu=1.05
+boost 2.0->0.25 rep=6 cold        ttfr=1946 lag=1.507292 cpu=4.85
+boost 2.0->0.25 rep=6 restore_K50 ttfr=60 lag=4.688992 cpu=1.17
+boost 1.0->0.25 rep=6 cold        ttfr=4000 lag=1.485079 cpu=5.68
+boost 2.0->0.25 rep=6 restore_K0  ttfr=249 lag=1.954164 cpu=1.75
+boost 2.0->0.25 rep=7 restore_K50 ttfr=78 lag=8.023155 cpu=1.29
+boost 2.0->0.25 rep=7 restore_K0  ttfr=244 lag=2.102113 cpu=2.09
+boost 2.0->0.25 rep=7 cold        ttfr=2101 lag=1.369872 cpu=5.78
+boost 1.0->0.25 rep=7 restore_K0  ttfr=401 lag=2.059061 cpu=2.12
+boost 1.0->0.25 rep=7 cold        ttfr=3822 lag=1.499544 cpu=5.10
+boost 1.0->0.25 rep=7 restore_K50 ttfr=58 lag=5.056198 cpu=1.21
+boost 1.0->0.25 rep=8 restore_K50 ttfr=56 lag=4.386447 cpu=0.90
+boost 1.0->0.25 rep=8 restore_K0  ttfr=493 lag=2.231785 cpu=1.83
+boost 2.0->0.25 rep=8 cold        ttfr=1943 lag=1.338201 cpu=4.89
+boost 2.0->0.25 rep=8 restore_K50 ttfr=55 lag=4.48551 cpu=0.91
+boost 2.0->0.25 rep=8 restore_K0  ttfr=280 lag=2.139957 cpu=1.80
+boost 1.0->0.25 rep=8 cold        ttfr=3799 lag=1.397301 cpu=5.38
+boost 1.0->0.25 rep=9 restore_K0  ttfr=685 lag=3.982562 cpu=2.73
+boost 2.0->0.25 rep=9 restore_K50 ttfr=59 lag=4.506369 cpu=1.26
+boost 1.0->0.25 rep=9 cold        ttfr=3973 lag=1.45118 cpu=5.07
+boost 2.0->0.25 rep=9 restore_K0  ttfr=250 lag=2.12099 cpu=2.10
+boost 1.0->0.25 rep=9 restore_K50 ttfr=59 lag=4.582756 cpu=1.13
+boost 2.0->0.25 rep=9 cold        ttfr=1986 lag=1.374634 cpu=5.01
+boost 1.0->0.25 rep=10 restore_K0  ttfr=416 lag=1.969815 cpu=1.63
+boost 2.0->0.25 rep=10 cold        ttfr=1939 lag=1.464036 cpu=5.29
+boost 1.0->0.25 rep=10 cold        ttfr=3826 lag=1.506604 cpu=5.29
+boost 2.0->0.25 rep=10 restore_K0  ttfr=245 lag=1.979087 cpu=1.62
+boost 2.0->0.25 rep=10 restore_K50 ttfr=60 lag=4.988886 cpu=1.00
+boost 1.0->0.25 rep=10 restore_K50 ttfr=62 lag=5.71631 cpu=1.00
+boost 1.0->0.25 rep=11 restore_K0  ttfr=392 lag=2.053728 cpu=2.06
+boost 1.0->0.25 rep=11 restore_K50 ttfr=59 lag=4.841966 cpu=1.19
+boost 2.0->0.25 rep=11 cold        ttfr=1945 lag=1.383539 cpu=5.26
+boost 2.0->0.25 rep=11 restore_K50 ttfr=58 lag=4.72497 cpu=1.19
+boost 2.0->0.25 rep=11 restore_K0  ttfr=243 lag=2.159257 cpu=2.05
+boost 1.0->0.25 rep=11 cold        ttfr=3825 lag=1.454936 cpu=5.05
+boost 2.0->0.25 rep=12 cold        ttfr=1926 lag=1.393447 cpu=5.20
+boost 2.0->0.25 rep=12 restore_K50 ttfr=60 lag=4.518208 cpu=0.91
+boost 1.0->0.25 rep=12 restore_K0  ttfr=509 lag=2.215937 cpu=1.78
+boost 2.0->0.25 rep=12 restore_K0  ttfr=262 lag=19.476959 cpu=1.74
+boost 1.0->0.25 rep=12 cold        ttfr=3793 lag=1.319696 cpu=5.24
+boost 1.0->0.25 rep=12 restore_K50 ttfr=55 lag=4.627642 cpu=0.90
+boost 2.0->0.25 rep=13 cold        ttfr=1996 lag=1.397398 cpu=5.36
+boost 2.0->0.25 rep=13 restore_K50 ttfr=62 lag=4.772529 cpu=1.13
+boost 1.0->0.25 rep=13 restore_K50 ttfr=57 lag=4.351426 cpu=1.13
+boost 1.0->0.25 rep=13 restore_K0  ttfr=483 lag=2.125267 cpu=2.07
+boost 2.0->0.25 rep=13 restore_K0  ttfr=256 lag=2.003515 cpu=2.12
+boost 1.0->0.25 rep=13 cold        ttfr=4206 lag=1.42033 cpu=5.75
+boost 1.0->0.25 rep=14 cold        ttfr=3893 lag=1.881479 cpu=5.32
+boost 2.0->0.25 rep=14 restore_K50 ttfr=60 lag=4.945132 cpu=1.00
+boost 1.0->0.25 rep=14 restore_K0  ttfr=427 lag=1.951421 cpu=1.63
+boost 2.0->0.25 rep=14 cold        ttfr=1956 lag=1.479611 cpu=4.90
+boost 2.0->0.25 rep=14 restore_K0  ttfr=243 lag=1.904325 cpu=1.61
+boost 1.0->0.25 rep=14 restore_K50 ttfr=61 lag=4.664454 cpu=0.99
+boost 1.0->0.25 rep=15 cold        ttfr=3780 lag=1.332237 cpu=4.99
+boost 2.0->0.25 rep=15 restore_K0  ttfr=236 lag=2.028952 cpu=2.04
+boost 2.0->0.25 rep=15 cold        ttfr=1958 lag=1.442848 cpu=4.95
+boost 1.0->0.25 rep=15 restore_K50 ttfr=63 lag=4.846922 cpu=1.19
+boost 1.0->0.25 rep=15 restore_K0  ttfr=414 lag=2.097792 cpu=2.09
+boost 2.0->0.25 rep=15 restore_K50 ttfr=59 lag=5.004313 cpu=1.19
+boost 1.0->0.25 rep=16 restore_K0  ttfr=486 lag=2.297705 cpu=1.78
+boost 1.0->0.25 rep=16 restore_K50 ttfr=57 lag=4.672617 cpu=0.90
+boost 2.0->0.25 rep=16 restore_K0  ttfr=277 lag=2.153946 cpu=1.74
+boost 2.0->0.25 rep=16 cold        ttfr=1967 lag=1.48445 cpu=5.31
+boost 2.0->0.25 rep=16 restore_K50 ttfr=55 lag=4.463698 cpu=0.88
+boost 1.0->0.25 rep=16 cold        ttfr=3824 lag=1.414755 cpu=5.41
+boost 1.0->0.25 rep=17 restore_K50 ttfr=58 lag=4.660542 cpu=1.09
+boost 2.0->0.25 rep=17 restore_K0  ttfr=247 lag=1.989285 cpu=2.08
+boost 1.0->0.25 rep=17 restore_K0  ttfr=468 lag=2.05243 cpu=2.09
+boost 1.0->0.25 rep=17 cold        ttfr=4174 lag=1.404005 cpu=5.69
+boost 2.0->0.25 rep=17 cold        ttfr=1945 lag=1.346071 cpu=4.96
+boost 2.0->0.25 rep=17 restore_K50 ttfr=59 lag=4.363757 cpu=1.17
+boost 2.0->0.25 rep=18 restore_K50 ttfr=68 lag=4.803361 cpu=1.01
+boost 2.0->0.25 rep=18 restore_K0  ttfr=251 lag=1.99748 cpu=1.78
+boost 2.0->0.25 rep=18 cold        ttfr=1996 lag=1.446817 cpu=5.42
+boost 1.0->0.25 rep=18 restore_K50 ttfr=56 lag=4.679703 cpu=1.00
+boost 1.0->0.25 rep=18 cold        ttfr=3817 lag=1.525838 cpu=4.95
+boost 1.0->0.25 rep=18 restore_K0  ttfr=419 lag=1.941378 cpu=1.64
+boost 2.0->0.25 rep=19 restore_K50 ttfr=63 lag=5.032411 cpu=1.20
+boost 2.0->0.25 rep=19 cold        ttfr=1947 lag=1.67267 cpu=5.36
+boost 2.0->0.25 rep=19 restore_K0  ttfr=244 lag=2.153185 cpu=2.10
+boost 1.0->0.25 rep=19 restore_K50 ttfr=57 lag=4.692855 cpu=1.19
+boost 1.0->0.25 rep=19 cold        ttfr=3805 lag=1.49769 cpu=4.96
+boost 1.0->0.25 rep=19 restore_K0  ttfr=402 lag=2.324916 cpu=2.07
+=== phase grid
+grid v=0.25 rep=0 restore_K200 ttfr=187 cpu=0.59 mem=2973 cg=0::/grid/run
+grid v=0.25 rep=0 rewarm_K50  ttfr=1463 cpu=0.94 mem=2974 cg=0::/grid/run
+grid v=0.25 rep=0 cont_K50    ttfr=18992 cpu=5.54 mem=3050 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K50 ttfr=370 cpu=0.90 mem=2976 cg=0::/grid/run
+grid v=0.25 rep=0 cont_K0     ttfr=16382 cpu=5.24 mem=3056 cg=0::/grid/run
+grid v=0.25 rep=0 cont_K200   ttfr=21873 cpu=5.98 mem=3055 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K20 ttfr=260 cpu=1.04 mem=2975 cg=0::/grid/run
+grid v=0.25 rep=0 cold_np     ttfr=17388 cpu=5.61 mem=3053 cg=0::/grid/run
+grid v=0.25 rep=0 disk_K50    ttfr=4092 cpu=1.20 mem=215 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K0  ttfr=3538 cpu=1.99 mem=335 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K1  ttfr=1077 cpu=1.52 mem=396 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K100 ttfr=1083 cpu=1.15 mem=479 cg=0::/grid/run
+grid v=0.25 rep=0 cold        ttfr=19167 cpu=5.68 mem=572 cg=0::/grid/run
+grid v=0.25 rep=0 restore_K5  ttfr=1154 cpu=1.16 mem=574 cg=0::/grid/run
+grid v=0.25 rep=1 disk_K50    ttfr=1095 cpu=1.33 mem=218 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K200 ttfr=766 cpu=0.94 mem=290 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K5  ttfr=1388 cpu=1.67 mem=395 cg=0::/grid/run
+grid v=0.25 rep=1 cont_K50    ttfr=19005 cpu=5.52 mem=471 cg=0::/grid/run
+grid v=0.25 rep=1 rewarm_K50  ttfr=2082 cpu=1.09 mem=464 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K0  ttfr=2679 cpu=2.20 mem=569 cg=0::/grid/run
+grid v=0.25 rep=1 cold_np     ttfr=16291 cpu=5.57 mem=628 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K1  ttfr=1589 cpu=1.69 mem=643 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K20 ttfr=1001 cpu=1.36 mem=722 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K50 ttfr=364 cpu=1.12 mem=718 cg=0::/grid/run
+grid v=0.25 rep=1 cold        ttfr=16593 cpu=5.61 mem=799 cg=0::/grid/run
+grid v=0.25 rep=1 restore_K100 ttfr=790 cpu=0.84 mem=783 cg=0::/grid/run
+grid v=0.25 rep=1 cont_K200   ttfr=20980 cpu=5.65 mem=866 cg=0::/grid/run
+grid v=0.25 rep=1 cont_K0     ttfr=16593 cpu=5.17 mem=864 cg=0::/grid/run
+grid v=0.25 rep=2 rewarm_K50  ttfr=1979 cpu=1.07 mem=859 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K1  ttfr=1386 cpu=1.80 mem=961 cg=0::/grid/run
+grid v=0.25 rep=2 cold_np     ttfr=16291 cpu=5.62 mem=1024 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K20 ttfr=806 cpu=1.08 mem=1018 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K0  ttfr=2582 cpu=1.75 mem=1122 cg=0::/grid/run
+grid v=0.25 rep=2 cont_K200   ttfr=20561 cpu=5.52 mem=1185 cg=0::/grid/run
+grid v=0.25 rep=2 cold        ttfr=16496 cpu=5.27 mem=1187 cg=0::/grid/run
+grid v=0.25 rep=2 disk_K50    ttfr=1031 cpu=1.16 mem=222 cg=0::/grid/run
+grid v=0.25 rep=2 cont_K0     ttfr=17670 cpu=5.97 mem=322 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K100 ttfr=1098 cpu=1.14 mem=331 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K50 ttfr=385 cpu=1.11 mem=331 cg=0::/grid/run
+grid v=0.25 rep=2 cont_K50    ttfr=18384 cpu=5.71 mem=411 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K5  ttfr=1171 cpu=1.54 mem=442 cg=0::/grid/run
+grid v=0.25 rep=2 restore_K200 ttfr=1050 cpu=0.97 mem=516 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K50 ttfr=897 cpu=1.27 mem=597 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K1  ttfr=1693 cpu=1.70 mem=693 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K100 ttfr=783 cpu=0.94 mem=747 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K5  ttfr=698 cpu=1.20 mem=821 cg=0::/grid/run
+grid v=0.25 rep=3 cold        ttfr=16493 cpu=5.49 mem=895 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K0  ttfr=2477 cpu=2.14 mem=927 cg=0::/grid/run
+grid v=0.25 rep=3 cont_K50    ttfr=18388 cpu=5.31 mem=979 cg=0::/grid/run
+grid v=0.25 rep=3 disk_K50    ttfr=15644 cpu=1.37 mem=215 cg=0::/grid/run
+grid v=0.25 rep=3 cold_np     ttfr=17183 cpu=5.35 mem=308 cg=0::/grid/run
+grid v=0.25 rep=3 cont_K200   ttfr=20797 cpu=5.61 mem=305 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K200 ttfr=878 cpu=0.89 mem=325 cg=0::/grid/run
+grid v=0.25 rep=3 cont_K0     ttfr=16586 cpu=5.38 mem=400 cg=0::/grid/run
+grid v=0.25 rep=3 rewarm_K50  ttfr=1995 cpu=1.09 mem=395 cg=0::/grid/run
+grid v=0.25 rep=3 restore_K20 ttfr=884 cpu=1.39 mem=505 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K50 ttfr=871 cpu=1.04 mem=577 cg=0::/grid/run
+grid v=0.25 rep=4 cont_K0     ttfr=16198 cpu=5.58 mem=659 cg=0::/grid/run
+grid v=0.25 rep=4 disk_K50    ttfr=1017 cpu=1.08 mem=215 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K20 ttfr=668 cpu=1.15 mem=283 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K100 ttfr=879 cpu=1.13 mem=371 cg=0::/grid/run
+grid v=0.25 rep=4 cold        ttfr=17080 cpu=5.42 mem=464 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K200 ttfr=788 cpu=0.73 mem=458 cg=0::/grid/run
+grid v=0.25 rep=4 cold_np     ttfr=16479 cpu=5.47 mem=539 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K0  ttfr=3097 cpu=1.96 mem=580 cg=0::/grid/run
+grid v=0.25 rep=4 cont_K200   ttfr=23163 cpu=6.17 mem=630 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K1  ttfr=971 cpu=1.55 mem=644 cg=0::/grid/run
+grid v=0.25 rep=4 restore_K5  ttfr=980 cpu=1.09 mem=717 cg=0::/grid/run
+grid v=0.25 rep=4 rewarm_K50  ttfr=2093 cpu=1.09 mem=781 cg=0::/grid/run
+grid v=0.25 rep=4 cont_K50    ttfr=18716 cpu=5.43 mem=864 cg=0::/grid/run
+grid v=0.25 rep=5 cont_K50    ttfr=18064 cpu=5.21 mem=861 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K20 ttfr=888 cpu=1.36 mem=877 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K0  ttfr=2583 cpu=2.19 mem=975 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K5  ttfr=1286 cpu=1.68 mem=1050 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K100 ttfr=806 cpu=0.86 mem=1098 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K1  ttfr=1404 cpu=1.71 mem=1205 cg=0::/grid/run
+grid v=0.25 rep=5 disk_K50    ttfr=1151 cpu=1.34 mem=217 cg=0::/grid/run
+grid v=0.25 rep=5 cont_K0     ttfr=17286 cpu=5.55 mem=315 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K50 ttfr=288 cpu=1.12 mem=239 cg=0::/grid/run
+grid v=0.25 rep=5 cont_K200   ttfr=20381 cpu=5.46 mem=310 cg=0::/grid/run
+grid v=0.25 rep=5 restore_K200 ttfr=883 cpu=0.96 mem=310 cg=0::/grid/run
+grid v=0.25 rep=5 cold_np     ttfr=16276 cpu=5.20 mem=391 cg=0::/grid/run
+grid v=0.25 rep=5 cold        ttfr=17194 cpu=5.78 mem=396 cg=0::/grid/run
+grid v=0.25 rep=5 rewarm_K50  ttfr=2096 cpu=1.09 mem=383 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K1  ttfr=1373 cpu=1.86 mem=485 cg=0::/grid/run
+grid v=0.25 rep=6 disk_K50    ttfr=1075 cpu=1.21 mem=220 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K200 ttfr=976 cpu=1.02 mem=313 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K100 ttfr=896 cpu=1.11 mem=404 cg=0::/grid/run
+grid v=0.25 rep=6 cold        ttfr=17185 cpu=5.77 mem=502 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K0  ttfr=2590 cpu=1.80 mem=525 cg=0::/grid/run
+grid v=0.25 rep=6 cont_K0     ttfr=16671 cpu=5.55 mem=587 cg=0::/grid/run
+grid v=0.25 rep=6 cont_K200   ttfr=21166 cpu=5.76 mem=582 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K20 ttfr=781 cpu=1.11 mem=584 cg=0::/grid/run
+grid v=0.25 rep=6 rewarm_K50  ttfr=1980 cpu=1.07 mem=654 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K5  ttfr=1078 cpu=1.57 mem=768 cg=0::/grid/run
+grid v=0.25 rep=6 cold_np     ttfr=15992 cpu=5.43 mem=830 cg=0::/grid/run
+grid v=0.25 rep=6 cont_K50    ttfr=19185 cpu=5.76 mem=829 cg=0::/grid/run
+grid v=0.25 rep=6 restore_K50 ttfr=300 cpu=1.00 mem=752 cg=0::/grid/run
+grid v=0.25 rep=7 disk_K50    ttfr=1085 cpu=1.40 mem=216 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K20 ttfr=877 cpu=1.42 mem=316 cg=0::/grid/run
+grid v=0.25 rep=7 cont_K200   ttfr=23001 cpu=6.29 mem=410 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K50 ttfr=289 cpu=1.21 mem=330 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K200 ttfr=878 cpu=0.89 mem=420 cg=0::/grid/run
+grid v=0.25 rep=7 cont_K0     ttfr=16690 cpu=5.60 mem=498 cg=0::/grid/run
+grid v=0.25 rep=7 cont_K50    ttfr=18392 cpu=5.31 mem=499 cg=0::/grid/run
+grid v=0.25 rep=7 cold_np     ttfr=18087 cpu=6.21 mem=497 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K1  ttfr=2158 cpu=2.37 mem=514 cg=0::/grid/run
+grid v=0.25 rep=7 cold        ttfr=15778 cpu=5.36 mem=582 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K0  ttfr=2386 cpu=2.07 mem=612 cg=0::/grid/run
+grid v=0.25 rep=7 rewarm_K50  ttfr=1989 cpu=1.15 mem=657 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K5  ttfr=702 cpu=1.21 mem=728 cg=0::/grid/run
+grid v=0.25 rep=7 restore_K100 ttfr=865 cpu=0.88 mem=799 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K50 ttfr=975 cpu=1.03 mem=885 cg=0::/grid/run
+grid v=0.25 rep=8 cont_K200   ttfr=22899 cpu=6.34 mem=967 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K1  ttfr=1046 cpu=1.46 mem=973 cg=0::/grid/run
+grid v=0.25 rep=8 cont_K50    ttfr=18202 cpu=5.51 mem=1046 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K100 ttfr=880 cpu=1.12 mem=1057 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K0  ttfr=2913 cpu=1.98 mem=1174 cg=0::/grid/run
+grid v=0.25 rep=8 rewarm_K50  ttfr=1983 cpu=1.11 mem=1216 cg=0::/grid/run
+grid v=0.25 rep=8 cold        ttfr=16490 cpu=5.22 mem=1294 cg=0::/grid/run
+grid v=0.25 rep=8 disk_K50    ttfr=1132 cpu=1.09 mem=215 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K5  ttfr=774 cpu=1.07 mem=294 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K200 ttfr=890 cpu=0.79 mem=361 cg=0::/grid/run
+grid v=0.25 rep=8 cold_np     ttfr=17783 cpu=5.64 mem=462 cg=0::/grid/run
+grid v=0.25 rep=8 restore_K20 ttfr=693 cpu=1.15 mem=450 cg=0::/grid/run
+grid v=0.25 rep=8 cont_K0     ttfr=16402 cpu=5.19 mem=525 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K5  ttfr=1370 cpu=1.67 mem=550 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K200 ttfr=775 cpu=0.93 mem=604 cg=0::/grid/run
+grid v=0.25 rep=9 rewarm_K50  ttfr=1889 cpu=1.06 mem=680 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K20 ttfr=970 cpu=1.34 mem=774 cg=0::/grid/run
+grid v=0.25 rep=9 cont_K50    ttfr=18094 cpu=5.24 mem=841 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K0  ttfr=2687 cpu=2.19 mem=869 cg=0::/grid/run
+grid v=0.25 rep=9 cont_K0     ttfr=16486 cpu=5.27 mem=928 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K1  ttfr=1480 cpu=1.69 mem=944 cg=0::/grid/run
+grid v=0.25 rep=9 cont_K200   ttfr=22168 cpu=6.13 mem=1015 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K50 ttfr=787 cpu=1.25 mem=1018 cg=0::/grid/run
+grid v=0.25 rep=9 disk_K50    ttfr=1015 cpu=1.31 mem=219 cg=0::/grid/run
+grid v=0.25 rep=9 restore_K100 ttfr=681 cpu=0.84 mem=284 cg=0::/grid/run
+grid v=0.25 rep=9 cold        ttfr=17308 cpu=5.43 mem=385 cg=0::/grid/run
+grid v=0.25 rep=9 cold_np     ttfr=16357 cpu=5.59 mem=392 cg=0::/grid/run
+grid v=0.25 rep=10 cold_np     ttfr=16289 cpu=5.21 mem=388 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K200 ttfr=877 cpu=0.96 mem=402 cg=0::/grid/run
+grid v=0.25 rep=10 cont_K0     ttfr=16578 cpu=5.35 mem=472 cg=0::/grid/run
+grid v=0.25 rep=10 cold        ttfr=16096 cpu=5.09 mem=477 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K100 ttfr=978 cpu=1.11 mem=493 cg=0::/grid/run
+grid v=0.25 rep=10 cont_K50    ttfr=18471 cpu=5.31 mem=567 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K20 ttfr=777 cpu=1.39 mem=565 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K5  ttfr=1658 cpu=2.39 mem=672 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K1  ttfr=1878 cpu=2.33 mem=755 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K0  ttfr=3303 cpu=2.23 mem=845 cg=0::/grid/run
+grid v=0.25 rep=10 cont_K200   ttfr=22353 cpu=6.05 mem=907 cg=0::/grid/run
+grid v=0.25 rep=10 restore_K50 ttfr=870 cpu=1.14 mem=919 cg=0::/grid/run
+grid v=0.25 rep=10 disk_K50    ttfr=1063 cpu=1.21 mem=222 cg=0::/grid/run
+grid v=0.25 rep=10 rewarm_K50  ttfr=1886 cpu=1.09 mem=289 cg=0::/grid/run
+grid v=0.25 rep=11 cont_K0     ttfr=17768 cpu=5.54 mem=389 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K50 ttfr=893 cpu=1.28 mem=396 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K5  ttfr=688 cpu=1.21 mem=463 cg=0::/grid/run
+grid v=0.25 rep=11 cold        ttfr=16366 cpu=5.18 mem=540 cg=0::/grid/run
+grid v=0.25 rep=11 cold_np     ttfr=16484 cpu=5.37 mem=535 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K200 ttfr=794 cpu=0.88 mem=555 cg=0::/grid/run
+grid v=0.25 rep=11 cont_K200   ttfr=20689 cpu=5.55 mem=632 cg=0::/grid/run
+grid v=0.25 rep=11 rewarm_K50  ttfr=1970 cpu=1.11 mem=626 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K20 ttfr=887 cpu=1.40 mem=735 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K100 ttfr=887 cpu=0.90 mem=795 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K0  ttfr=2794 cpu=2.27 mem=911 cg=0::/grid/run
+grid v=0.25 rep=11 disk_K50    ttfr=1093 cpu=1.36 mem=215 cg=0::/grid/run
+grid v=0.25 rep=11 restore_K1  ttfr=1582 cpu=1.73 mem=311 cg=0::/grid/run
+grid v=0.25 rep=11 cont_K50    ttfr=19283 cpu=5.51 mem=388 cg=0::/grid/run
+grid v=0.25 rep=12 cont_K50    ttfr=18781 cpu=5.73 mem=398 cg=0::/grid/run
+grid v=0.25 rep=12 cont_K0     ttfr=16459 cpu=5.17 mem=386 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K20 ttfr=670 cpu=1.14 mem=381 cg=0::/grid/run
+grid v=0.25 rep=12 disk_K50    ttfr=1123 cpu=1.10 mem=214 cg=0::/grid/run
+grid v=0.25 rep=12 cont_K200   ttfr=22979 cpu=6.28 mem=310 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K50 ttfr=285 cpu=0.91 mem=234 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K5  ttfr=1077 cpu=1.14 mem=314 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K1  ttfr=991 cpu=1.57 mem=401 cg=0::/grid/run
+grid v=0.25 rep=12 rewarm_K50  ttfr=1964 cpu=1.07 mem=463 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K100 ttfr=977 cpu=1.15 mem=552 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K200 ttfr=880 cpu=0.74 mem=624 cg=0::/grid/run
+grid v=0.25 rep=12 cold_np     ttfr=17187 cpu=5.38 mem=698 cg=0::/grid/run
+grid v=0.25 rep=12 cold        ttfr=16477 cpu=5.27 mem=702 cg=0::/grid/run
+grid v=0.25 rep=12 restore_K0  ttfr=2982 cpu=1.92 mem=743 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K50 ttfr=791 cpu=1.25 mem=802 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K5  ttfr=1175 cpu=1.65 mem=898 cg=0::/grid/run
+grid v=0.25 rep=13 disk_K50    ttfr=1057 cpu=1.32 mem=217 cg=0::/grid/run
+grid v=0.25 rep=13 cold        ttfr=17397 cpu=5.39 mem=315 cg=0::/grid/run
+grid v=0.25 rep=13 cont_K50    ttfr=18593 cpu=5.42 mem=316 cg=0::/grid/run
+grid v=0.25 rep=13 cont_K0     ttfr=16482 cpu=5.62 mem=319 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K200 ttfr=775 cpu=0.97 mem=310 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K20 ttfr=977 cpu=1.34 mem=406 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K100 ttfr=790 cpu=0.86 mem=470 cg=0::/grid/run
+grid v=0.25 rep=13 cont_K200   ttfr=23382 cpu=6.58 mem=550 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K0  ttfr=2586 cpu=2.28 mem=582 cg=0::/grid/run
+grid v=0.25 rep=13 rewarm_K50  ttfr=1995 cpu=1.09 mem=624 cg=0::/grid/run
+grid v=0.25 rep=13 restore_K1  ttfr=1479 cpu=1.69 mem=724 cg=0::/grid/run
+grid v=0.25 rep=13 cold_np     ttfr=16279 cpu=5.30 mem=783 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K20 ttfr=781 cpu=1.08 mem=784 cg=0::/grid/run
+grid v=0.25 rep=14 disk_K50    ttfr=1083 cpu=1.18 mem=222 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K5  ttfr=1154 cpu=1.58 mem=327 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K0  ttfr=2690 cpu=1.85 mem=420 cg=0::/grid/run
+grid v=0.25 rep=14 cold_np     ttfr=17203 cpu=5.41 mem=498 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K200 ttfr=889 cpu=0.99 mem=516 cg=0::/grid/run
+grid v=0.25 rep=14 cont_K200   ttfr=22696 cpu=6.32 mem=598 cg=0::/grid/run
+grid v=0.25 rep=14 cont_K50    ttfr=18989 cpu=5.92 mem=598 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K1  ttfr=1191 cpu=1.78 mem=614 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K100 ttfr=993 cpu=1.12 mem=687 cg=0::/grid/run
+grid v=0.25 rep=14 rewarm_K50  ttfr=2172 cpu=1.15 mem=754 cg=0::/grid/run
+grid v=0.25 rep=14 restore_K50 ttfr=375 cpu=1.02 mem=756 cg=0::/grid/run
+grid v=0.25 rep=14 cont_K0     ttfr=16376 cpu=5.62 mem=836 cg=0::/grid/run
+grid v=0.25 rep=14 cold        ttfr=16675 cpu=5.40 mem=828 cg=0::/grid/run
+grid v=0.25 rep=15 cont_K200   ttfr=20684 cpu=5.57 mem=832 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K100 ttfr=784 cpu=0.88 mem=828 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K5  ttfr=698 cpu=1.22 mem=902 cg=0::/grid/run
+grid v=0.25 rep=15 cold        ttfr=16474 cpu=5.30 mem=975 cg=0::/grid/run
+grid v=0.25 rep=15 cold_np     ttfr=16496 cpu=5.21 mem=973 cg=0::/grid/run
+grid v=0.25 rep=15 rewarm_K50  ttfr=1995 cpu=1.12 mem=971 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K200 ttfr=795 cpu=0.90 mem=1066 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K20 ttfr=691 cpu=1.34 mem=1170 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K50 ttfr=1073 cpu=1.30 mem=1243 cg=0::/grid/run
+grid v=0.25 rep=15 disk_K50    ttfr=1086 cpu=1.38 mem=216 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K0  ttfr=2671 cpu=2.45 mem=328 cg=0::/grid/run
+grid v=0.25 rep=15 restore_K1  ttfr=2080 cpu=1.93 mem=396 cg=0::/grid/run
+grid v=0.25 rep=15 cont_K0     ttfr=17564 cpu=5.64 mem=475 cg=0::/grid/run
+grid v=0.25 rep=15 cont_K50    ttfr=19570 cpu=5.88 mem=478 cg=0::/grid/run
+grid v=0.25 rep=16 cold        ttfr=16509 cpu=5.23 mem=473 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K0  ttfr=2970 cpu=1.90 mem=513 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K20 ttfr=668 cpu=1.14 mem=552 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K50 ttfr=894 cpu=1.03 mem=639 cg=0::/grid/run
+grid v=0.25 rep=16 cont_K0     ttfr=16581 cpu=5.32 mem=711 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K100 ttfr=898 cpu=1.12 mem=724 cg=0::/grid/run
+grid v=0.25 rep=16 cont_K50    ttfr=18670 cpu=5.46 mem=801 cg=0::/grid/run
+grid v=0.25 rep=16 disk_K50    ttfr=1121 cpu=1.13 mem=215 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K200 ttfr=866 cpu=0.75 mem=286 cg=0::/grid/run
+grid v=0.25 rep=16 cont_K200   ttfr=22672 cpu=6.14 mem=388 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K5  ttfr=984 cpu=1.07 mem=388 cg=0::/grid/run
+grid v=0.25 rep=16 restore_K1  ttfr=988 cpu=1.47 mem=473 cg=0::/grid/run
+grid v=0.25 rep=16 rewarm_K50  ttfr=1987 cpu=1.03 mem=536 cg=0::/grid/run
+grid v=0.25 rep=16 cold_np     ttfr=16269 cpu=5.61 mem=623 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K200 ttfr=773 cpu=0.93 mem=612 cg=0::/grid/run
+grid v=0.25 rep=17 cont_K0     ttfr=17096 cpu=5.51 mem=695 cg=0::/grid/run
+grid v=0.25 rep=17 cont_K200   ttfr=20883 cpu=5.59 mem=695 cg=0::/grid/run
+grid v=0.25 rep=17 cont_K50    ttfr=18374 cpu=5.34 mem=695 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K20 ttfr=962 cpu=1.34 mem=711 cg=0::/grid/run
+grid v=0.25 rep=17 disk_K50    ttfr=1107 cpu=1.40 mem=219 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K100 ttfr=730 cpu=0.84 mem=282 cg=0::/grid/run
+grid v=0.25 rep=17 cold_np     ttfr=17501 cpu=5.50 mem=387 cg=0::/grid/run
+grid v=0.25 rep=17 cold        ttfr=16779 cpu=5.49 mem=388 cg=0::/grid/run
+grid v=0.25 rep=17 rewarm_K50  ttfr=2597 cpu=1.25 mem=377 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K5  ttfr=1199 cpu=1.67 mem=478 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K0  ttfr=2493 cpu=2.25 mem=570 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K50 ttfr=281 cpu=1.16 mem=543 cg=0::/grid/run
+grid v=0.25 rep=17 restore_K1  ttfr=1472 cpu=1.71 mem=636 cg=0::/grid/run
+grid v=0.25 rep=18 cold        ttfr=16699 cpu=5.69 mem=705 cg=0::/grid/run
+grid v=0.25 rep=18 disk_K50    ttfr=1128 cpu=1.17 mem=221 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K1  ttfr=1181 cpu=1.82 mem=321 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K200 ttfr=974 cpu=0.98 mem=395 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K0  ttfr=2612 cpu=1.82 mem=499 cg=0::/grid/run
+grid v=0.25 rep=18 cont_K200   ttfr=22598 cpu=6.20 mem=576 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K100 ttfr=986 cpu=1.12 mem=593 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K50 ttfr=283 cpu=0.99 mem=591 cg=0::/grid/run
+grid v=0.25 rep=18 cont_K0     ttfr=17094 cpu=5.35 mem=665 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K5  ttfr=1010 cpu=1.62 mem=703 cg=0::/grid/run
+grid v=0.25 rep=18 cold_np     ttfr=16677 cpu=5.61 mem=762 cg=0::/grid/run
+grid v=0.25 rep=18 restore_K20 ttfr=772 cpu=1.11 mem=760 cg=0::/grid/run
+grid v=0.25 rep=18 cont_K50    ttfr=18983 cpu=5.74 mem=844 cg=0::/grid/run
+grid v=0.25 rep=18 rewarm_K50  ttfr=1893 cpu=1.09 mem=830 cg=0::/grid/run
+grid v=0.25 rep=19 rewarm_K50  ttfr=1984 cpu=1.11 mem=902 cg=0::/grid/run
+grid v=0.25 rep=19 disk_K50    ttfr=1146 cpu=1.35 mem=215 cg=0::/grid/run
+grid v=0.25 rep=19 cold_np     ttfr=17380 cpu=5.42 mem=311 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K5  ttfr=779 cpu=1.22 mem=304 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K1  ttfr=1488 cpu=1.71 mem=399 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K0  ttfr=2567 cpu=2.18 mem=489 cg=0::/grid/run
+grid v=0.25 rep=19 cold        ttfr=16483 cpu=5.24 mem=542 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K200 ttfr=873 cpu=0.89 mem=556 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K50 ttfr=287 cpu=1.20 mem=558 cg=0::/grid/run
+grid v=0.25 rep=19 cont_K50    ttfr=18187 cpu=5.27 mem=634 cg=0::/grid/run
+grid v=0.25 rep=19 cont_K0     ttfr=17598 cpu=5.89 mem=634 cg=0::/grid/run
+grid v=0.25 rep=19 cont_K200   ttfr=20470 cpu=5.52 mem=629 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K100 ttfr=707 cpu=0.86 mem=629 cg=0::/grid/run
+grid v=0.25 rep=19 restore_K20 ttfr=898 cpu=1.43 mem=734 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K100 ttfr=394 cpu=1.09 mem=814 cg=0::/grid/run
+grid v=0.5 rep=0 cont_K0     ttfr=7688 cpu=4.94 mem=890 cg=0::/grid/run
+grid v=0.5 rep=0 cold_np     ttfr=7877 cpu=5.45 mem=896 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K5  ttfr=475 cpu=1.10 mem=890 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K50 ttfr=459 cpu=1.02 mem=971 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K0  ttfr=1480 cpu=1.86 mem=1086 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K20 ttfr=375 cpu=1.13 mem=1127 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K1  ttfr=587 cpu=1.39 mem=1219 cg=0::/grid/run
+grid v=0.5 rep=0 cont_K50    ttfr=8887 cpu=5.25 mem=1292 cg=0::/grid/run
+grid v=0.5 rep=0 cont_K200   ttfr=9694 cpu=5.26 mem=1290 cg=0::/grid/run
+grid v=0.5 rep=0 cold        ttfr=7872 cpu=5.42 mem=1297 cg=0::/grid/run
+grid v=0.5 rep=0 restore_K200 ttfr=388 cpu=0.76 mem=1286 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K0  ttfr=1291 cpu=2.16 mem=1398 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K20 ttfr=483 cpu=1.32 mem=1459 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K5  ttfr=603 cpu=1.66 mem=1554 cg=0::/grid/run
+grid v=0.5 rep=1 cont_K50    ttfr=9197 cpu=5.68 mem=1617 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K50 ttfr=606 cpu=1.36 mem=1623 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K100 ttfr=462 cpu=0.87 mem=1688 cg=0::/grid/run
+grid v=0.5 rep=1 cold_np     ttfr=7959 cpu=5.21 mem=1769 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K1  ttfr=697 cpu=1.69 mem=1792 cg=0::/grid/run
+grid v=0.5 rep=1 cold        ttfr=8306 cpu=5.30 mem=1855 cg=0::/grid/run
+grid v=0.5 rep=1 cont_K0     ttfr=7882 cpu=5.08 mem=1852 cg=0::/grid/run
+grid v=0.5 rep=1 restore_K200 ttfr=402 cpu=0.95 mem=1849 cg=0::/grid/run
+grid v=0.5 rep=1 cont_K200   ttfr=11291 cpu=6.34 mem=1931 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K200 ttfr=518 cpu=1.28 mem=1945 cg=0::/grid/run
+grid v=0.5 rep=2 cont_K0     ttfr=10768 cpu=6.57 mem=2018 cg=0::/grid/run
+grid v=0.5 rep=2 cont_K200   ttfr=10697 cpu=5.96 mem=2022 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K5  ttfr=564 cpu=1.65 mem=2054 cg=0::/grid/run
+grid v=0.5 rep=2 cold        ttfr=8162 cpu=5.20 mem=2114 cg=0::/grid/run
+grid v=0.5 rep=2 cont_K50    ttfr=9081 cpu=5.60 mem=2120 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K20 ttfr=481 cpu=1.07 mem=2114 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K100 ttfr=492 cpu=1.10 mem=2207 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K50 ttfr=369 cpu=1.05 mem=2293 cg=0::/grid/run
+grid v=0.5 rep=2 cold_np     ttfr=9689 cpu=6.56 mem=2364 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K0  ttfr=1755 cpu=2.03 mem=2394 cg=0::/grid/run
+grid v=0.5 rep=2 restore_K1  ttfr=661 cpu=1.77 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K1  ttfr=261 cpu=1.61 mem=2476 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K0  ttfr=973 cpu=2.04 mem=2491 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K5  ttfr=92 cpu=1.21 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=3 cont_K200   ttfr=10178 cpu=5.47 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=3 cont_K50    ttfr=9103 cpu=5.35 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K200 ttfr=103 cpu=1.02 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=3 cont_K0     ttfr=8475 cpu=5.73 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K20 ttfr=165 cpu=1.36 mem=2471 cg=0::/grid/run
+grid v=0.5 rep=3 cold_np     ttfr=7791 cpu=5.37 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=3 cold        ttfr=8278 cpu=5.73 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K100 ttfr=161 cpu=0.83 mem=2457 cg=0::/grid/run
+grid v=0.5 rep=3 restore_K50 ttfr=100 cpu=1.18 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=4 cont_K200   ttfr=10167 cpu=5.51 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K200 ttfr=98 cpu=0.73 mem=2458 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K5  ttfr=170 cpu=1.01 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=4 cold_np     ttfr=7994 cpu=5.18 mem=2537 cg=0::/grid/run
+grid v=0.5 rep=4 cont_K0     ttfr=7979 cpu=5.12 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K1  ttfr=266 cpu=1.51 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K20 ttfr=169 cpu=1.05 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=4 cont_K50    ttfr=9569 cpu=5.72 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K0  ttfr=1083 cpu=1.72 mem=2487 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K50 ttfr=168 cpu=0.92 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=4 cold        ttfr=7799 cpu=5.07 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=4 restore_K100 ttfr=170 cpu=0.97 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K100 ttfr=80 cpu=0.69 mem=2456 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K20 ttfr=109 cpu=1.22 mem=2466 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K0  ttfr=989 cpu=2.07 mem=2492 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K1  ttfr=266 cpu=1.56 mem=2477 cg=0::/grid/run
+grid v=0.5 rep=5 cont_K50    ttfr=8784 cpu=5.06 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=5 cont_K200   ttfr=10568 cpu=5.91 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K50 ttfr=171 cpu=1.17 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=5 cont_K0     ttfr=7792 cpu=5.33 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K200 ttfr=85 cpu=0.79 mem=2457 cg=0::/grid/run
+grid v=0.5 rep=5 cold        ttfr=7978 cpu=5.48 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=5 restore_K5  ttfr=152 cpu=1.59 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=5 cold_np     ttfr=8065 cpu=5.48 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K0  ttfr=978 cpu=1.65 mem=2475 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K200 ttfr=96 cpu=0.85 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K20 ttfr=176 cpu=0.92 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K50 ttfr=163 cpu=1.00 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K1  ttfr=285 cpu=1.68 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=6 cold_np     ttfr=7966 cpu=5.51 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=6 cont_K200   ttfr=9768 cpu=5.26 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K5  ttfr=170 cpu=1.46 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=6 restore_K100 ttfr=158 cpu=0.95 mem=2466 cg=0::/grid/run
+grid v=0.5 rep=6 cont_K50    ttfr=8697 cpu=5.10 mem=2531 cg=0::/grid/run
+grid v=0.5 rep=6 cont_K0     ttfr=7866 cpu=5.00 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=6 cold        ttfr=8282 cpu=5.27 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K20 ttfr=172 cpu=1.24 mem=2472 cg=0::/grid/run
+grid v=0.5 rep=7 cont_K200   ttfr=10806 cpu=6.22 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K100 ttfr=169 cpu=0.93 mem=2458 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K0  ttfr=1095 cpu=2.22 mem=2489 cg=0::/grid/run
+grid v=0.5 rep=7 cold_np     ttfr=7883 cpu=4.98 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K50 ttfr=162 cpu=1.17 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=7 cold        ttfr=7915 cpu=5.38 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K200 ttfr=176 cpu=0.75 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K1  ttfr=205 cpu=1.57 mem=2476 cg=0::/grid/run
+grid v=0.5 rep=7 cont_K0     ttfr=7864 cpu=5.35 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=7 restore_K5  ttfr=158 cpu=1.09 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=7 cont_K50    ttfr=9077 cpu=5.49 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=8 cont_K50    ttfr=8980 cpu=5.45 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=8 cold        ttfr=7781 cpu=5.07 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K50 ttfr=100 cpu=0.89 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K1  ttfr=197 cpu=1.30 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K5  ttfr=103 cpu=1.02 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=8 cont_K200   ttfr=10079 cpu=5.45 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K100 ttfr=164 cpu=0.96 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K200 ttfr=167 cpu=0.58 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K20 ttfr=92 cpu=1.04 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=8 restore_K0  ttfr=988 cpu=1.73 mem=2487 cg=0::/grid/run
+grid v=0.5 rep=8 cold_np     ttfr=7871 cpu=5.43 mem=2544 cg=0::/grid/run
+grid v=0.5 rep=8 cont_K0     ttfr=7970 cpu=5.45 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K5  ttfr=173 cpu=1.58 mem=2480 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K100 ttfr=93 cpu=0.70 mem=2457 cg=0::/grid/run
+grid v=0.5 rep=9 cold        ttfr=7866 cpu=5.04 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K1  ttfr=286 cpu=1.56 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=9 cont_K50    ttfr=9157 cpu=5.40 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K50 ttfr=112 cpu=1.10 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K20 ttfr=179 cpu=1.24 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K0  ttfr=998 cpu=1.95 mem=2488 cg=0::/grid/run
+grid v=0.5 rep=9 cont_K200   ttfr=11071 cpu=6.15 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=9 cold_np     ttfr=7972 cpu=5.59 mem=2546 cg=0::/grid/run
+grid v=0.5 rep=9 cont_K0     ttfr=9588 cpu=6.35 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=9 restore_K200 ttfr=104 cpu=0.84 mem=2459 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K1  ttfr=270 cpu=1.84 mem=2481 cg=0::/grid/run
+grid v=0.5 rep=10 cont_K0     ttfr=8267 cpu=5.63 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=10 cont_K200   ttfr=10188 cpu=5.53 mem=2542 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K50 ttfr=159 cpu=1.01 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K100 ttfr=157 cpu=0.94 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=10 cont_K50    ttfr=9283 cpu=5.63 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=10 cold        ttfr=9289 cpu=6.20 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K200 ttfr=182 cpu=1.15 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K5  ttfr=189 cpu=1.73 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K20 ttfr=178 cpu=1.15 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=10 restore_K0  ttfr=1464 cpu=2.15 mem=2477 cg=0::/grid/run
+grid v=0.5 rep=10 cold_np     ttfr=11772 cpu=7.83 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K5  ttfr=274 cpu=1.48 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=11 cold        ttfr=9984 cpu=6.32 mem=2537 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K20 ttfr=203 cpu=1.42 mem=2473 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K1  ttfr=363 cpu=1.83 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K0  ttfr=1100 cpu=2.29 mem=2492 cg=0::/grid/run
+grid v=0.5 rep=11 cont_K50    ttfr=9764 cpu=5.93 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K200 ttfr=108 cpu=0.79 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=11 cont_K0     ttfr=8175 cpu=5.63 mem=2546 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K100 ttfr=156 cpu=0.78 mem=2459 cg=0::/grid/run
+grid v=0.5 rep=11 cold_np     ttfr=8280 cpu=5.63 mem=2544 cg=0::/grid/run
+grid v=0.5 rep=11 restore_K50 ttfr=83 cpu=1.20 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=11 cont_K200   ttfr=10571 cpu=5.91 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K0  ttfr=1052 cpu=1.78 mem=2488 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K5  ttfr=175 cpu=1.04 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=12 cold        ttfr=8076 cpu=5.14 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K100 ttfr=167 cpu=0.99 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=12 cont_K50    ttfr=9394 cpu=5.37 mem=2537 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K50 ttfr=168 cpu=0.95 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K200 ttfr=161 cpu=0.61 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K1  ttfr=267 cpu=1.35 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=12 cont_K0     ttfr=8380 cpu=5.63 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=12 restore_K20 ttfr=77 cpu=1.06 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=12 cont_K200   ttfr=10800 cpu=5.99 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=12 cold_np     ttfr=8087 cpu=5.13 mem=2535 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K0  ttfr=1063 cpu=2.13 mem=2494 cg=0::/grid/run
+grid v=0.5 rep=13 cont_K50    ttfr=8971 cpu=5.18 mem=2538 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K5  ttfr=154 cpu=1.64 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=13 cont_K200   ttfr=11080 cpu=5.99 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K100 ttfr=174 cpu=0.73 mem=2458 cg=0::/grid/run
+grid v=0.5 rep=13 cont_K0     ttfr=8482 cpu=5.49 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K50 ttfr=93 cpu=1.12 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=13 cold        ttfr=9089 cpu=6.09 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K1  ttfr=274 cpu=1.62 mem=2477 cg=0::/grid/run
+grid v=0.5 rep=13 cold_np     ttfr=8350 cpu=5.58 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K20 ttfr=183 cpu=1.28 mem=2466 cg=0::/grid/run
+grid v=0.5 rep=13 restore_K200 ttfr=88 cpu=0.83 mem=2459 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K20 ttfr=95 cpu=0.96 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=14 cold_np     ttfr=8179 cpu=5.63 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=14 cont_K50    ttfr=9287 cpu=5.71 mem=2544 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K100 ttfr=164 cpu=1.01 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K50 ttfr=173 cpu=1.02 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K0  ttfr=989 cpu=1.97 mem=2477 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K5  ttfr=266 cpu=1.90 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K1  ttfr=284 cpu=1.76 mem=2481 cg=0::/grid/run
+grid v=0.5 rep=14 cont_K200   ttfr=11386 cpu=6.32 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=14 cold        ttfr=7976 cpu=5.58 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=14 restore_K200 ttfr=161 cpu=0.84 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=14 cont_K0     ttfr=7987 cpu=5.40 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K1  ttfr=348 cpu=1.62 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K0  ttfr=996 cpu=2.13 mem=2491 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K100 ttfr=179 cpu=0.78 mem=2460 cg=0::/grid/run
+grid v=0.5 rep=15 cont_K200   ttfr=10782 cpu=5.90 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=15 cold        ttfr=8184 cpu=5.63 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K200 ttfr=173 cpu=0.77 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K5  ttfr=186 cpu=1.12 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=15 cont_K50    ttfr=9282 cpu=5.64 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K20 ttfr=94 cpu=1.27 mem=2472 cg=0::/grid/run
+grid v=0.5 rep=15 restore_K50 ttfr=177 cpu=1.21 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=15 cold_np     ttfr=8071 cpu=5.51 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=15 cont_K0     ttfr=8010 cpu=5.11 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K1  ttfr=268 cpu=1.30 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=16 cont_K200   ttfr=10079 cpu=5.46 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K200 ttfr=173 cpu=0.60 mem=2459 cg=0::/grid/run
+grid v=0.5 rep=16 cold_np     ttfr=8156 cpu=5.45 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=16 cont_K50    ttfr=8770 cpu=5.04 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=16 cold        ttfr=7963 cpu=5.06 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K0  ttfr=1099 cpu=1.77 mem=2488 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K5  ttfr=183 cpu=1.05 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K50 ttfr=154 cpu=0.90 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K100 ttfr=162 cpu=0.96 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=16 restore_K20 ttfr=100 cpu=1.03 mem=2461 cg=0::/grid/run
+grid v=0.5 rep=16 cont_K0     ttfr=8268 cpu=5.36 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K100 ttfr=105 cpu=0.68 mem=2458 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K50 ttfr=171 cpu=1.12 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=17 cold        ttfr=7881 cpu=4.99 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K5  ttfr=173 cpu=1.62 mem=2481 cg=0::/grid/run
+grid v=0.5 rep=17 cont_K200   ttfr=10071 cpu=5.43 mem=2543 cg=0::/grid/run
+grid v=0.5 rep=17 cold_np     ttfr=7781 cpu=5.39 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K200 ttfr=83 cpu=0.80 mem=2458 cg=0::/grid/run
+grid v=0.5 rep=17 cont_K0     ttfr=7978 cpu=5.41 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K1  ttfr=264 cpu=1.59 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=17 cont_K50    ttfr=8579 cpu=5.00 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K0  ttfr=986 cpu=2.09 mem=2492 cg=0::/grid/run
+grid v=0.5 rep=17 restore_K20 ttfr=169 cpu=1.22 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K20 ttfr=99 cpu=0.91 mem=2462 cg=0::/grid/run
+grid v=0.5 rep=18 cont_K0     ttfr=7975 cpu=5.12 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K5  ttfr=185 cpu=1.45 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=18 cold        ttfr=7862 cpu=5.40 mem=2545 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K100 ttfr=168 cpu=0.95 mem=2467 cg=0::/grid/run
+grid v=0.5 rep=18 cont_K50    ttfr=8973 cpu=5.22 mem=2539 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K50 ttfr=155 cpu=1.00 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K1  ttfr=266 cpu=1.68 mem=2480 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K0  ttfr=989 cpu=1.61 mem=2478 cg=0::/grid/run
+grid v=0.5 rep=18 restore_K200 ttfr=78 cpu=0.84 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=18 cold_np     ttfr=8105 cpu=5.52 mem=2540 cg=0::/grid/run
+grid v=0.5 rep=18 cont_K200   ttfr=10894 cpu=6.17 mem=2541 cg=0::/grid/run
+grid v=0.5 rep=19 cont_K0     ttfr=8290 cpu=5.24 mem=2535 cg=0::/grid/run
+grid v=0.5 rep=19 cold        ttfr=7983 cpu=5.48 mem=2544 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K20 ttfr=103 cpu=1.23 mem=2473 cg=0::/grid/run
+grid v=0.5 rep=19 cold_np     ttfr=7873 cpu=5.44 mem=2546 cg=0::/grid/run
+grid v=0.5 rep=19 cont_K50    ttfr=9119 cpu=5.37 mem=2536 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K50 ttfr=106 cpu=1.17 mem=2465 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K1  ttfr=276 cpu=1.60 mem=2479 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K200 ttfr=166 cpu=0.76 mem=2463 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K0  ttfr=981 cpu=2.02 mem=2492 cg=0::/grid/run
+grid v=0.5 rep=19 cont_K200   ttfr=10879 cpu=6.03 mem=2544 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K5  ttfr=99 cpu=1.13 mem=2464 cg=0::/grid/run
+grid v=0.5 rep=19 restore_K100 ttfr=89 cpu=0.75 mem=2459 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K100 ttfr=57 cpu=0.95 mem=2461 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K200 ttfr=67 cpu=0.60 mem=2460 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K0  ttfr=507 cpu=1.73 mem=2488 cg=0::/grid/run
+grid v=1.0 rep=0 disk_K50    ttfr=659 cpu=1.11 mem=215 cg=0::/grid/run
+grid v=1.0 rep=0 rewarm_K50  ttfr=588 cpu=1.00 mem=283 cg=0::/grid/run
+grid v=1.0 rep=0 cold        ttfr=6120 cpu=5.41 mem=383 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K1  ttfr=718 cpu=1.62 mem=393 cg=0::/grid/run
+grid v=1.0 rep=0 cont_K50    ttfr=4657 cpu=5.44 mem=467 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K50 ttfr=67 cpu=0.92 mem=390 cg=0::/grid/run
+grid v=1.0 rep=0 cont_K200   ttfr=5458 cpu=6.02 mem=466 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K5  ttfr=311 cpu=1.13 mem=465 cg=0::/grid/run
+grid v=1.0 rep=0 cont_K0     ttfr=3799 cpu=5.25 mem=543 cg=0::/grid/run
+grid v=1.0 rep=0 restore_K20 ttfr=314 cpu=1.15 mem=533 cg=0::/grid/run
+grid v=1.0 rep=0 cold_np     ttfr=3901 cpu=5.10 mem=613 cg=0::/grid/run
+grid v=1.0 rep=1 cont_K50    ttfr=4484 cpu=5.50 mem=617 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K5  ttfr=371 cpu=1.77 mem=633 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K50 ttfr=386 cpu=1.33 mem=701 cg=0::/grid/run
+grid v=1.0 rep=1 cont_K200   ttfr=5068 cpu=5.50 mem=778 cg=0::/grid/run
+grid v=1.0 rep=1 cold_np     ttfr=3956 cpu=5.06 mem=768 cg=0::/grid/run
+grid v=1.0 rep=1 rewarm_K50  ttfr=582 cpu=1.10 mem=771 cg=0::/grid/run
+grid v=1.0 rep=1 cold        ttfr=3984 cpu=5.06 mem=848 cg=0::/grid/run
+grid v=1.0 rep=1 disk_K50    ttfr=572 cpu=1.35 mem=218 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K1  ttfr=490 cpu=1.55 mem=315 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K0  ttfr=920 cpu=2.12 mem=412 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K100 ttfr=275 cpu=0.80 mem=450 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K20 ttfr=432 cpu=1.31 mem=547 cg=0::/grid/run
+grid v=1.0 rep=1 cont_K0     ttfr=4138 cpu=5.24 mem=639 cg=0::/grid/run
+grid v=1.0 rep=1 restore_K200 ttfr=296 cpu=0.96 mem=632 cg=0::/grid/run
+grid v=1.0 rep=2 cont_K0     ttfr=3894 cpu=5.43 mem=718 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K200 ttfr=367 cpu=1.01 mem=730 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K50 ttfr=370 cpu=1.12 mem=818 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K5  ttfr=396 cpu=1.46 mem=929 cg=0::/grid/run
+grid v=1.0 rep=2 cont_K50    ttfr=4769 cpu=5.51 mem=985 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K100 ttfr=394 cpu=1.12 mem=1000 cg=0::/grid/run
+grid v=1.0 rep=2 disk_K50    ttfr=518 cpu=1.19 mem=222 cg=0::/grid/run
+grid v=1.0 rep=2 rewarm_K50  ttfr=537 cpu=1.01 mem=291 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K1  ttfr=403 cpu=1.68 mem=392 cg=0::/grid/run
+grid v=1.0 rep=2 cont_K200   ttfr=5598 cpu=5.78 mem=468 cg=0::/grid/run
+grid v=1.0 rep=2 cold        ttfr=3896 cpu=5.07 mem=463 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K0  ttfr=751 cpu=1.76 mem=496 cg=0::/grid/run
+grid v=1.0 rep=2 restore_K20 ttfr=259 cpu=1.01 mem=556 cg=0::/grid/run
+grid v=1.0 rep=2 cold_np     ttfr=3973 cpu=5.64 mem=641 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K50 ttfr=352 cpu=1.73 mem=641 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K5  ttfr=292 cpu=1.43 mem=707 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K100 ttfr=281 cpu=1.12 mem=781 cg=0::/grid/run
+grid v=1.0 rep=3 cont_K200   ttfr=5500 cpu=5.92 mem=853 cg=0::/grid/run
+grid v=1.0 rep=3 rewarm_K50  ttfr=564 cpu=1.15 mem=858 cg=0::/grid/run
+grid v=1.0 rep=3 cold        ttfr=3845 cpu=4.92 mem=935 cg=0::/grid/run
+grid v=1.0 rep=3 cont_K0     ttfr=3854 cpu=4.93 mem=936 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K20 ttfr=349 cpu=1.36 mem=963 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K0  ttfr=663 cpu=2.07 mem=1066 cg=0::/grid/run
+grid v=1.0 rep=3 cold_np     ttfr=3812 cpu=4.91 mem=1112 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K200 ttfr=313 cpu=0.88 mem=1127 cg=0::/grid/run
+grid v=1.0 rep=3 disk_K50    ttfr=522 cpu=1.33 mem=215 cg=0::/grid/run
+grid v=1.0 rep=3 cont_K50    ttfr=4744 cpu=5.52 mem=311 cg=0::/grid/run
+grid v=1.0 rep=3 restore_K1  ttfr=531 cpu=1.80 mem=330 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K200 ttfr=284 cpu=0.70 mem=386 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K50 ttfr=330 cpu=0.95 mem=470 cg=0::/grid/run
+grid v=1.0 rep=4 rewarm_K50  ttfr=510 cpu=0.95 mem=536 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K0  ttfr=830 cpu=1.96 mem=655 cg=0::/grid/run
+grid v=1.0 rep=4 cont_K200   ttfr=5423 cpu=6.03 mem=712 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K20 ttfr=386 cpu=1.12 mem=698 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K100 ttfr=527 cpu=1.08 mem=785 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K1  ttfr=506 cpu=1.37 mem=876 cg=0::/grid/run
+grid v=1.0 rep=4 cold_np     ttfr=3868 cpu=5.23 mem=947 cg=0::/grid/run
+grid v=1.0 rep=4 disk_K50    ttfr=536 cpu=1.09 mem=215 cg=0::/grid/run
+grid v=1.0 rep=4 cont_K50    ttfr=4601 cpu=5.40 mem=308 cg=0::/grid/run
+grid v=1.0 rep=4 restore_K5  ttfr=320 cpu=1.10 mem=314 cg=0::/grid/run
+grid v=1.0 rep=4 cold        ttfr=3821 cpu=5.30 mem=388 cg=0::/grid/run
+grid v=1.0 rep=4 cont_K0     ttfr=3810 cpu=5.19 mem=387 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K20 ttfr=362 cpu=1.32 mem=403 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K100 ttfr=266 cpu=0.83 mem=465 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K5  ttfr=321 cpu=1.54 mem=567 cg=0::/grid/run
+grid v=1.0 rep=5 cont_K50    ttfr=4219 cpu=4.94 mem=624 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K1  ttfr=435 cpu=1.63 mem=650 cg=0::/grid/run
+grid v=1.0 rep=5 cont_K200   ttfr=5168 cpu=5.73 mem=712 cg=0::/grid/run
+grid v=1.0 rep=5 cont_K0     ttfr=3935 cpu=5.34 mem=712 cg=0::/grid/run
+grid v=1.0 rep=5 cold_np     ttfr=3785 cpu=5.29 mem=716 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K0  ttfr=766 cpu=2.12 mem=743 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K50 ttfr=385 cpu=1.23 mem=800 cg=0::/grid/run
+grid v=1.0 rep=5 rewarm_K50  ttfr=557 cpu=1.04 mem=869 cg=0::/grid/run
+grid v=1.0 rep=5 disk_K50    ttfr=503 cpu=1.20 mem=218 cg=0::/grid/run
+grid v=1.0 rep=5 cold        ttfr=4002 cpu=5.07 mem=314 cg=0::/grid/run
+grid v=1.0 rep=5 restore_K200 ttfr=300 cpu=0.93 mem=310 cg=0::/grid/run
+grid v=1.0 rep=6 rewarm_K50  ttfr=512 cpu=1.07 mem=385 cg=0::/grid/run
+grid v=1.0 rep=6 cont_K200   ttfr=5578 cpu=6.21 mem=469 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K1  ttfr=360 cpu=1.72 mem=483 cg=0::/grid/run
+grid v=1.0 rep=6 disk_K50    ttfr=504 cpu=1.16 mem=222 cg=0::/grid/run
+grid v=1.0 rep=6 cold        ttfr=4176 cpu=5.28 mem=318 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K0  ttfr=709 cpu=1.70 mem=341 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K5  ttfr=357 cpu=1.51 mem=439 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K100 ttfr=337 cpu=1.08 mem=513 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K20 ttfr=253 cpu=1.00 mem=587 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K200 ttfr=285 cpu=0.88 mem=680 cg=0::/grid/run
+grid v=1.0 rep=6 cont_K50    ttfr=4385 cpu=5.45 mem=761 cg=0::/grid/run
+grid v=1.0 rep=6 restore_K50 ttfr=88 cpu=0.98 mem=681 cg=0::/grid/run
+grid v=1.0 rep=6 cold_np     ttfr=4153 cpu=5.64 mem=760 cg=0::/grid/run
+grid v=1.0 rep=6 cont_K0     ttfr=3833 cpu=5.32 mem=761 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K0  ttfr=715 cpu=2.12 mem=791 cg=0::/grid/run
+grid v=1.0 rep=7 cont_K50    ttfr=4389 cpu=5.39 mem=842 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K1  ttfr=466 cpu=1.59 mem=858 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K50 ttfr=323 cpu=1.25 mem=921 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K20 ttfr=511 cpu=1.35 mem=1029 cg=0::/grid/run
+grid v=1.0 rep=7 cold_np     ttfr=3792 cpu=5.28 mem=1096 cg=0::/grid/run
+grid v=1.0 rep=7 cold        ttfr=3725 cpu=4.87 mem=1095 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K200 ttfr=436 cpu=0.89 mem=1109 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K5  ttfr=301 cpu=1.19 mem=1180 cg=0::/grid/run
+grid v=1.0 rep=7 cont_K200   ttfr=5197 cpu=5.75 mem=1256 cg=0::/grid/run
+grid v=1.0 rep=7 restore_K100 ttfr=308 cpu=0.95 mem=1250 cg=0::/grid/run
+grid v=1.0 rep=7 disk_K50    ttfr=474 cpu=1.31 mem=214 cg=0::/grid/run
+grid v=1.0 rep=7 cont_K0     ttfr=4061 cpu=5.23 mem=311 cg=0::/grid/run
+grid v=1.0 rep=7 rewarm_K50  ttfr=570 cpu=1.14 mem=307 cg=0::/grid/run
+grid v=1.0 rep=8 cold        ttfr=3962 cpu=5.14 mem=385 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K0  ttfr=792 cpu=1.87 mem=424 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K200 ttfr=299 cpu=0.76 mem=470 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K1  ttfr=389 cpu=1.31 mem=558 cg=0::/grid/run
+grid v=1.0 rep=8 cont_K0     ttfr=3793 cpu=5.32 mem=638 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K20 ttfr=319 cpu=1.11 mem=622 cg=0::/grid/run
+grid v=1.0 rep=8 cont_K50    ttfr=4290 cpu=5.07 mem=699 cg=0::/grid/run
+grid v=1.0 rep=8 disk_K50    ttfr=457 cpu=1.08 mem=215 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K50 ttfr=61 cpu=0.90 mem=213 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K5  ttfr=313 cpu=1.07 mem=292 cg=0::/grid/run
+grid v=1.0 rep=8 cont_K200   ttfr=5141 cpu=5.53 mem=386 cg=0::/grid/run
+grid v=1.0 rep=8 restore_K100 ttfr=374 cpu=1.11 mem=396 cg=0::/grid/run
+grid v=1.0 rep=8 cold_np     ttfr=4061 cpu=5.14 mem=471 cg=0::/grid/run
+grid v=1.0 rep=8 rewarm_K50  ttfr=586 cpu=1.03 mem=461 cg=0::/grid/run
+grid v=1.0 rep=9 cold        ttfr=3872 cpu=5.32 mem=543 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K5  ttfr=390 cpu=1.63 mem=564 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K1  ttfr=384 cpu=1.66 mem=645 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K200 ttfr=257 cpu=0.94 mem=701 cg=0::/grid/run
+grid v=1.0 rep=9 disk_K50    ttfr=499 cpu=1.28 mem=219 cg=0::/grid/run
+grid v=1.0 rep=9 cont_K0     ttfr=4396 cpu=5.53 mem=313 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K50 ttfr=82 cpu=1.15 mem=239 cg=0::/grid/run
+grid v=1.0 rep=9 cont_K200   ttfr=5372 cpu=5.96 mem=316 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K20 ttfr=322 cpu=1.35 mem=332 cg=0::/grid/run
+grid v=1.0 rep=9 cont_K50    ttfr=4393 cpu=5.19 mem=398 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K100 ttfr=287 cpu=0.85 mem=393 cg=0::/grid/run
+grid v=1.0 rep=9 cold_np     ttfr=3872 cpu=5.38 mem=479 cg=0::/grid/run
+grid v=1.0 rep=9 restore_K0  ttfr=789 cpu=2.19 mem=507 cg=0::/grid/run
+grid v=1.0 rep=9 rewarm_K50  ttfr=650 cpu=1.10 mem=546 cg=0::/grid/run
+grid v=1.0 rep=10 cont_K0     ttfr=3947 cpu=5.43 mem=629 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K20 ttfr=278 cpu=1.06 mem=625 cg=0::/grid/run
+grid v=1.0 rep=10 cold_np     ttfr=4192 cpu=5.79 mem=707 cg=0::/grid/run
+grid v=1.0 rep=10 cont_K200   ttfr=4900 cpu=5.34 mem=698 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K5  ttfr=382 cpu=1.54 mem=736 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K1  ttfr=378 cpu=1.74 mem=818 cg=0::/grid/run
+grid v=1.0 rep=10 disk_K50    ttfr=556 cpu=1.22 mem=221 cg=0::/grid/run
+grid v=1.0 rep=10 cont_K50    ttfr=4561 cpu=5.33 mem=316 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K200 ttfr=386 cpu=1.16 mem=334 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K0  ttfr=707 cpu=1.80 mem=434 cg=0::/grid/run
+grid v=1.0 rep=10 cold        ttfr=3800 cpu=5.40 mem=502 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K100 ttfr=384 cpu=1.23 mem=512 cg=0::/grid/run
+grid v=1.0 rep=10 rewarm_K50  ttfr=646 cpu=1.20 mem=578 cg=0::/grid/run
+grid v=1.0 rep=10 restore_K50 ttfr=88 cpu=1.06 mem=581 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K20 ttfr=415 cpu=1.47 mem=684 cg=0::/grid/run
+grid v=1.0 rep=11 rewarm_K50  ttfr=567 cpu=1.11 mem=745 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K0  ttfr=651 cpu=2.05 mem=861 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K1  ttfr=399 cpu=1.61 mem=928 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K50 ttfr=306 cpu=1.35 mem=995 cg=0::/grid/run
+grid v=1.0 rep=11 disk_K50    ttfr=440 cpu=1.30 mem=215 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K100 ttfr=290 cpu=0.87 mem=285 cg=0::/grid/run
+grid v=1.0 rep=11 cont_K200   ttfr=5273 cpu=5.72 mem=385 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K200 ttfr=297 cpu=0.92 mem=401 cg=0::/grid/run
+grid v=1.0 rep=11 cont_K0     ttfr=3985 cpu=5.40 mem=478 cg=0::/grid/run
+grid v=1.0 rep=11 restore_K5  ttfr=269 cpu=1.20 mem=472 cg=0::/grid/run
+grid v=1.0 rep=11 cold        ttfr=3987 cpu=5.06 mem=547 cg=0::/grid/run
+grid v=1.0 rep=11 cold_np     ttfr=3819 cpu=5.00 mem=546 cg=0::/grid/run
+grid v=1.0 rep=11 cont_K50    ttfr=4372 cpu=5.13 mem=546 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K5  ttfr=315 cpu=1.07 mem=549 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K200 ttfr=277 cpu=0.74 mem=615 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K100 ttfr=344 cpu=1.12 mem=702 cg=0::/grid/run
+grid v=1.0 rep=12 cont_K200   ttfr=5400 cpu=6.03 mem=785 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K0  ttfr=783 cpu=1.97 mem=822 cg=0::/grid/run
+grid v=1.0 rep=12 cont_K50    ttfr=4583 cpu=5.59 mem=873 cg=0::/grid/run
+grid v=1.0 rep=12 cont_K0     ttfr=3980 cpu=5.08 mem=871 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K1  ttfr=452 cpu=1.49 mem=883 cg=0::/grid/run
+grid v=1.0 rep=12 rewarm_K50  ttfr=567 cpu=1.02 mem=946 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K20 ttfr=331 cpu=1.12 mem=1017 cg=0::/grid/run
+grid v=1.0 rep=12 cold_np     ttfr=3986 cpu=5.44 mem=1096 cg=0::/grid/run
+grid v=1.0 rep=12 disk_K50    ttfr=508 cpu=1.09 mem=214 cg=0::/grid/run
+grid v=1.0 rep=12 cold        ttfr=4107 cpu=5.63 mem=317 cg=0::/grid/run
+grid v=1.0 rep=12 restore_K50 ttfr=66 cpu=0.91 mem=235 cg=0::/grid/run
+grid v=1.0 rep=13 cold        ttfr=4062 cpu=5.07 mem=307 cg=0::/grid/run
+grid v=1.0 rep=13 cont_K50    ttfr=4588 cpu=5.40 mem=312 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K50 ttfr=334 cpu=1.29 mem=321 cg=0::/grid/run
+grid v=1.0 rep=13 disk_K50    ttfr=499 cpu=1.33 mem=218 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K20 ttfr=319 cpu=1.29 mem=309 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K200 ttfr=265 cpu=0.90 mem=377 cg=0::/grid/run
+grid v=1.0 rep=13 cont_K0     ttfr=4225 cpu=5.35 mem=479 cg=0::/grid/run
+grid v=1.0 rep=13 cold_np     ttfr=3975 cpu=5.43 mem=480 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K5  ttfr=439 cpu=1.75 mem=502 cg=0::/grid/run
+grid v=1.0 rep=13 cont_K200   ttfr=5438 cpu=5.99 mem=564 cg=0::/grid/run
+grid v=1.0 rep=13 rewarm_K50  ttfr=566 cpu=1.08 mem=554 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K0  ttfr=876 cpu=2.23 mem=665 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K100 ttfr=343 cpu=0.81 mem=701 cg=0::/grid/run
+grid v=1.0 rep=13 restore_K1  ttfr=384 cpu=1.57 mem=804 cg=0::/grid/run
+grid v=1.0 rep=14 cont_K50    ttfr=4390 cpu=5.12 mem=864 cg=0::/grid/run
+grid v=1.0 rep=14 cold_np     ttfr=3904 cpu=4.96 mem=865 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K50 ttfr=372 cpu=1.11 mem=878 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K200 ttfr=407 cpu=0.98 mem=969 cg=0::/grid/run
+grid v=1.0 rep=14 cold        ttfr=3966 cpu=5.18 mem=1044 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K0  ttfr=689 cpu=1.73 mem=1069 cg=0::/grid/run
+grid v=1.0 rep=14 cont_K0     ttfr=3896 cpu=5.06 mem=1134 cg=0::/grid/run
+grid v=1.0 rep=14 disk_K50    ttfr=493 cpu=1.15 mem=221 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K5  ttfr=338 cpu=1.55 mem=332 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K20 ttfr=285 cpu=1.06 mem=390 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K100 ttfr=335 cpu=1.04 mem=483 cg=0::/grid/run
+grid v=1.0 rep=14 rewarm_K50  ttfr=580 cpu=1.14 mem=547 cg=0::/grid/run
+grid v=1.0 rep=14 restore_K1  ttfr=366 cpu=1.69 mem=651 cg=0::/grid/run
+grid v=1.0 rep=14 cont_K200   ttfr=5488 cpu=5.93 mem=730 cg=0::/grid/run
+grid v=1.0 rep=15 disk_K50    ttfr=506 cpu=1.37 mem=213 cg=0::/grid/run
+grid v=1.0 rep=15 cont_K200   ttfr=5538 cpu=5.98 mem=312 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K20 ttfr=365 cpu=1.43 mem=339 cg=0::/grid/run
+grid v=1.0 rep=15 cont_K50    ttfr=4642 cpu=5.82 mem=410 cg=0::/grid/run
+grid v=1.0 rep=15 cont_K0     ttfr=3978 cpu=5.64 mem=409 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K50 ttfr=87 cpu=1.22 mem=332 cg=0::/grid/run
+grid v=1.0 rep=15 cold_np     ttfr=3971 cpu=5.70 mem=411 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K100 ttfr=286 cpu=0.91 mem=401 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K200 ttfr=300 cpu=0.90 mem=497 cg=0::/grid/run
+grid v=1.0 rep=15 rewarm_K50  ttfr=577 cpu=1.15 mem=571 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K1  ttfr=402 cpu=1.64 mem=664 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K0  ttfr=667 cpu=2.14 mem=763 cg=0::/grid/run
+grid v=1.0 rep=15 restore_K5  ttfr=262 cpu=1.22 mem=804 cg=0::/grid/run
+grid v=1.0 rep=15 cold        ttfr=3984 cpu=5.51 mem=879 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K50 ttfr=274 cpu=1.08 mem=885 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K100 ttfr=362 cpu=1.12 mem=972 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K1  ttfr=423 cpu=1.38 mem=1058 cg=0::/grid/run
+grid v=1.0 rep=16 cont_K200   ttfr=5461 cpu=6.04 mem=1138 cg=0::/grid/run
+grid v=1.0 rep=16 cold        ttfr=4065 cpu=5.28 mem=1129 cg=0::/grid/run
+grid v=1.0 rep=16 cold_np     ttfr=3978 cpu=5.45 mem=1138 cg=0::/grid/run
+grid v=1.0 rep=16 rewarm_K50  ttfr=569 cpu=1.02 mem=1122 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K200 ttfr=267 cpu=0.74 mem=1198 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K5  ttfr=303 cpu=1.05 mem=1279 cg=0::/grid/run
+grid v=1.0 rep=16 cont_K50    ttfr=4662 cpu=5.58 mem=1351 cg=0::/grid/run
+grid v=1.0 rep=16 disk_K50    ttfr=477 cpu=1.12 mem=214 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K0  ttfr=869 cpu=1.94 mem=333 cg=0::/grid/run
+grid v=1.0 rep=16 cont_K0     ttfr=4173 cpu=5.79 mem=407 cg=0::/grid/run
+grid v=1.0 rep=16 restore_K20 ttfr=327 cpu=1.15 mem=393 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K0  ttfr=784 cpu=2.25 mem=503 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K5  ttfr=356 cpu=1.68 mem=571 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K1  ttfr=397 cpu=1.72 mem=653 cg=0::/grid/run
+grid v=1.0 rep=17 disk_K50    ttfr=547 cpu=1.29 mem=219 cg=0::/grid/run
+grid v=1.0 rep=17 cont_K0     ttfr=4454 cpu=5.69 mem=314 cg=0::/grid/run
+grid v=1.0 rep=17 rewarm_K50  ttfr=581 cpu=1.13 mem=309 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K100 ttfr=288 cpu=0.89 mem=374 cg=0::/grid/run
+grid v=1.0 rep=17 cold        ttfr=3909 cpu=5.45 mem=463 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K50 ttfr=63 cpu=1.17 mem=384 cg=0::/grid/run
+grid v=1.0 rep=17 cont_K50    ttfr=4508 cpu=5.33 mem=458 cg=0::/grid/run
+grid v=1.0 rep=17 cont_K200   ttfr=5385 cpu=6.02 mem=459 cg=0::/grid/run
+grid v=1.0 rep=17 cold_np     ttfr=3916 cpu=5.09 mem=458 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K20 ttfr=341 cpu=1.37 mem=475 cg=0::/grid/run
+grid v=1.0 rep=17 restore_K200 ttfr=283 cpu=0.90 mem=542 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K1  ttfr=377 cpu=1.69 mem=646 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K20 ttfr=255 cpu=1.02 mem=704 cg=0::/grid/run
+grid v=1.0 rep=18 cont_K50    ttfr=4589 cpu=5.58 mem=782 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K5  ttfr=329 cpu=1.56 mem=812 cg=0::/grid/run
+grid v=1.0 rep=18 disk_K50    ttfr=504 cpu=1.14 mem=223 cg=0::/grid/run
+grid v=1.0 rep=18 cont_K0     ttfr=4165 cpu=5.69 mem=322 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K200 ttfr=348 cpu=0.98 mem=334 cg=0::/grid/run
+grid v=1.0 rep=18 rewarm_K50  ttfr=493 cpu=1.05 mem=401 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K50 ttfr=86 cpu=1.01 mem=406 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K0  ttfr=750 cpu=1.80 mem=507 cg=0::/grid/run
+grid v=1.0 rep=18 cold        ttfr=3883 cpu=5.03 mem=568 cg=0::/grid/run
+grid v=1.0 rep=18 restore_K100 ttfr=368 cpu=1.12 mem=582 cg=0::/grid/run
+grid v=1.0 rep=18 cold_np     ttfr=4012 cpu=5.24 mem=658 cg=0::/grid/run
+grid v=1.0 rep=18 cont_K200   ttfr=5378 cpu=5.99 mem=662 cg=0::/grid/run
+grid v=1.0 rep=19 rewarm_K50  ttfr=575 cpu=1.11 mem=654 cg=0::/grid/run
+grid v=1.0 rep=19 cold        ttfr=3970 cpu=5.15 mem=728 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K20 ttfr=340 cpu=1.42 mem=757 cg=0::/grid/run
+grid v=1.0 rep=19 cont_K200   ttfr=5422 cpu=6.11 mem=832 cg=0::/grid/run
+grid v=1.0 rep=19 disk_K50    ttfr=550 cpu=1.34 mem=211 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K200 ttfr=281 cpu=0.85 mem=305 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K5  ttfr=279 cpu=1.18 mem=374 cg=0::/grid/run
+grid v=1.0 rep=19 cold_np     ttfr=4291 cpu=5.47 mem=472 cg=0::/grid/run
+grid v=1.0 rep=19 cont_K50    ttfr=4496 cpu=5.27 mem=471 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K1  ttfr=516 cpu=1.57 mem=489 cg=0::/grid/run
+grid v=1.0 rep=19 cont_K0     ttfr=3864 cpu=5.40 mem=556 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K100 ttfr=308 cpu=0.88 mem=544 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K0  ttfr=883 cpu=2.35 mem=662 cg=0::/grid/run
+grid v=1.0 rep=19 restore_K50 ttfr=82 cpu=1.18 mem=636 cg=0::/grid/run
+grid v=2.0 rep=0 cont_K50    ttfr=2269 cpu=5.40 mem=714 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K0  ttfr=600 cpu=1.97 mem=749 cg=0::/grid/run
+grid v=2.0 rep=0 cold        ttfr=1991 cpu=5.34 mem=804 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K200 ttfr=262 cpu=0.72 mem=795 cg=0::/grid/run
+grid v=2.0 rep=0 cont_K0     ttfr=1989 cpu=5.31 mem=875 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K1  ttfr=434 cpu=1.54 mem=886 cg=0::/grid/run
+grid v=2.0 rep=0 cold_np     ttfr=2213 cpu=5.06 mem=960 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K20 ttfr=325 cpu=1.13 mem=950 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K50 ttfr=265 cpu=1.03 mem=1036 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K5  ttfr=305 cpu=1.08 mem=1115 cg=0::/grid/run
+grid v=2.0 rep=0 cont_K200   ttfr=2739 cpu=5.95 mem=1189 cg=0::/grid/run
+grid v=2.0 rep=0 restore_K100 ttfr=337 cpu=1.04 mem=1199 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K1  ttfr=297 cpu=1.63 mem=1296 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K0  ttfr=637 cpu=2.34 mem=1390 cg=0::/grid/run
+grid v=2.0 rep=1 cold_np     ttfr=1967 cpu=5.33 mem=1442 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K100 ttfr=272 cpu=0.90 mem=1428 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K200 ttfr=303 cpu=0.97 mem=1503 cg=0::/grid/run
+grid v=2.0 rep=1 cold        ttfr=2022 cpu=5.42 mem=1589 cg=0::/grid/run
+grid v=2.0 rep=1 cont_K50    ttfr=2313 cpu=5.26 mem=1583 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K5  ttfr=516 cpu=1.67 mem=1603 cg=0::/grid/run
+grid v=2.0 rep=1 cont_K0     ttfr=2061 cpu=5.52 mem=1669 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K50 ttfr=400 cpu=1.28 mem=1675 cg=0::/grid/run
+grid v=2.0 rep=1 cont_K200   ttfr=2538 cpu=5.36 mem=1751 cg=0::/grid/run
+grid v=2.0 rep=1 restore_K20 ttfr=517 cpu=1.37 mem=1768 cg=0::/grid/run
+grid v=2.0 rep=2 cont_K200   ttfr=2711 cpu=5.88 mem=1840 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K50 ttfr=442 cpu=1.16 mem=1853 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K1  ttfr=292 cpu=1.76 mem=1949 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K100 ttfr=334 cpu=1.05 mem=2024 cg=0::/grid/run
+grid v=2.0 rep=2 cont_K50    ttfr=2301 cpu=5.57 mem=2101 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K200 ttfr=326 cpu=0.94 mem=2113 cg=0::/grid/run
+grid v=2.0 rep=2 cont_K0     ttfr=2045 cpu=5.11 mem=2188 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K0  ttfr=585 cpu=1.81 mem=2214 cg=0::/grid/run
+grid v=2.0 rep=2 cold_np     ttfr=1981 cpu=5.43 mem=2282 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K5  ttfr=342 cpu=1.59 mem=2311 cg=0::/grid/run
+grid v=2.0 rep=2 restore_K20 ttfr=264 cpu=1.09 mem=2368 cg=0::/grid/run
+grid v=2.0 rep=2 cold        ttfr=2064 cpu=5.19 mem=2448 cg=0::/grid/run
+grid v=2.0 rep=3 cont_K50    ttfr=2601 cpu=6.19 mem=2452 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K200 ttfr=65 cpu=0.82 mem=2370 cg=0::/grid/run
+grid v=2.0 rep=3 cold_np     ttfr=2014 cpu=5.37 mem=2451 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K100 ttfr=56 cpu=0.76 mem=2365 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K1  ttfr=77 cpu=1.59 mem=2386 cg=0::/grid/run
+grid v=2.0 rep=3 cold        ttfr=2016 cpu=5.01 mem=2448 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K5  ttfr=58 cpu=1.09 mem=2372 cg=0::/grid/run
+grid v=2.0 rep=3 cont_K0     ttfr=2012 cpu=5.32 mem=2451 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K0  ttfr=250 cpu=2.01 mem=2400 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K50 ttfr=65 cpu=1.14 mem=2372 cg=0::/grid/run
+grid v=2.0 rep=3 restore_K20 ttfr=354 cpu=1.41 mem=2475 cg=0::/grid/run
+grid v=2.0 rep=3 cont_K200   ttfr=2701 cpu=5.88 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K1  ttfr=74 cpu=1.29 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K50 ttfr=55 cpu=0.89 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=4 cont_K50    ttfr=2177 cpu=5.01 mem=2538 cg=0::/grid/run
+grid v=2.0 rep=4 cold        ttfr=1975 cpu=5.26 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K200 ttfr=54 cpu=0.57 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K5  ttfr=60 cpu=0.99 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=4 cold_np     ttfr=1887 cpu=5.29 mem=2546 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K20 ttfr=54 cpu=1.04 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=4 cont_K0     ttfr=2024 cpu=5.25 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=4 cont_K200   ttfr=2455 cpu=5.26 mem=2534 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K100 ttfr=58 cpu=0.95 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=4 restore_K0  ttfr=271 cpu=1.72 mem=2489 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K5  ttfr=64 cpu=1.64 mem=2483 cg=0::/grid/run
+grid v=2.0 rep=5 cold_np     ttfr=1942 cpu=4.97 mem=2550 cg=0::/grid/run
+grid v=2.0 rep=5 cont_K50    ttfr=2256 cpu=5.09 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K20 ttfr=65 cpu=1.18 mem=2470 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K0  ttfr=251 cpu=2.02 mem=2496 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K50 ttfr=60 cpu=1.15 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K1  ttfr=86 cpu=1.55 mem=2480 cg=0::/grid/run
+grid v=2.0 rep=5 cont_K0     ttfr=2005 cpu=5.15 mem=2540 cg=0::/grid/run
+grid v=2.0 rep=5 cont_K200   ttfr=2552 cpu=5.48 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K100 ttfr=57 cpu=0.71 mem=2460 cg=0::/grid/run
+grid v=2.0 rep=5 cold        ttfr=2046 cpu=4.97 mem=2537 cg=0::/grid/run
+grid v=2.0 rep=5 restore_K200 ttfr=53 cpu=0.80 mem=2461 cg=0::/grid/run
+grid v=2.0 rep=6 cont_K0     ttfr=1971 cpu=5.30 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K50 ttfr=64 cpu=1.00 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K5  ttfr=63 cpu=1.47 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K0  ttfr=271 cpu=1.60 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=6 cont_K200   ttfr=2778 cpu=6.01 mem=2546 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K200 ttfr=61 cpu=0.83 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=6 cont_K50    ttfr=2315 cpu=5.45 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=6 cold        ttfr=2009 cpu=5.43 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=6 cold_np     ttfr=1961 cpu=5.07 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K20 ttfr=58 cpu=0.93 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K100 ttfr=63 cpu=0.98 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=6 restore_K1  ttfr=82 cpu=1.66 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=7 cold        ttfr=2039 cpu=5.05 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K1  ttfr=80 cpu=1.62 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K5  ttfr=58 cpu=1.10 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K20 ttfr=61 cpu=1.24 mem=2476 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K0  ttfr=264 cpu=2.03 mem=2495 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K200 ttfr=60 cpu=0.76 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=7 cont_K0     ttfr=2018 cpu=4.93 mem=2538 cg=0::/grid/run
+grid v=2.0 rep=7 cold_np     ttfr=1947 cpu=4.94 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K100 ttfr=53 cpu=0.74 mem=2461 cg=0::/grid/run
+grid v=2.0 rep=7 cont_K50    ttfr=2224 cpu=5.05 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=7 cont_K200   ttfr=2566 cpu=5.55 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=7 restore_K50 ttfr=60 cpu=1.14 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=8 cold        ttfr=1973 cpu=5.20 mem=2546 cg=0::/grid/run
+grid v=2.0 rep=8 cont_K200   ttfr=2621 cpu=5.67 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K0  ttfr=270 cpu=1.71 mem=2490 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K200 ttfr=62 cpu=0.57 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K100 ttfr=63 cpu=0.95 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=8 cont_K50    ttfr=2150 cpu=4.93 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=8 cold_np     ttfr=1918 cpu=4.87 mem=2550 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K5  ttfr=64 cpu=1.00 mem=2469 cg=0::/grid/run
+grid v=2.0 rep=8 cont_K0     ttfr=1974 cpu=4.98 mem=2544 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K20 ttfr=55 cpu=1.03 mem=2462 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K50 ttfr=55 cpu=0.90 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=8 restore_K1  ttfr=80 cpu=1.29 mem=2463 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K0  ttfr=271 cpu=2.10 mem=2495 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K20 ttfr=63 cpu=1.23 mem=2470 cg=0::/grid/run
+grid v=2.0 rep=9 cold_np     ttfr=1935 cpu=4.90 mem=2546 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K200 ttfr=51 cpu=0.79 mem=2460 cg=0::/grid/run
+grid v=2.0 rep=9 cold        ttfr=1985 cpu=4.92 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K50 ttfr=62 cpu=1.09 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=9 cont_K0     ttfr=1972 cpu=4.89 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=9 cont_K50    ttfr=2212 cpu=5.01 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K100 ttfr=54 cpu=0.67 mem=2460 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K1  ttfr=78 cpu=1.57 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=9 restore_K5  ttfr=61 cpu=1.58 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=9 cont_K200   ttfr=2645 cpu=5.77 mem=2549 cg=0::/grid/run
+grid v=2.0 rep=10 cont_K50    ttfr=2250 cpu=5.33 mem=2544 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K5  ttfr=62 cpu=1.42 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K200 ttfr=60 cpu=0.81 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K0  ttfr=248 cpu=1.55 mem=2480 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K20 ttfr=56 cpu=0.90 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=10 cont_K200   ttfr=2479 cpu=5.24 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K1  ttfr=78 cpu=1.64 mem=2484 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K50 ttfr=61 cpu=1.00 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=10 cold        ttfr=2042 cpu=5.48 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=10 restore_K100 ttfr=57 cpu=0.96 mem=2470 cg=0::/grid/run
+grid v=2.0 rep=10 cold_np     ttfr=1941 cpu=4.93 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=10 cont_K0     ttfr=2019 cpu=4.99 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=11 cold        ttfr=1985 cpu=4.87 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K5  ttfr=56 cpu=1.08 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=11 cont_K50    ttfr=2280 cpu=5.49 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K20 ttfr=58 cpu=1.21 mem=2475 cg=0::/grid/run
+grid v=2.0 rep=11 cont_K0     ttfr=1980 cpu=5.02 mem=2544 cg=0::/grid/run
+grid v=2.0 rep=11 cold_np     ttfr=1918 cpu=4.87 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K200 ttfr=63 cpu=0.75 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K100 ttfr=59 cpu=0.75 mem=2462 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K50 ttfr=61 cpu=1.16 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K0  ttfr=257 cpu=2.00 mem=2495 cg=0::/grid/run
+grid v=2.0 rep=11 restore_K1  ttfr=74 cpu=1.53 mem=2480 cg=0::/grid/run
+grid v=2.0 rep=11 cont_K200   ttfr=2607 cpu=5.65 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=12 cold_np     ttfr=1867 cpu=4.76 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=12 cold        ttfr=1934 cpu=5.13 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K5  ttfr=58 cpu=1.00 mem=2469 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K100 ttfr=59 cpu=0.94 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=12 cont_K0     ttfr=1979 cpu=5.01 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K1  ttfr=79 cpu=1.31 mem=2469 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K200 ttfr=61 cpu=0.57 mem=2461 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K0  ttfr=274 cpu=1.75 mem=2491 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K20 ttfr=59 cpu=1.01 mem=2462 cg=0::/grid/run
+grid v=2.0 rep=12 restore_K50 ttfr=57 cpu=0.87 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=12 cont_K200   ttfr=2673 cpu=5.85 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=12 cont_K50    ttfr=2255 cpu=5.44 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=13 cont_K200   ttfr=2683 cpu=5.84 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K20 ttfr=68 cpu=1.18 mem=2469 cg=0::/grid/run
+grid v=2.0 rep=13 cold        ttfr=1950 cpu=5.18 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K5  ttfr=60 cpu=1.58 mem=2483 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K1  ttfr=86 cpu=1.55 mem=2479 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K100 ttfr=54 cpu=0.68 mem=2460 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K0  ttfr=268 cpu=2.03 mem=2496 cg=0::/grid/run
+grid v=2.0 rep=13 cont_K0     ttfr=2002 cpu=5.33 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=13 cold_np     ttfr=1903 cpu=4.87 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K50 ttfr=61 cpu=1.10 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=13 cont_K50    ttfr=2290 cpu=5.51 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=13 restore_K200 ttfr=53 cpu=0.78 mem=2459 cg=0::/grid/run
+grid v=2.0 rep=14 cold        ttfr=1962 cpu=4.82 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=14 cont_K0     ttfr=1941 cpu=4.84 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K0  ttfr=261 cpu=1.55 mem=2479 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K200 ttfr=55 cpu=0.81 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=14 cold_np     ttfr=1871 cpu=4.86 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K5  ttfr=64 cpu=1.43 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K1  ttfr=77 cpu=1.63 mem=2484 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K20 ttfr=55 cpu=0.89 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K100 ttfr=61 cpu=0.93 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=14 cont_K50    ttfr=2274 cpu=5.47 mem=2549 cg=0::/grid/run
+grid v=2.0 rep=14 restore_K50 ttfr=60 cpu=0.97 mem=2468 cg=0::/grid/run
+grid v=2.0 rep=14 cont_K200   ttfr=2488 cpu=5.29 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=15 cold        ttfr=2546 cpu=6.23 mem=2544 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K50 ttfr=66 cpu=1.77 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K200 ttfr=82 cpu=1.14 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=15 cont_K50    ttfr=3222 cpu=7.96 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K0  ttfr=348 cpu=2.48 mem=2495 cg=0::/grid/run
+grid v=2.0 rep=15 cont_K200   ttfr=3046 cpu=6.36 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K5  ttfr=75 cpu=1.22 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=15 cont_K0     ttfr=2494 cpu=6.51 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K100 ttfr=72 cpu=0.86 mem=2462 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K1  ttfr=109 cpu=1.88 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=15 cold_np     ttfr=2162 cpu=5.44 mem=2540 cg=0::/grid/run
+grid v=2.0 rep=15 restore_K20 ttfr=61 cpu=1.21 mem=2476 cg=0::/grid/run
+grid v=2.0 rep=16 cont_K0     ttfr=1912 cpu=4.73 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=16 cold_np     ttfr=1812 cpu=4.76 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K200 ttfr=53 cpu=0.57 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K50 ttfr=60 cpu=0.86 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=16 cont_K50    ttfr=2136 cpu=4.93 mem=2539 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K100 ttfr=58 cpu=0.94 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=16 cont_K200   ttfr=2501 cpu=5.43 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K20 ttfr=53 cpu=1.00 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=16 cold        ttfr=1832 cpu=4.93 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K1  ttfr=69 cpu=1.24 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K5  ttfr=59 cpu=0.98 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=16 restore_K0  ttfr=266 cpu=1.66 mem=2491 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K200 ttfr=53 cpu=0.80 mem=2462 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K50 ttfr=60 cpu=1.07 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=17 cont_K50    ttfr=2226 cpu=5.30 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K20 ttfr=66 cpu=1.19 mem=2471 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K5  ttfr=58 cpu=1.55 mem=2484 cg=0::/grid/run
+grid v=2.0 rep=17 cont_K200   ttfr=2649 cpu=5.70 mem=2548 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K1  ttfr=75 cpu=1.53 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K0  ttfr=246 cpu=1.97 mem=2496 cg=0::/grid/run
+grid v=2.0 rep=17 cold_np     ttfr=1908 cpu=4.85 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=17 cont_K0     ttfr=1902 cpu=4.86 mem=2538 cg=0::/grid/run
+grid v=2.0 rep=17 cold        ttfr=1945 cpu=4.82 mem=2538 cg=0::/grid/run
+grid v=2.0 rep=17 restore_K100 ttfr=52 cpu=0.67 mem=2459 cg=0::/grid/run
+grid v=2.0 rep=18 cont_K50    ttfr=2240 cpu=5.33 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K100 ttfr=57 cpu=0.93 mem=2470 cg=0::/grid/run
+grid v=2.0 rep=18 cold        ttfr=1940 cpu=4.79 mem=2541 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K5  ttfr=56 cpu=1.40 mem=2481 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K0  ttfr=254 cpu=1.56 mem=2478 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K1  ttfr=87 cpu=1.61 mem=2480 cg=0::/grid/run
+grid v=2.0 rep=18 cold_np     ttfr=1879 cpu=4.68 mem=2529 cg=0::/grid/run
+grid v=2.0 rep=18 cont_K200   ttfr=2434 cpu=5.17 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K20 ttfr=53 cpu=0.89 mem=2465 cg=0::/grid/run
+grid v=2.0 rep=18 cont_K0     ttfr=1950 cpu=4.93 mem=2544 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K200 ttfr=55 cpu=0.82 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=18 restore_K50 ttfr=59 cpu=0.96 mem=2466 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K0  ttfr=252 cpu=1.99 mem=2495 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K1  ttfr=81 cpu=1.59 mem=2482 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K5  ttfr=56 cpu=1.09 mem=2467 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K100 ttfr=64 cpu=0.80 mem=2460 cg=0::/grid/run
+grid v=2.0 rep=19 cont_K0     ttfr=1945 cpu=5.17 mem=2542 cg=0::/grid/run
+grid v=2.0 rep=19 cont_K50    ttfr=2256 cpu=5.25 mem=2543 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K200 ttfr=58 cpu=0.76 mem=2464 cg=0::/grid/run
+grid v=2.0 rep=19 cold        ttfr=2004 cpu=4.95 mem=2538 cg=0::/grid/run
+grid v=2.0 rep=19 cold_np     ttfr=1878 cpu=4.75 mem=2540 cg=0::/grid/run
+grid v=2.0 rep=19 cont_K200   ttfr=2650 cpu=5.79 mem=2547 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K20 ttfr=60 cpu=1.22 mem=2474 cg=0::/grid/run
+grid v=2.0 rep=19 restore_K50 ttfr=58 cpu=1.15 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K1  ttfr=71 cpu=1.35 mem=2471 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K20 ttfr=55 cpu=1.01 mem=2463 cg=0::/grid/run
+grid v=4.0 rep=0 cold_np     ttfr=1566 cpu=5.43 mem=2566 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K0  ttfr=251 cpu=1.69 mem=2489 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K5  ttfr=60 cpu=0.99 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K200 ttfr=58 cpu=0.58 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=0 cont_K200   ttfr=2385 cpu=5.61 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K100 ttfr=64 cpu=0.93 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=0 restore_K50 ttfr=57 cpu=0.87 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=0 cont_K0     ttfr=1802 cpu=5.18 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=0 cont_K50    ttfr=2001 cpu=5.10 mem=2536 cg=0::/grid/run
+grid v=4.0 rep=0 cold        ttfr=1790 cpu=5.24 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K0  ttfr=253 cpu=2.03 mem=2497 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K200 ttfr=52 cpu=0.78 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K50 ttfr=57 cpu=1.09 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=1 cont_K0     ttfr=1804 cpu=4.94 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K20 ttfr=63 cpu=1.20 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=1 cold        ttfr=1800 cpu=4.97 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K5  ttfr=59 cpu=1.56 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K1  ttfr=79 cpu=1.57 mem=2480 cg=0::/grid/run
+grid v=4.0 rep=1 restore_K100 ttfr=54 cpu=0.68 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=1 cold_np     ttfr=1577 cpu=5.70 mem=2561 cg=0::/grid/run
+grid v=4.0 rep=1 cont_K50    ttfr=2058 cpu=5.40 mem=2549 cg=0::/grid/run
+grid v=4.0 rep=1 cont_K200   ttfr=2425 cpu=5.83 mem=2546 cg=0::/grid/run
+grid v=4.0 rep=2 cold        ttfr=1816 cpu=5.23 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K5  ttfr=61 cpu=1.42 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K50 ttfr=59 cpu=0.98 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K20 ttfr=59 cpu=0.90 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=2 cont_K0     ttfr=1792 cpu=4.87 mem=2538 cg=0::/grid/run
+grid v=4.0 rep=2 cont_K50    ttfr=2037 cpu=5.34 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K1  ttfr=80 cpu=1.64 mem=2483 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K0  ttfr=246 cpu=1.56 mem=2480 cg=0::/grid/run
+grid v=4.0 rep=2 cont_K200   ttfr=2353 cpu=5.63 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K200 ttfr=57 cpu=0.81 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=2 cold_np     ttfr=1548 cpu=5.76 mem=2560 cg=0::/grid/run
+grid v=4.0 rep=2 restore_K100 ttfr=58 cpu=0.93 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K0  ttfr=247 cpu=2.01 mem=2495 cg=0::/grid/run
+grid v=4.0 rep=3 cold        ttfr=1794 cpu=4.96 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=3 cont_K50    ttfr=2073 cpu=5.41 mem=2546 cg=0::/grid/run
+grid v=4.0 rep=3 cont_K0     ttfr=1802 cpu=4.91 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K5  ttfr=62 cpu=1.08 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K20 ttfr=62 cpu=1.23 mem=2475 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K100 ttfr=53 cpu=0.74 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K200 ttfr=66 cpu=0.75 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K1  ttfr=76 cpu=1.58 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=3 cold_np     ttfr=1607 cpu=5.72 mem=2558 cg=0::/grid/run
+grid v=4.0 rep=3 cont_K200   ttfr=2394 cpu=5.73 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=3 restore_K50 ttfr=68 cpu=1.15 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=4 cold_np     ttfr=1573 cpu=5.57 mem=2563 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K5  ttfr=61 cpu=1.00 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=4 cont_K200   ttfr=2224 cpu=5.13 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K1  ttfr=75 cpu=1.27 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K50 ttfr=60 cpu=0.88 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K100 ttfr=60 cpu=0.94 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=4 cont_K50    ttfr=2035 cpu=5.29 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=4 cont_K0     ttfr=1799 cpu=4.83 mem=2538 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K200 ttfr=52 cpu=0.58 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K0  ttfr=252 cpu=1.69 mem=2490 cg=0::/grid/run
+grid v=4.0 rep=4 cold        ttfr=1805 cpu=5.20 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=4 restore_K20 ttfr=54 cpu=1.01 mem=2463 cg=0::/grid/run
+grid v=4.0 rep=5 cont_K200   ttfr=2399 cpu=5.66 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K5  ttfr=60 cpu=1.56 mem=2483 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K100 ttfr=54 cpu=0.67 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K50 ttfr=59 cpu=1.08 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=5 cont_K0     ttfr=1779 cpu=5.16 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K200 ttfr=54 cpu=0.79 mem=2462 cg=0::/grid/run
+grid v=4.0 rep=5 cold        ttfr=1778 cpu=4.86 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=5 cold_np     ttfr=1556 cpu=5.57 mem=2562 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K20 ttfr=59 cpu=1.14 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=5 cont_K50    ttfr=2011 cpu=5.24 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K1  ttfr=75 cpu=1.51 mem=2477 cg=0::/grid/run
+grid v=4.0 rep=5 restore_K0  ttfr=244 cpu=1.99 mem=2497 cg=0::/grid/run
+grid v=4.0 rep=6 cont_K200   ttfr=2389 cpu=5.63 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K50 ttfr=59 cpu=0.97 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=6 cont_K0     ttfr=1776 cpu=4.75 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K100 ttfr=56 cpu=0.93 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=6 cold_np     ttfr=1577 cpu=6.21 mem=2554 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K200 ttfr=61 cpu=0.83 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K5  ttfr=57 cpu=1.42 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=6 cont_K50    ttfr=2007 cpu=4.97 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K1  ttfr=75 cpu=1.64 mem=2484 cg=0::/grid/run
+grid v=4.0 rep=6 cold        ttfr=1819 cpu=5.23 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K20 ttfr=57 cpu=0.90 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=6 restore_K0  ttfr=252 cpu=1.59 mem=2480 cg=0::/grid/run
+grid v=4.0 rep=7 cont_K50    ttfr=1990 cpu=4.95 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K100 ttfr=55 cpu=0.74 mem=2462 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K5  ttfr=63 cpu=1.06 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K1  ttfr=79 cpu=1.58 mem=2479 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K20 ttfr=62 cpu=1.22 mem=2476 cg=0::/grid/run
+grid v=4.0 rep=7 cont_K0     ttfr=1786 cpu=5.13 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=7 cold_np     ttfr=1556 cpu=5.57 mem=2560 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K50 ttfr=60 cpu=1.30 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K0  ttfr=254 cpu=2.03 mem=2495 cg=0::/grid/run
+grid v=4.0 rep=7 cold        ttfr=1834 cpu=4.90 mem=2533 cg=0::/grid/run
+grid v=4.0 rep=7 cont_K200   ttfr=2551 cpu=6.11 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=7 restore_K200 ttfr=62 cpu=0.76 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=8 cold_np     ttfr=1609 cpu=5.71 mem=2558 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K200 ttfr=58 cpu=0.57 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=8 cont_K50    ttfr=1982 cpu=5.03 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=8 cont_K0     ttfr=1780 cpu=4.83 mem=2537 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K50 ttfr=57 cpu=0.87 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K0  ttfr=254 cpu=1.73 mem=2490 cg=0::/grid/run
+grid v=4.0 rep=8 cold        ttfr=1772 cpu=5.15 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=8 cont_K200   ttfr=2418 cpu=5.68 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K20 ttfr=52 cpu=1.00 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K100 ttfr=56 cpu=0.93 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K5  ttfr=60 cpu=1.00 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=8 restore_K1  ttfr=75 cpu=1.26 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K5  ttfr=56 cpu=1.57 mem=2484 cg=0::/grid/run
+grid v=4.0 rep=9 cont_K200   ttfr=2263 cpu=5.19 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K1  ttfr=76 cpu=1.56 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K200 ttfr=53 cpu=0.79 mem=2462 cg=0::/grid/run
+grid v=4.0 rep=9 cont_K50    ttfr=2005 cpu=5.07 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K20 ttfr=66 cpu=1.18 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=9 cont_K0     ttfr=1796 cpu=5.07 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K100 ttfr=53 cpu=0.67 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K50 ttfr=58 cpu=1.09 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=9 cold        ttfr=1799 cpu=5.18 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=9 cold_np     ttfr=1582 cpu=5.82 mem=2560 cg=0::/grid/run
+grid v=4.0 rep=9 restore_K0  ttfr=245 cpu=2.01 mem=2495 cg=0::/grid/run
+grid v=4.0 rep=10 cold_np     ttfr=1571 cpu=5.50 mem=2568 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K5  ttfr=61 cpu=1.41 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=10 cold        ttfr=1799 cpu=5.21 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K100 ttfr=60 cpu=0.93 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K200 ttfr=58 cpu=0.81 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K20 ttfr=59 cpu=0.90 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=10 cont_K0     ttfr=1790 cpu=5.18 mem=2546 cg=0::/grid/run
+grid v=4.0 rep=10 cont_K50    ttfr=2026 cpu=5.36 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K1  ttfr=71 cpu=1.72 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K0  ttfr=252 cpu=1.62 mem=2479 cg=0::/grid/run
+grid v=4.0 rep=10 cont_K200   ttfr=2477 cpu=5.85 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=10 restore_K50 ttfr=59 cpu=0.98 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=11 cold        ttfr=1800 cpu=4.85 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K20 ttfr=67 cpu=1.23 mem=2474 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K0  ttfr=248 cpu=2.00 mem=2495 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K200 ttfr=61 cpu=0.74 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=11 cont_K0     ttfr=1790 cpu=5.09 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K50 ttfr=58 cpu=1.14 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K100 ttfr=54 cpu=0.74 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=11 cont_K50    ttfr=1998 cpu=4.93 mem=2538 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K5  ttfr=55 cpu=1.08 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=11 cont_K200   ttfr=2385 cpu=5.54 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=11 cold_np     ttfr=1576 cpu=5.55 mem=2565 cg=0::/grid/run
+grid v=4.0 rep=11 restore_K1  ttfr=78 cpu=1.58 mem=2478 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K0  ttfr=249 cpu=1.71 mem=2490 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K5  ttfr=59 cpu=0.99 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=12 cold        ttfr=1799 cpu=5.25 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K20 ttfr=54 cpu=1.01 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=12 cont_K200   ttfr=2390 cpu=5.61 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=12 cont_K50    ttfr=2084 cpu=5.43 mem=2549 cg=0::/grid/run
+grid v=4.0 rep=12 cont_K0     ttfr=1792 cpu=4.93 mem=2545 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K50 ttfr=59 cpu=0.87 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K200 ttfr=59 cpu=0.58 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K100 ttfr=58 cpu=0.94 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=12 cold_np     ttfr=1574 cpu=5.52 mem=2563 cg=0::/grid/run
+grid v=4.0 rep=12 restore_K1  ttfr=75 cpu=1.31 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K0  ttfr=248 cpu=1.97 mem=2496 cg=0::/grid/run
+grid v=4.0 rep=13 cold_np     ttfr=1587 cpu=5.90 mem=2558 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K20 ttfr=63 cpu=1.19 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K1  ttfr=78 cpu=1.56 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K200 ttfr=53 cpu=0.80 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K100 ttfr=52 cpu=0.66 mem=2458 cg=0::/grid/run
+grid v=4.0 rep=13 cont_K0     ttfr=1797 cpu=4.94 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K50 ttfr=59 cpu=1.09 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=13 cold        ttfr=1798 cpu=4.81 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=13 restore_K5  ttfr=57 cpu=1.55 mem=2484 cg=0::/grid/run
+grid v=4.0 rep=13 cont_K50    ttfr=2068 cpu=5.36 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=13 cont_K200   ttfr=2338 cpu=5.50 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=14 cold_np     ttfr=1497 cpu=5.24 mem=2566 cg=0::/grid/run
+grid v=4.0 rep=14 cont_K200   ttfr=2394 cpu=5.62 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K50 ttfr=60 cpu=0.95 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K100 ttfr=53 cpu=0.92 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K0  ttfr=245 cpu=1.55 mem=2480 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K1  ttfr=75 cpu=1.62 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=14 cold        ttfr=1794 cpu=5.15 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=14 cont_K50    ttfr=2022 cpu=5.15 mem=2539 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K20 ttfr=58 cpu=0.91 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K200 ttfr=59 cpu=0.81 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=14 restore_K5  ttfr=60 cpu=1.43 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=14 cont_K0     ttfr=1801 cpu=5.19 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=15 cont_K0     ttfr=1826 cpu=5.24 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K50 ttfr=62 cpu=1.15 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K0  ttfr=245 cpu=1.99 mem=2496 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K200 ttfr=59 cpu=0.75 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=15 cold        ttfr=1797 cpu=5.22 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=15 cont_K200   ttfr=2400 cpu=5.72 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=15 cold_np     ttfr=1578 cpu=5.56 mem=2559 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K100 ttfr=55 cpu=0.74 mem=2462 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K20 ttfr=59 cpu=1.22 mem=2475 cg=0::/grid/run
+grid v=4.0 rep=15 cont_K50    ttfr=2047 cpu=5.37 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K1  ttfr=86 cpu=1.58 mem=2483 cg=0::/grid/run
+grid v=4.0 rep=15 restore_K5  ttfr=59 cpu=1.09 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K200 ttfr=50 cpu=0.57 mem=2464 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K1  ttfr=71 cpu=1.28 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=16 cont_K200   ttfr=2427 cpu=5.80 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K50 ttfr=55 cpu=0.91 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=16 cont_K50    ttfr=2045 cpu=5.26 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=16 cold_np     ttfr=1566 cpu=5.70 mem=2557 cg=0::/grid/run
+grid v=4.0 rep=16 cont_K0     ttfr=1808 cpu=4.88 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K20 ttfr=55 cpu=1.02 mem=2463 cg=0::/grid/run
+grid v=4.0 rep=16 cold        ttfr=1800 cpu=5.25 mem=2549 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K5  ttfr=144 cpu=1.01 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K100 ttfr=58 cpu=0.94 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=16 restore_K0  ttfr=251 cpu=1.70 mem=2491 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K200 ttfr=55 cpu=0.79 mem=2461 cg=0::/grid/run
+grid v=4.0 rep=17 cont_K50    ttfr=1998 cpu=4.93 mem=2541 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K100 ttfr=54 cpu=0.67 mem=2457 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K1  ttfr=79 cpu=1.54 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=17 cont_K0     ttfr=1786 cpu=4.77 mem=2538 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K0  ttfr=247 cpu=1.98 mem=2495 cg=0::/grid/run
+grid v=4.0 rep=17 cont_K200   ttfr=2417 cpu=5.78 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K5  ttfr=56 cpu=1.57 mem=2483 cg=0::/grid/run
+grid v=4.0 rep=17 cold_np     ttfr=1566 cpu=5.77 mem=2567 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K50 ttfr=62 cpu=1.08 mem=2463 cg=0::/grid/run
+grid v=4.0 rep=17 cold        ttfr=1788 cpu=4.81 mem=2542 cg=0::/grid/run
+grid v=4.0 rep=17 restore_K20 ttfr=62 cpu=1.19 mem=2470 cg=0::/grid/run
+grid v=4.0 rep=18 cont_K50    ttfr=2041 cpu=5.33 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K0  ttfr=246 cpu=1.58 mem=2480 cg=0::/grid/run
+grid v=4.0 rep=18 cold        ttfr=1787 cpu=5.21 mem=2546 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K100 ttfr=61 cpu=0.93 mem=2469 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K1  ttfr=76 cpu=1.63 mem=2484 cg=0::/grid/run
+grid v=4.0 rep=18 cont_K0     ttfr=1791 cpu=4.81 mem=2541 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K5  ttfr=70 cpu=1.42 mem=2482 cg=0::/grid/run
+grid v=4.0 rep=18 cold_np     ttfr=1604 cpu=5.60 mem=2553 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K20 ttfr=56 cpu=0.89 mem=2465 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K200 ttfr=56 cpu=0.81 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=18 restore_K50 ttfr=58 cpu=0.97 mem=2468 cg=0::/grid/run
+grid v=4.0 rep=18 cont_K200   ttfr=2442 cpu=5.78 mem=2547 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K100 ttfr=57 cpu=0.75 mem=2459 cg=0::/grid/run
+grid v=4.0 rep=19 cold_np     ttfr=1613 cpu=5.61 mem=2565 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K1  ttfr=77 cpu=1.62 mem=2481 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K200 ttfr=61 cpu=0.74 mem=2463 cg=0::/grid/run
+grid v=4.0 rep=19 cont_K0     ttfr=1791 cpu=5.18 mem=2543 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K20 ttfr=60 cpu=1.22 mem=2475 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K0  ttfr=245 cpu=1.98 mem=2493 cg=0::/grid/run
+grid v=4.0 rep=19 cont_K200   ttfr=2411 cpu=5.71 mem=2548 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K5  ttfr=57 cpu=1.08 mem=2466 cg=0::/grid/run
+grid v=4.0 rep=19 restore_K50 ttfr=62 cpu=1.15 mem=2467 cg=0::/grid/run
+grid v=4.0 rep=19 cont_K50    ttfr=2042 cpu=5.33 mem=2544 cg=0::/grid/run
+grid v=4.0 rep=19 cold        ttfr=1789 cpu=5.10 mem=2543 cg=0::/grid/run
+=== done

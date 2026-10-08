@@ -1,0 +1,176 @@
+build warp 0 0 True 79 MB
+build warp 0 1 True 82 MB
+build warp 0 2 True 80 MB
+build warp 0 3 True 79 MB
+build warp 50 0 True 91 MB
+build warp 50 1 True 93 MB
+build warp 50 2 True 88 MB
+build warp 50 3 True 89 MB
+build criu 0 0 True 80 MB
+build criu 0 1 True 79 MB
+build criu 0 2 True 78 MB
+build criu 0 3 True 81 MB
+build criu 50 0 True 78 MB
+build criu 50 1 True 91 MB
+build criu 50 2 True 94 MB
+build criu 50 3 True 98 MB
+v=0.25 rep=0 warp K=50 ttfr=224 cpu=0.88
+v=0.25 rep=0 criu K=0 ttfr=2096 cpu=2.01
+v=0.25 rep=0 criu K=50 ttfr=380 cpu=0.89
+v=0.25 rep=0 warp K=0 ttfr=1897 cpu=2.11
+v=0.25 rep=1 warp K=0 ttfr=1986 cpu=2.12
+v=0.25 rep=1 criu K=0 ttfr=1979 cpu=2.11
+v=0.25 rep=1 warp K=50 ttfr=362 cpu=1.22
+v=0.25 rep=1 criu K=50 ttfr=380 cpu=0.89
+v=0.25 rep=2 criu K=0 ttfr=2092 cpu=2.10
+v=0.25 rep=2 warp K=0 ttfr=1686 cpu=1.62
+v=0.25 rep=2 criu K=50 ttfr=304 cpu=1.19
+v=0.25 rep=2 warp K=50 ttfr=279 cpu=0.96
+v=0.25 rep=3 warp K=0 ttfr=1999 cpu=1.69
+v=0.25 rep=3 warp K=50 ttfr=280 cpu=1.10
+v=0.25 rep=3 criu K=50 ttfr=474 cpu=1.32
+v=0.25 rep=3 criu K=0 ttfr=2173 cpu=2.06
+v=0.25 rep=4 warp K=0 ttfr=1969 cpu=2.08
+v=0.25 rep=4 warp K=50 ttfr=383 cpu=0.90
+v=0.25 rep=4 criu K=50 ttfr=298 cpu=0.84
+v=0.25 rep=4 criu K=0 ttfr=2071 cpu=2.11
+v=0.25 rep=5 warp K=0 ttfr=2073 cpu=2.10
+v=0.25 rep=5 warp K=50 ttfr=274 cpu=1.24
+v=0.25 rep=5 criu K=0 ttfr=1991 cpu=2.13
+v=0.25 rep=5 criu K=50 ttfr=280 cpu=0.89
+v=0.25 rep=6 warp K=50 ttfr=284 cpu=0.96
+v=0.25 rep=6 criu K=50 ttfr=396 cpu=1.23
+v=0.25 rep=6 warp K=0 ttfr=2071 cpu=1.67
+v=0.25 rep=6 criu K=0 ttfr=2186 cpu=2.07
+v=0.25 rep=7 warp K=50 ttfr=283 cpu=1.12
+v=0.25 rep=7 criu K=0 ttfr=2080 cpu=2.14
+v=0.25 rep=7 criu K=50 ttfr=389 cpu=1.26
+v=0.25 rep=7 warp K=0 ttfr=1893 cpu=1.66
+v=0.25 rep=8 criu K=50 ttfr=371 cpu=0.89
+v=0.25 rep=8 warp K=50 ttfr=283 cpu=0.92
+v=0.25 rep=8 criu K=0 ttfr=2093 cpu=2.11
+v=0.25 rep=8 warp K=0 ttfr=1985 cpu=2.03
+v=0.25 rep=9 warp K=0 ttfr=2186 cpu=2.05
+v=0.25 rep=9 criu K=0 ttfr=1981 cpu=1.97
+v=0.25 rep=9 criu K=50 ttfr=283 cpu=0.89
+v=0.25 rep=9 warp K=50 ttfr=293 cpu=1.24
+v=0.25 rep=10 criu K=50 ttfr=373 cpu=1.17
+v=0.25 rep=10 criu K=0 ttfr=2063 cpu=2.12
+v=0.25 rep=10 warp K=50 ttfr=280 cpu=0.96
+v=0.25 rep=10 warp K=0 ttfr=1697 cpu=1.59
+v=0.25 rep=11 warp K=50 ttfr=290 cpu=1.13
+v=0.25 rep=11 warp K=0 ttfr=1979 cpu=1.79
+v=0.25 rep=11 criu K=50 ttfr=474 cpu=1.28
+v=0.25 rep=11 criu K=0 ttfr=2069 cpu=2.17
+v=0.25 rep=12 warp K=50 ttfr=284 cpu=0.92
+v=0.25 rep=12 criu K=50 ttfr=365 cpu=0.89
+v=0.25 rep=12 criu K=0 ttfr=2388 cpu=2.19
+v=0.25 rep=12 warp K=0 ttfr=1966 cpu=2.13
+v=0.25 rep=13 warp K=50 ttfr=302 cpu=1.24
+v=0.25 rep=13 criu K=50 ttfr=281 cpu=0.91
+v=0.25 rep=13 warp K=0 ttfr=2081 cpu=2.12
+v=0.25 rep=13 criu K=0 ttfr=1991 cpu=2.12
+v=0.25 rep=14 criu K=0 ttfr=2063 cpu=2.10
+v=0.25 rep=14 warp K=50 ttfr=286 cpu=0.99
+v=0.25 rep=14 criu K=50 ttfr=377 cpu=1.20
+v=0.25 rep=14 warp K=0 ttfr=1994 cpu=2.20
+v=0.25 rep=15 criu K=0 ttfr=2071 cpu=2.11
+v=0.25 rep=15 warp K=50 ttfr=293 cpu=1.18
+v=0.25 rep=15 criu K=50 ttfr=391 cpu=1.31
+v=0.25 rep=15 warp K=0 ttfr=1989 cpu=1.71
+v=0.25 rep=16 criu K=0 ttfr=2182 cpu=2.17
+v=0.25 rep=16 criu K=50 ttfr=286 cpu=0.92
+v=0.25 rep=16 warp K=0 ttfr=1980 cpu=2.12
+v=0.25 rep=16 warp K=50 ttfr=267 cpu=0.92
+v=0.25 rep=17 criu K=0 ttfr=2166 cpu=2.14
+v=0.25 rep=17 criu K=50 ttfr=294 cpu=0.91
+v=0.25 rep=17 warp K=0 ttfr=2101 cpu=2.15
+v=0.25 rep=17 warp K=50 ttfr=294 cpu=1.25
+v=0.25 rep=18 criu K=0 ttfr=2073 cpu=2.07
+v=0.25 rep=18 warp K=0 ttfr=2166 cpu=2.31
+v=0.25 rep=18 criu K=50 ttfr=487 cpu=1.36
+v=0.25 rep=18 warp K=50 ttfr=275 cpu=1.00
+v=0.25 rep=19 criu K=50 ttfr=378 cpu=1.28
+v=0.25 rep=19 criu K=0 ttfr=2205 cpu=2.10
+v=0.25 rep=19 warp K=0 ttfr=1896 cpu=1.71
+v=0.25 rep=19 warp K=50 ttfr=288 cpu=1.14
+v=1.0 rep=0 criu K=0 ttfr=487 cpu=2.09
+v=1.0 rep=0 criu K=50 ttfr=95 cpu=0.87
+v=1.0 rep=0 warp K=50 ttfr=69 cpu=0.90
+v=1.0 rep=0 warp K=0 ttfr=486 cpu=1.96
+v=1.0 rep=1 criu K=0 ttfr=503 cpu=2.06
+v=1.0 rep=1 warp K=0 ttfr=542 cpu=2.03
+v=1.0 rep=1 criu K=50 ttfr=84 cpu=0.89
+v=1.0 rep=1 warp K=50 ttfr=61 cpu=1.20
+v=1.0 rep=2 criu K=0 ttfr=481 cpu=1.92
+v=1.0 rep=2 warp K=0 ttfr=413 cpu=1.57
+v=1.0 rep=2 warp K=50 ttfr=83 cpu=0.96
+v=1.0 rep=2 criu K=50 ttfr=84 cpu=1.12
+v=1.0 rep=3 warp K=0 ttfr=488 cpu=1.60
+v=1.0 rep=3 criu K=0 ttfr=543 cpu=2.00
+v=1.0 rep=3 criu K=50 ttfr=101 cpu=1.23
+v=1.0 rep=3 warp K=50 ttfr=70 cpu=1.10
+v=1.0 rep=4 warp K=0 ttfr=462 cpu=2.01
+v=1.0 rep=4 criu K=0 ttfr=490 cpu=2.09
+v=1.0 rep=4 criu K=50 ttfr=74 cpu=0.85
+v=1.0 rep=4 warp K=50 ttfr=66 cpu=0.90
+v=1.0 rep=5 criu K=50 ttfr=76 cpu=0.89
+v=1.0 rep=5 warp K=50 ttfr=74 cpu=1.20
+v=1.0 rep=5 criu K=0 ttfr=541 cpu=2.05
+v=1.0 rep=5 warp K=0 ttfr=503 cpu=2.05
+v=1.0 rep=6 warp K=0 ttfr=480 cpu=1.55
+v=1.0 rep=6 criu K=50 ttfr=81 cpu=1.17
+v=1.0 rep=6 criu K=0 ttfr=474 cpu=1.90
+v=1.0 rep=6 warp K=50 ttfr=55 cpu=0.97
+v=1.0 rep=7 criu K=50 ttfr=108 cpu=1.24
+v=1.0 rep=7 warp K=50 ttfr=57 cpu=1.09
+v=1.0 rep=7 criu K=0 ttfr=501 cpu=2.09
+v=1.0 rep=7 warp K=0 ttfr=439 cpu=1.62
+v=1.0 rep=8 warp K=50 ttfr=57 cpu=0.89
+v=1.0 rep=8 criu K=50 ttfr=75 cpu=0.88
+v=1.0 rep=8 warp K=0 ttfr=472 cpu=1.99
+v=1.0 rep=8 criu K=0 ttfr=564 cpu=2.04
+v=1.0 rep=9 criu K=50 ttfr=78 cpu=0.91
+v=1.0 rep=9 criu K=0 ttfr=481 cpu=2.01
+v=1.0 rep=9 warp K=0 ttfr=485 cpu=2.01
+v=1.0 rep=9 warp K=50 ttfr=81 cpu=1.19
+v=1.0 rep=10 criu K=0 ttfr=499 cpu=2.03
+v=1.0 rep=10 warp K=50 ttfr=83 cpu=0.96
+v=1.0 rep=10 criu K=50 ttfr=80 cpu=1.18
+v=1.0 rep=10 warp K=0 ttfr=408 cpu=1.58
+v=1.0 rep=11 criu K=50 ttfr=94 cpu=1.24
+v=1.0 rep=11 warp K=0 ttfr=477 cpu=1.63
+v=1.0 rep=11 warp K=50 ttfr=90 cpu=1.08
+v=1.0 rep=11 criu K=0 ttfr=498 cpu=2.05
+v=1.0 rep=12 criu K=0 ttfr=481 cpu=2.05
+v=1.0 rep=12 warp K=50 ttfr=66 cpu=0.89
+v=1.0 rep=12 warp K=0 ttfr=470 cpu=2.01
+v=1.0 rep=12 criu K=50 ttfr=89 cpu=0.85
+v=1.0 rep=13 criu K=50 ttfr=86 cpu=0.89
+v=1.0 rep=13 warp K=0 ttfr=474 cpu=2.00
+v=1.0 rep=13 criu K=0 ttfr=478 cpu=2.05
+v=1.0 rep=13 warp K=50 ttfr=67 cpu=1.23
+v=1.0 rep=14 warp K=0 ttfr=401 cpu=1.53
+v=1.0 rep=14 criu K=0 ttfr=472 cpu=1.98
+v=1.0 rep=14 warp K=50 ttfr=58 cpu=0.97
+v=1.0 rep=14 criu K=50 ttfr=83 cpu=1.18
+v=1.0 rep=15 criu K=0 ttfr=494 cpu=1.98
+v=1.0 rep=15 warp K=50 ttfr=83 cpu=1.20
+v=1.0 rep=15 criu K=50 ttfr=88 cpu=1.24
+v=1.0 rep=15 warp K=0 ttfr=463 cpu=1.61
+v=1.0 rep=16 warp K=0 ttfr=474 cpu=2.00
+v=1.0 rep=16 criu K=0 ttfr=483 cpu=2.34
+v=1.0 rep=16 warp K=50 ttfr=62 cpu=0.91
+v=1.0 rep=16 criu K=50 ttfr=79 cpu=0.89
+v=1.0 rep=17 criu K=50 ttfr=145 cpu=0.92
+v=1.0 rep=17 warp K=0 ttfr=495 cpu=2.06
+v=1.0 rep=17 warp K=50 ttfr=61 cpu=1.21
+v=1.0 rep=17 criu K=0 ttfr=552 cpu=2.06
+v=1.0 rep=18 warp K=50 ttfr=66 cpu=0.96
+v=1.0 rep=18 criu K=0 ttfr=489 cpu=1.98
+v=1.0 rep=18 warp K=0 ttfr=464 cpu=1.55
+v=1.0 rep=18 criu K=50 ttfr=82 cpu=1.25
+v=1.0 rep=19 criu K=50 ttfr=101 cpu=1.52
+v=1.0 rep=19 warp K=0 ttfr=481 cpu=1.69
+v=1.0 rep=19 warp K=50 ttfr=69 cpu=1.11
+v=1.0 rep=19 criu K=0 ttfr=548 cpu=1.99

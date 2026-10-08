@@ -1,0 +1,100 @@
+=== phase build
+build {'kind': 'depth', 'K': 0, 'i': 0} True 91 MB
+build {'kind': 'depth', 'K': 0, 'i': 1} True 79 MB
+build {'kind': 'depth', 'K': 0, 'i': 2} True 89 MB
+build {'kind': 'depth', 'K': 0, 'i': 3} True 83 MB
+build {'kind': 'depth', 'K': 1, 'i': 0} True 87 MB
+build {'kind': 'depth', 'K': 1, 'i': 1} True 85 MB
+build {'kind': 'depth', 'K': 1, 'i': 2} True 83 MB
+build {'kind': 'depth', 'K': 1, 'i': 3} True 82 MB
+build {'kind': 'depth', 'K': 5, 'i': 0} True 79 MB
+build {'kind': 'depth', 'K': 5, 'i': 1} True 83 MB
+build {'kind': 'depth', 'K': 5, 'i': 2} True 96 MB
+build {'kind': 'depth', 'K': 5, 'i': 3} True 72 MB
+build {'kind': 'depth', 'K': 20, 'i': 0} True 73 MB
+build {'kind': 'depth', 'K': 20, 'i': 1} True 93 MB
+build {'kind': 'depth', 'K': 20, 'i': 2} True 79 MB
+build {'kind': 'depth', 'K': 20, 'i': 3} True 101 MB
+build {'kind': 'depth', 'K': 50, 'i': 0} True 84 MB
+build {'kind': 'depth', 'K': 50, 'i': 1} True 90 MB
+build {'kind': 'depth', 'K': 50, 'i': 2} True 92 MB
+build {'kind': 'depth', 'K': 50, 'i': 3} True 85 MB
+build {'kind': 'depth', 'K': 100, 'i': 0} True 89 MB
+build {'kind': 'depth', 'K': 100, 'i': 1} True 76 MB
+build {'kind': 'depth', 'K': 100, 'i': 2} True 90 MB
+build {'kind': 'depth', 'K': 100, 'i': 3} True 78 MB
+build {'kind': 'depth', 'K': 200, 'i': 0} True 78 MB
+build {'kind': 'depth', 'K': 200, 'i': 1} True 80 MB
+build {'kind': 'depth', 'K': 200, 'i': 2} True 94 MB
+build {'kind': 'depth', 'K': 200, 'i': 3} True 94 MB
+build {'kind': 'rewarm', 'K': 50, 'i': 0} True 74 MB
+build {'kind': 'rewarm', 'K': 50, 'i': 1} True 74 MB
+build {'kind': 'rewarm', 'K': 50, 'i': 2} True 74 MB
+build {'kind': 'rewarm', 'K': 50, 'i': 3} True 78 MB
+build {'kind': 'uniq', 'K': 50, 'hooks': 'off'} True 94 MB
+build {'kind': 'uniq', 'K': 50, 'hooks': 'on'} False 0 MB
+=== phase uniq
+uniq off 0 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '5b405f1e4ec335631d15dbbfdbe45c8bba189861d8cd726cdd387ba86e2056db', 'secure_random': 'c26d10d5b0c62058b6c6bb2737de2b1afefd1809a30ef1e379203714446d9dc1', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '7dcaa9bfcb2c9428f6871e6830164baecdce031fe033b43f11e09915aa724f71'}
+uniq off 1 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '6ddd735502537d7c0ac55a4da27b24c5410921d9ab3514574a1cd9e0f02252ac', 'secure_random': '7461f84b7cb3f4ac803b5da541c2ab413d87eaf8ecaf3c276439f829dedded4c', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': 'c8c7cf1e461ae194c6657797e101adf4780eaaade2ae453a28121837e4ff66db'}
+uniq off 2 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': 'f7c17d3cb94354445253fc488863a38ad4a7a8d581f1c46b9f2e1f76e16dc735', 'secure_random': 'a3c0e9e07ecd1437ced43991fd7fb958a0ec12b8504d1157394f483046e88572', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '514f3177c5b7a8e7f357273847bce77878ce8b78e477eee6a505ba3f8c11b597'}
+uniq off 3 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': 'f747e8616e80b247c61ae2731b22501c5f6ebe15d7fb62a730cc86cd274ad05e', 'secure_random': '3e5b315f7b045af64db536de2f76f26a29c3027d10f3ae79e6cfbe00bc4cf56c', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '31f23c0675c883e9ef6bd46990d069365dd32e209ed3233a811516fdec419657'}
+uniq off 4 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '59fe319e64e92523236259fb25dc70dc0a783e7b5c38fe265001d639b04c4611', 'secure_random': 'e538f74c96169a849821395881031a922b0d03259b8fd61d4ef37ffdc5ff23f9', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '6a3a491bfd81220f64f0aba3087f57803f29a53ad3dfd4091b641a84ef383695'}
+uniq off 5 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '255ea8fa9007ae56dfc9aa4c8b664726cc3edd1d49e4600713e54b2fc45165d1', 'secure_random': 'cd8783b9d5c561bbc3b8353b00ded836e4a9dfe0d7cb21728d25974bdf5bf99e', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '990454fab202f57d8698d594e4a0fac346e9d9263eae70e915406a68cd196c5d'}
+uniq off 6 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '7417d4d77cda723912a2aaedc56b04072180690585ce4a5fa7c8798fcf640260', 'secure_random': '90292b5f7046532ae4502af8438778b1c6bdf4820fcb59581a8e6a9a9f7cb029', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '11618b57b3d13737998102da753d00322d5a64838501e26ca11a03f49f37daec'}
+uniq off 7 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '913b5d66c93f29ee59512348bcf56915fae20fdb3da2d74a93ed30bf813ad3c9', 'secure_random': 'a1264d19f2843b66a09f6e36ecdf3040601b8b6f2fcdf11222179fb9cfda5429', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': '48e25aa7703c9cfeece5e4b314e8189a864faf2d4073b36e8cf49c100ef3aa32'}
+uniq off 8 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': 'ece41512386a3972e84bfab398041fb2e3fc35e80561ad9d07b893be29429cb7', 'secure_random': 'd707e98dd644423a2cd02645eebd075038e0fd499247e3f0233a3bac4461bf12', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': 'd78b05b9b903d86c97978a62d7c1f732ec38b501ca7ec19555135c230657cfba'}
+uniq off 9 {'random': '07f5a2709d72d2e26ff83001315a1494b5c70594f817ec24de19288dc995c1f1', 'math_random': '1279bd3d6130a1fdec2bcb81435ffaebc1e7f4fccb5d30e96b26347fb8ee2e0f', 'uuid': '80daa1912bad04230fe344b7e87ac847a780467c7d50dd038970473b084899b5', 'secure_random': 'f7d408c7755e282ec7f0c23adb092df754f8beb81cdb6229a4384d26d539bda0', 'token': '4154bfe8c8abe0c7f4a0f0b4535dec9a96f6f7e2e54d4a34a7a2096a8a82eb1f', 'nanotime': 'e6f991403f4c6f6eb2edff7ef982cf0409c4da47409a462f955528ce800d264c'}
+uniq on 0 None
+uniq on 1 None
+uniq on 2 None
+uniq on 3 None
+uniq on 4 None
+uniq on 5 None
+uniq on 6 None
+uniq on 7 None
+uniq on 8 None
+uniq on 9 None
+=== phase contention
+contention 2 equal 0 [162, 174]
+contention 2 one_at_a_time 0 [76, 168]
+contention 2 equal 1 [150, 167]
+contention 2 one_at_a_time 1 [79, 164]
+contention 2 equal 2 [152, 165]
+contention 2 one_at_a_time 2 [77, 175]
+contention 2 equal 3 [145, 177]
+contention 2 one_at_a_time 3 [74, 161]
+contention 2 equal 4 [133, 144]
+contention 2 one_at_a_time 4 [72, 158]
+contention 2 equal 5 [128, 138]
+contention 2 one_at_a_time 5 [69, 153]
+contention 2 equal 6 [139, 144]
+contention 2 one_at_a_time 6 [69, 154]
+contention 2 equal 7 [127, 148]
+contention 2 one_at_a_time 7 [72, 153]
+contention 2 equal 8 [132, 150]
+contention 2 one_at_a_time 8 [71, 149]
+contention 2 equal 9 [152, 150]
+contention 2 one_at_a_time 9 [73, 155]
+contention 2 equal 10 [137, 146]
+contention 2 one_at_a_time 10 [72, 152]
+contention 2 equal 11 [141, 150]
+contention 2 one_at_a_time 11 [81, 169]
+contention 2 equal 12 [124, 136]
+contention 2 one_at_a_time 12 [66, 149]
+contention 2 equal 13 [123, 143]
+contention 2 one_at_a_time 13 [80, 162]
+contention 2 equal 14 [129, 149]
+contention 2 one_at_a_time 14 [67, 161]
+contention 2 equal 15 [130, 137]
+contention 2 one_at_a_time 15 [75, 160]
+contention 2 equal 16 [139, 143]
+contention 2 one_at_a_time 16 [70, 154]
+contention 2 equal 17 [132, 137]
+contention 2 one_at_a_time 17 [71, 150]
+contention 2 equal 18 [141, 158]
+contention 2 one_at_a_time 18 [76, 166]
+contention 2 equal 19 [128, 143]
+contention 2 one_at_a_time 19 [99, 213]
+contention 4 equal 0 [313, 309, 348, 357]
+contention 4 one_at_a_time 0 [70, 156, 249, 343]
+contention 4 equal 1 [257, 297, 293, 291]
