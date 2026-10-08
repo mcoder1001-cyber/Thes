@@ -270,7 +270,8 @@ and 2.2\,s at 4\,vCPU. Snapshots save the most exactly where serverless function
   run \texttt{python3 figures/make\_figures.py}}}}
 \caption{Time to first response plus residual warm-up against the CPU quota, for a cold start, a
 snapshot after start-up ($K = 0$) and a deep snapshot ($K = 200$); median of 20 runs per point,
-logarithmic axes.}
+logarithmic axes. The restore points at 0.25 and 1\,vCPU include the bimodal restores of
+\cref{sec:m-depth} and are upper bounds.}
 \label{fig:m-cliff}
 \end{figure}
 

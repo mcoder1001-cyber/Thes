@@ -464,10 +464,9 @@ def fig9_cliff():
     end_label(ax, 4.0, cold[-1], f"Cold  {cold[-1]:.1f} s")
     end_label(ax, 4.0, k0[-1], f"K = 0  {k0[-1]:.2f} s")
     end_label(ax, 4.0, k200[-1], f"K = 200  {k200[-1]:.2f} s")
-    ax.annotate(f"saves {cold[0] - k200[0]:.1f} s", (0.25, (cold[0] * k200[0]) ** 0.5), xytext=(8, 0),
-                textcoords="offset points", fontsize=8, color=INK2, va="center")
-    ax.annotate(f"saves {cold[-1] - k200[-1]:.1f} s", (4.0, (cold[-1] * k200[-1]) ** 0.5), xytext=(-62, 0),
-                textcoords="offset points", fontsize=8, color=INK2, va="center")
+    ax.text(1.1, 16, f"A deep snapshot saves {cold[0] - k200[0]:.1f} s per start at 0.25 vCPU,\n"
+            f"{cold[2] - k200[2]:.1f} s at 1 vCPU and {cold[-1] - k200[-1]:.1f} s at 4 vCPU",
+            fontsize=8, color=INK2, va="center")
     ax.legend(loc="lower left", handlelength=1.6)
     save(fig, "fig9_cliff")
 

@@ -90,8 +90,18 @@ Data: `ideas/sim/results/e8_keepalive.csv` (24 GB rows).
 
 Data: `ideas/exp-a-context-priming/results/summary_exp-b.csv` (rows `pinned`).
 
+### Figure 9: `fig9_cliff`: snapshots save most where CPU is scarce
+> Time to first response plus residual warm-up over the next 200 requests, against the CPU quota,
+> for a cold JVM start, a snapshot after start-up (K = 0) and a deep snapshot (K = 200); the Spring
+> Boot function on the test machine, median of 20 runs per point, Warp engine. A deep snapshot saves
+> 19.1 s per start at 0.25 vCPU, 4.5 s at 1 vCPU and 2.2 s at 4 vCPU. The relative cliff does not
+> flatten with depth (cold 9.4×, K = 200 19×, 0.25 vs 4 vCPU). Restore points at 0.25 and 1 vCPU
+> include the bimodal restores of `results/box/T3-profile/REPORT.md` and are upper bounds.
+
+Data: `results/box/T6-cliff/cliff.csv` (`results/box/T3-profile/analyze.py`).
+
 ---
 
-**Not yet available:** a figure of the vCPU cliff itself (JVM warm-up 13–35× slower from 4 to
-0.25 vCPU, exp14). Its raw data is not in this repository. Add the exp14 CSV and it can be
-drawn in the same style.
+**Not yet available:** exp14's own cliff (JVM warm-up 13–35× slower from 4 to 0.25 vCPU on a
+heavier warm-up workload); its raw data is not in this repository. Figure 9 is the cliff
+re-measured on the Spring Boot function (10.3× for the cold warm-up B).
