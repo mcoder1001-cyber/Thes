@@ -1,0 +1,23 @@
+cores policy n | all-calls p99 s mean[min,max] | cold-wf mean s | cold-wf p99 s
+16 la+uniform  5 |  6.30[2.73,12.59] |  1.24[1.22,1.25] |  3.56[3.28,3.98]
+16 la+plan     5 |  8.33[5.32,11.36] |  1.01[1.01,1.02] |  2.42[2.27,2.51]
+16 la+planov   5 |  7.10[2.62,24.11] |  1.17[1.13,1.22] |  3.17[3.06,3.33]
+20 la+uniform  5 |  2.47[2.44,2.49] |  1.06[1.05,1.07] |  2.64[2.58,2.68]
+20 la+plan     5 |  2.41[2.40,2.42] |  0.89[0.89,0.90] |  2.12[2.05,2.19]
+20 la+planov   5 |  2.45[2.43,2.48] |  1.01[1.00,1.02] |  2.39[2.28,2.50]
+24 la+uniform  5 |  2.40[2.39,2.41] |  0.96[0.95,0.97] |  2.20[2.02,2.33]
+24 la+plan     5 |  2.34[2.28,2.38] |  0.86[0.85,0.86] |  1.79[1.73,1.92]
+24 la+planov   5 |  2.39[2.36,2.41] |  0.92[0.91,0.94] |  1.98[1.89,2.09]
+32 la+uniform  5 |  2.29[2.27,2.33] |  0.87[0.86,0.87] |  1.53[1.46,1.63]
+32 la+plan     5 |  2.29[2.27,2.33] |  0.84[0.84,0.85] |  1.55[1.50,1.61]
+32 la+planov   5 |  2.29[2.27,2.34] |  0.85[0.84,0.85] |  1.56[1.51,1.66]
+
+paired change vs la+uniform, mean [min, max] over seeds
+16 la+plan    after_idle_mean_ms: -18% [-19,-17] after_idle_p99_ms: -31% [-40,-25] p99_ms: +106% [-43,+274]
+16 la+planov  after_idle_mean_ms: -6% [-7,-1] after_idle_p99_ms: -11% [-20,-4] p99_ms: +1% [-71,+91]
+20 la+plan    after_idle_mean_ms: -16% [-16,-15] after_idle_p99_ms: -20% [-24,-17] p99_ms: -2% [-4,-1]
+20 la+planov  after_idle_mean_ms: -5% [-6,-4] after_idle_p99_ms: -9% [-14,-3] p99_ms: -1% [-1,-0]
+24 la+plan    after_idle_mean_ms: -11% [-11,-10] after_idle_p99_ms: -18% [-22,-14] p99_ms: -3% [-5,-1]
+24 la+planov  after_idle_mean_ms: -4% [-4,-4] after_idle_p99_ms: -10% [-15,-6] p99_ms: -1% [-2,-0]
+32 la+plan    after_idle_mean_ms: -2% [-2,-2] after_idle_p99_ms: +2% [-5,+6] p99_ms: -0% [-2,+1]
+32 la+planov  after_idle_mean_ms: -2% [-2,-2] after_idle_p99_ms: +3% [-5,+9] p99_ms: -0% [-1,+1]

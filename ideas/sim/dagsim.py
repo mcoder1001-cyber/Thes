@@ -288,6 +288,9 @@ class Policy:
     # not the trigger times, decide when each start-up finishes.
     boost: Optional[str] = None
     spec_p: float = 0.5             # CPU plan: stages reached with a lower probability are speculative
+    overload_eq: bool = False       # CPU plan: earliest deadline first only while the start-ups' deadlines
+                                    # are feasible on the spare CPU; otherwise (overload) an equal split,
+                                    # which degrades gracefully where EDF's misses cascade (Locke 1986)
     cpu_floor: bool = False         # CPU plan: every sandbox, starting or serving, keeps its quota as a
                                     # floor; the plan shares only the CPU above the floors. Without it a
                                     # start-up gets only what requests leave, and on a busy node the
@@ -1158,6 +1161,8 @@ class Sim:
                 if len({self._cpu_owner(j) for j in main}) <= 1:
                     _slack_rates(main, spare, self.cap, self.now, self._cpu_deadline)
                     spare -= sum(j["rate"] for j in main)
+                elif self.p.overload_eq and not self._edf_feasible(main, spare):
+                    spare = _water_fill(main, spare, self.cap)
                 else:
                     for j in sorted(main, key=self._cpu_deadline):
                         add = min(spare, self.cap - j["rate"])
@@ -1169,6 +1174,23 @@ class Sim:
                 spare -= sum(j["rate"] for j in main)
         if spec and spare > 1e-12:
             _water_fill(spec, spare, self.cap)
+
+    def _edf_feasible(self, jobs, spare):
+        """Can every start-up meet its deadline on the spare CPU (each at most cap)? Demand test in
+        deadline order: the work due by each deadline fits in spare * time, and no job needs more
+        than cap. Start-ups with no deadline are ignored (they are not urgent)."""
+        due = sorted((self._cpu_deadline(j), max(j["rem"], 0.0)) for j in jobs)
+        work = 0.0
+        for d, rem in due:
+            if d == math.inf:
+                break
+            T = d - self.now
+            if T <= 0 or rem > self.cap * T + 1e-9:
+                return False
+            work += rem
+            if work > spare * T + 1e-9:
+                return False
+        return True
 
     def _cpu_alloc(self):
         jobs = list(self.cjobs.values())

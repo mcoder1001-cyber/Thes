@@ -638,6 +638,7 @@ E11_POLS = {
     "la+cp": replace(_LA, name="la+cp", boost="cp"),
     "la+slack": replace(_LA, name="la+slack", boost="slack"),          # fair: smallest largest lateness
     "la+plan": replace(_LA, name="la+plan", boost="plan"),             # THE CPU PLAN (this proposal)
+    "la+planov": replace(_LA, name="la+planov", boost="plan", overload_eq=True),  # + EDF only when feasible
     "la+planf": replace(_LA, name="la+planf", boost="plan", cpu_floor=True),   # + quota floor (e12 fix)
     "cold": Policy("cold", keep="gdsf"),                               # no snapshots: cold start on demand
     "cold+uniform": Policy("cold+uniform", keep="gdsf", boost="uniform"),
